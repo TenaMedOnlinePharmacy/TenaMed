@@ -1,5 +1,7 @@
 package com.TenaMed.ocr.service;
 
+import com.TenaMed.Normalization.model.NormalizedOcrResultDto;
+import com.TenaMed.Normalization.service.OcrDrugNormalizationService;
 import com.TenaMed.ocr.dto.OcrResultDto;
 import com.TenaMed.ocr.integration.OcrClient;
 import org.springframework.beans.factory.annotation.Value;
@@ -10,13 +12,15 @@ public class OcrService {
 
     private final OcrClient ocrClient;
     private final double confidenceThreshold;
+    private final OcrDrugNormalizationService ocrDrugNormalizationService;
 
     public OcrService(
             OcrClient ocrClient,
-            @Value("${ocr.confidence-threshold}") double confidenceThreshold
+            @Value("${ocr.confidence-threshold}") double confidenceThreshold, OcrDrugNormalizationService ocrDrugNormalizationService
     ) {
         this.ocrClient = ocrClient;
         this.confidenceThreshold = confidenceThreshold;
+        this.ocrDrugNormalizationService = ocrDrugNormalizationService;
     }
 
     public OcrResultDto process(String imageUrl) {
@@ -31,5 +35,8 @@ public class OcrService {
         }
 
         return result;
+    }
+    public NormalizedOcrResultDto processOcrResult(OcrResultDto ocrResult) {
+        return ocrDrugNormalizationService.normalize(ocrResult);
     }
 }
