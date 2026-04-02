@@ -31,10 +31,10 @@ public class DrugNormalizationService {
 
     public DrugNormalizationService(
             DrugLookupService drugLookupService,
-            @Value("${normalization.fuzzy.acceptance-threshold:0.90}") double fuzzyAcceptanceThreshold,
+            @Value("${normalization.fuzzy.acceptance-threshold}") double fuzzyAcceptanceThreshold,
             @Value("${normalization.fuzzy.ambiguity-delta:0.02}") double ambiguityDelta
     ) {
-        this.fuzzyAcceptanceThreshold = Math.max(0.90, fuzzyAcceptanceThreshold);
+        this.fuzzyAcceptanceThreshold = Math.max(0.70, fuzzyAcceptanceThreshold);
         this.ambiguityDelta = ambiguityDelta;
         this.similarity = new JaroWinklerSimilarity();
 

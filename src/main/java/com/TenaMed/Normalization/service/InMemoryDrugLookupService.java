@@ -16,7 +16,9 @@ public class InMemoryDrugLookupService implements DrugLookupService {
             "Atorvastatin",
             "Omeprazole",
             "Amlodipine",
-            "Losartan"
+            "Losartan",
+            "ascorbic acid",
+            "FeSo43"
     );
 
     private static final Map<String, String> SYNONYMS = Map.ofEntries(
@@ -26,7 +28,8 @@ public class InMemoryDrugLookupService implements DrugLookupService {
             Map.entry("amox", "Amoxicillin"),
             Map.entry("lipitor", "Atorvastatin"),
             Map.entry("norvasc", "Amlodipine"),
-            Map.entry("cozaar", "Losartan")
+            Map.entry("cozaar", "Losartan"),
+            Map.entry("test", "Ascorbic Acid")
     );
 
     @Override
