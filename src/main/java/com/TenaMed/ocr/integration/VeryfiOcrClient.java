@@ -1,23 +1,19 @@
 package com.TenaMed.ocr.integration;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.TenaMed.ocr.dto.MedicineOcrItem;
 import com.TenaMed.ocr.dto.OcrResultDto;
+import com.TenaMed.ocr.dto.external.VeryfiOcrResponseDto;
+import com.TenaMed.ocr.mapper.OcrMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.stereotype.Component;
-import org.springframework.util.LinkedMultiValueMap;
-import org.springframework.util.MultiValueMap;
 import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.reactive.function.client.WebClientRequestException;
 import org.springframework.web.reactive.function.client.WebClientResponseException;
 
 import java.time.Duration;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -30,41 +26,48 @@ import com.TenaMed.ocr.integration.OcrClient;
 public class VeryfiOcrClient implements OcrClient {
 
     private final WebClient webClient;
-    private final ObjectMapper objectMapper;
+    private final OcrMapper ocrMapper;
     private final String processUrl;
     private final int timeoutSeconds;
 
     public VeryfiOcrClient(
             WebClient.Builder webClientBuilder,
-            ObjectMapper objectMapper,
-            @Value("${ocr.veryfi.process-url:https://api.veryfi.com/api/v8/partner/any-documents}") String processUrl,
+            @Value("${ocr.veryfi.environment-url:https://api.veryfi.com}") String environmentUrl,
+            @Value("${ocr.veryfi.process-endpoint:/api/v8/partner/any-documents}") String processEndpoint,
             @Value("${ocr.veryfi.client-id:}") String clientId,
+            @Value("${ocr.veryfi.client-secret:}") String clientSecret,
             @Value("${ocr.veryfi.api-key:}") String apiKey,
             @Value("${ocr.veryfi.username:}") String username,
             @Value("${ocr.veryfi.timeout-seconds:15}") int timeoutSeconds
     ) {
-        this.objectMapper = objectMapper;
-        this.processUrl = processUrl;
+        this.ocrMapper = new OcrMapper();
+        this.processUrl = processEndpoint;
         this.timeoutSeconds = timeoutSeconds;
 
         this.webClient = webClientBuilder
+                .baseUrl(environmentUrl)
                 .defaultHeader("CLIENT-ID", clientId)
                 .defaultHeader("AUTHORIZATION", "apikey " + username + ":" + apiKey)
                 .build();
+
+        if (!clientSecret.isBlank()) {
+            log.debug("Veryfi CLIENT-SECRET is configured");
+        }
     }
 
     @Override
     public OcrResultDto processPrescription(String imageUrl) {
         log.info("Sending OCR request to Veryfi endpoint={} imageUrlHost={}", processUrl, safeHost(imageUrl));
 
-        MultiValueMap<String, String> formData = new LinkedMultiValueMap<>();
-        formData.add("file_url", imageUrl);
+        Map<String, String> requestBody = new HashMap<>();
+        requestBody.put("file_url", imageUrl);
+        requestBody.put("blueprint_name", "medical_prescription_list");
 
         try {
             String responseBody = webClient.post()
                     .uri(processUrl)
-                    .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_FORM_URLENCODED_VALUE)
-                    .bodyValue(formData)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .bodyValue(requestBody)
                     .retrieve()
                     .onStatus(HttpStatusCode::is4xxClientError, response -> response.bodyToMono(String.class)
                             .defaultIfEmpty("")
@@ -87,7 +90,11 @@ public class VeryfiOcrClient implements OcrClient {
                 return failureResult();
             }
 
-            OcrResultDto result = mapResponse(responseBody);
+            log.info("Veryfi OCR raw response: {}", responseBody);
+
+                VeryfiOcrResponseDto veryfiResponse = ocrMapper.mapToVeryfiResponse(responseBody);
+            log.info("Veryfi OCR response parsed successfully:" + veryfiResponse);
+            OcrResultDto result = ocrMapper.map(veryfiResponse);
             log.info(
                     "OCR response received: success={} confidence={} medicinesCount={}",
                     result.isSuccess(),
@@ -110,52 +117,6 @@ public class VeryfiOcrClient implements OcrClient {
             log.error("Failed to process Veryfi OCR response", ex);
             return failureResult();
         }
-    }
-
-    private OcrResultDto mapResponse(String responseBody) throws Exception {
-        JsonNode root = objectMapper.readTree(responseBody);
-
-        double confidence = root.path("confidence").asDouble(0.0);
-        List<MedicineOcrItem> medicines = extractMedicines(root);
-
-        return new OcrResultDto(true, confidence, medicines);
-    }
-
-    private List<MedicineOcrItem> extractMedicines(JsonNode root) {
-        List<MedicineOcrItem> items = new ArrayList<>();
-        JsonNode medicinesNode = root.path("medicines");
-
-        if (!medicinesNode.isArray()) {
-            medicinesNode = root.path("line_items");
-        }
-
-        if (!medicinesNode.isArray()) {
-            return items;
-        }
-
-        for (JsonNode node : medicinesNode) {
-            MedicineOcrItem item = new MedicineOcrItem(
-                    asText(node, "name", "description", "drug_name"),
-                    Integer.getInteger(asText(node, "quantity", "dose")),
-                    asText(node, "frequency", "schedule")
-            );
-            items.add(item);
-        }
-
-        return items;
-    }
-
-    private String asText(JsonNode node, String... candidateKeys) {
-        for (String key : candidateKeys) {
-            JsonNode valueNode = node.path(key);
-            if (!valueNode.isMissingNode() && !valueNode.isNull()) {
-                String value = valueNode.asText("").trim();
-                if (!value.isEmpty()) {
-                    return value;
-                }
-            }
-        }
-        return "";
     }
 
     private String safeHost(String imageUrl) {

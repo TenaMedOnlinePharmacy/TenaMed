@@ -1,4 +1,4 @@
-package com.TenaMed.demo;
+package com.TenaMed;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
