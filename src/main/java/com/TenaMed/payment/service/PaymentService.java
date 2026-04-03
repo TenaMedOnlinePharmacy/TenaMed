@@ -1,6 +1,8 @@
 package com.TenaMed.payment.service;
 
 import com.TenaMed.payment.ChapaHttpClient;
+import com.TenaMed.payment.dto.CancelPaymentData;
+import com.TenaMed.payment.dto.CancelPaymentResponse;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.stereotype.Service;
@@ -43,11 +45,53 @@ public class PaymentService {
                 "}";
 
         String rawResponse = chapaHttpClient.initializeTransaction(jsonBody);
+        System.out.println(txRef);
         return extractCheckoutUrl(rawResponse);
     }
 
     public String verifyPayment(String txRef) throws IOException {
         return chapaHttpClient.verifyTransaction(txRef);
+    }
+
+    public CancelPaymentResponse cancelPayment(String txRef) {
+        if (txRef == null || txRef.isBlank()) {
+            return new CancelPaymentResponse("tx_ref is required", "failed", null);
+        }
+
+        try {
+            String rawResponse = chapaHttpClient.cancelTransaction(txRef);
+            return mapCancelResponse(rawResponse);
+        } catch (IOException ex) {
+            return new CancelPaymentResponse("Unable to cancel transaction at this time", "failed", null);
+        }
+    }
+
+    private CancelPaymentResponse mapCancelResponse(String rawResponse) {
+        if (rawResponse == null || rawResponse.isBlank()) {
+            return new CancelPaymentResponse("Empty response from payment provider", "failed", null);
+        }
+
+        try {
+            JsonNode root = objectMapper.readTree(rawResponse);
+            String message = root.path("message").asText("No message returned");
+            String status = root.path("status").asText("failed");
+            JsonNode dataNode = root.path("data");
+
+            CancelPaymentData data = null;
+            if (!dataNode.isMissingNode() && !dataNode.isNull()) {
+                data = new CancelPaymentData(
+                        dataNode.path("tx_ref").asText(null),
+                        dataNode.path("amount").isNumber() ? dataNode.path("amount").asDouble() : null,
+                        dataNode.path("currency").asText(null),
+                        dataNode.path("created_at").asText(null),
+                        dataNode.path("updated_at").asText(null)
+                );
+            }
+
+            return new CancelPaymentResponse(message, status, data);
+        } catch (IOException ignored) {
+            return new CancelPaymentResponse("Invalid response from payment provider", "failed", null);
+        }
     }
 
     private String extractCheckoutUrl(String rawResponse) {
