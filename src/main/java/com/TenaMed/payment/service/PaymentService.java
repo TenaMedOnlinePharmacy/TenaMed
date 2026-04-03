@@ -1,22 +1,22 @@
 package com.TenaMed.payment.service;
 
 import com.TenaMed.payment.ChapaHttpClient;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
 import java.util.UUID;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 @Service
 public class PaymentService {
 
-    private static final Pattern CHECKOUT_URL_PATTERN = Pattern.compile("\\\"checkout_url\\\"\\s*:\\s*\\\"([^\\\"]+)\\\"");
-
     private final ChapaHttpClient chapaHttpClient;
+    private final ObjectMapper objectMapper;
 
     public PaymentService(ChapaHttpClient chapaHttpClient) {
         this.chapaHttpClient = chapaHttpClient;
+        this.objectMapper = new ObjectMapper();
     }
 
     public String initializePayment(
@@ -36,6 +36,8 @@ public class PaymentService {
                 "\"last_name\":\"" + escapeJson(lastName) + "\"," +
                 "\"phone_number\":\"" + escapeJson(phoneNumber) + "\"," +
                 "\"tx_ref\":\"" + txRef + "\"," +
+                "\"callback_url\":\"https://nonobediently-nonperishing-hilda.ngrok-free.dev/api/payments/webhook\"," +
+                "\"return_url\":\"https://google.com\"," +
                 "\"customization[title]\":\"TenaMed Payment\"," +
                 "\"customization[description]\":\"Prescription Payment\"" +
                 "}";
@@ -53,11 +55,16 @@ public class PaymentService {
             return null;
         }
 
-        Matcher matcher = CHECKOUT_URL_PATTERN.matcher(rawResponse);
-        if (matcher.find()) {
-            return matcher.group(1);
+        try {
+            JsonNode root = objectMapper.readTree(rawResponse);
+            String checkoutUrl = root.path("data").path("checkout_url").asText(null);
+            if (checkoutUrl == null || checkoutUrl.isBlank()) {
+                return null;
+            }
+            return checkoutUrl;
+        } catch (IOException ignored) {
+            return null;
         }
-        return null;
     }
 
     private String escapeJson(String value) {
