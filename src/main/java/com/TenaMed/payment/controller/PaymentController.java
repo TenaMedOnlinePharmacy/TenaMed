@@ -1,30 +1,26 @@
-package com.TenaMed.payment;
+package com.TenaMed.payment.controller;
 
+import com.TenaMed.payment.dto.PaymentRequest;
 import com.TenaMed.payment.service.PaymentService;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.io.IOException;
 import java.util.Map;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 @RestController
 @RequestMapping("/api/payments")
 public class PaymentController {
 
-    private static final Pattern TX_REF_PATTERN = Pattern.compile("\\\"tx_ref\\\"\\s*:\\s*\\\"([^\\\"]+)\\\"");
-    private static final Pattern STATUS_PATTERN = Pattern.compile("\\\"status\\\"\\s*:\\s*\\\"([^\\\"]+)\\\"");
-
     private final PaymentService paymentService;
+    private final ObjectMapper objectMapper;
 
     public PaymentController(PaymentService paymentService) {
         this.paymentService = paymentService;
+        this.objectMapper = new ObjectMapper();
     }
 
     @GetMapping("/test")
@@ -45,43 +41,53 @@ public class PaymentController {
     }
 
     @PostMapping("/initialize")
-    public ResponseEntity<Map<String, String>> initialize(@RequestBody Map<String, String> request) {
+    public ResponseEntity<Map<String, String>> initialize(@RequestBody PaymentRequest request) {
         try {
             String checkoutUrl = paymentService.initializePayment(
-                    request.get("amount"),
-                    request.get("email"),
-                    request.get("firstName"),
-                    request.get("lastName"),
-                    request.get("phone")
+                    request.getAmount(),
+                    request.getEmail(),
+                    request.getFirstName(),
+                    request.getLastName(),
+                    request.getPhone()
             );
-            return ResponseEntity.ok(Map.of("checkout_url", checkoutUrl == null ? "" : checkoutUrl));
+            return ResponseEntity.ok(Map.of("checkout_url", checkoutUrl == null ? "erro2" : checkoutUrl));
         } catch (IOException ex) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(Map.of("checkout_url", ""));
+                    .body(Map.of("checkout_url", "error"));
         }
     }
+    @RequestMapping(value = "/webhook", method = {RequestMethod.POST, RequestMethod.GET})
+    //this methode response must be saved in database
+    public ResponseEntity<String> webhook(
+            @RequestBody(required = false) String payload,
+            @RequestParam(required = false) String tx_ref
+    ) {
 
-    @PostMapping("/webhook")
-    public ResponseEntity<String> webhook(@RequestBody String payload) {
         try {
-            String txRef = extractTxRef(payload);
+            String txRef = tx_ref;
+
+            if (txRef == null && payload != null) {
+                txRef = extractTxRef(payload);
+            }
+
+
             if (txRef == null || txRef.isBlank()) {
                 System.out.println("PAYMENT FAILED");
-                return ResponseEntity.ok("PAYMENT FAILED");
+                return ResponseEntity.ok("FAILED");
             }
 
             String verificationResponse = paymentService.verifyPayment(txRef);
-            String status = extractStatus(verificationResponse);
 
-            if ("success".equalsIgnoreCase(status)) {
+            if (isSuccessStatus(verificationResponse)) {
                 System.out.println("PAYMENT SUCCESS");
             } else {
                 System.out.println("PAYMENT FAILED");
             }
 
             return ResponseEntity.ok("OK");
-        } catch (IOException ex) {
-            System.out.println("PAYMENT FAILED");
+
+        } catch (Exception ex) {
+            ex.printStackTrace();
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("ERROR");
         }
     }
@@ -90,15 +96,37 @@ public class PaymentController {
         if (rawJson == null || rawJson.isBlank()) {
             return null;
         }
-        Matcher matcher = TX_REF_PATTERN.matcher(rawJson);
-        return matcher.find() ? matcher.group(1) : null;
-    }
 
-    private String extractStatus(String rawJson) {
-        if (rawJson == null || rawJson.isBlank()) {
+        try {
+            JsonNode root = objectMapper.readTree(rawJson);
+            String trxRef = root.path("trx_ref").asText(null);
+            if (trxRef != null && !trxRef.isBlank()) {
+                return trxRef;
+            }
+
+            return null;
+
+        } catch (IOException ex) {
             return null;
         }
-        Matcher matcher = STATUS_PATTERN.matcher(rawJson);
-        return matcher.find() ? matcher.group(1) : null;
+    }
+
+    private boolean isSuccessStatus(String rawJson) {
+        if (rawJson == null || rawJson.isBlank()) {
+            return false;
+        }
+
+        try {
+            JsonNode root = objectMapper.readTree(rawJson);
+            String nestedStatus = root.path("data").path("status").asText("");
+            if ("success".equalsIgnoreCase(nestedStatus)) {
+                return true;
+            }
+
+            String topLevelStatus = root.path("status").asText("");
+            return "success".equalsIgnoreCase(topLevelStatus);
+        } catch (IOException ex) {
+            return false;
+        }
     }
 }

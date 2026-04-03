@@ -1,4 +1,4 @@
-package com.TenaMed.payment;
+package com.TenaMed.payment.dto;
 
 import lombok.Data;
 

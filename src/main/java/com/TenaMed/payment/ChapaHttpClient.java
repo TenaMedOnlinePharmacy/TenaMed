@@ -14,6 +14,7 @@ import java.io.IOException;
 public class ChapaHttpClient {
 
     private static final MediaType JSON = MediaType.parse("application/json");
+    private static final MediaType TEXT_PLAIN = MediaType.parse("text/plain");
 
     private final OkHttpClient client;
     private final ChapaConfig chapaConfig;
@@ -38,9 +39,10 @@ public class ChapaHttpClient {
     }
 
     public String verifyTransaction(String txRef) throws IOException {
+
         Request request = new Request.Builder()
                 .url(buildUrl("/verify/" + txRef))
-                .get()
+                .get() // ✅ correct
                 .addHeader("Authorization", "Bearer " + chapaConfig.getSECRET_KEY())
                 .build();
 
