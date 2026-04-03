@@ -9,6 +9,8 @@ import okhttp3.Response;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 
 @Service
 public class ChapaHttpClient {
@@ -43,6 +45,21 @@ public class ChapaHttpClient {
         Request request = new Request.Builder()
                 .url(buildUrl("/verify/" + txRef))
                 .get() // ✅ correct
+                .addHeader("Authorization", "Bearer " + chapaConfig.getSECRET_KEY())
+                .build();
+
+        try (Response response = client.newCall(request).execute()) {
+            return response.body() == null ? "" : response.body().string();
+        }
+    }
+
+    public String cancelTransaction(String txRef) throws IOException {
+        RequestBody body = RequestBody.create("", TEXT_PLAIN);
+        String encodedTxRef = URLEncoder.encode(txRef, StandardCharsets.UTF_8);
+
+        Request request = new Request.Builder()
+                .url(buildUrl("/cancel/" + encodedTxRef))
+                .put(body)
                 .addHeader("Authorization", "Bearer " + chapaConfig.getSECRET_KEY())
                 .build();
 

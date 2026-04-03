@@ -1,5 +1,6 @@
 package com.TenaMed.payment.controller;
 
+import com.TenaMed.payment.dto.CancelPaymentResponse;
 import com.TenaMed.payment.dto.PaymentRequest;
 import com.TenaMed.payment.service.PaymentService;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -56,6 +57,12 @@ public class PaymentController {
                     .body(Map.of("checkout_url", "error"));
         }
     }
+
+    @PutMapping("/cancel/{txRef}")
+    public ResponseEntity<CancelPaymentResponse> cancel(@PathVariable String txRef) {
+        return ResponseEntity.ok(paymentService.cancelPayment(txRef));
+    }
+
     @RequestMapping(value = "/webhook", method = {RequestMethod.POST, RequestMethod.GET})
     //this methode response must be saved in database
     public ResponseEntity<String> webhook(
