@@ -2,6 +2,7 @@ package com.TenaMed.medicine.service.impl;
 
 import com.TenaMed.medicine.dto.MedicineRequestDto;
 import com.TenaMed.medicine.dto.MedicineResponseDto;
+import com.TenaMed.medicine.dto.MedicineSearchDto;
 import com.TenaMed.medicine.dto.MedicineDopingRuleRequestDto;
 import com.TenaMed.medicine.dto.MedicineDopingRuleResponseDto;
 import com.TenaMed.medicine.entity.Allergen;
@@ -93,12 +94,12 @@ public class MedicineServiceImpl implements MedicineService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<MedicineResponseDto> searchMedicines(String name, String category,
-                                 String therapeuticClass, Boolean requiresPrescription) {
-        Specification<Medicine> spec = Specification.allOf(MedicineSpecification.hasName(name))
-                .and(MedicineSpecification.hasCategory(category))
-            .and(MedicineSpecification.hasTherapeuticClass(therapeuticClass))
-                .and(MedicineSpecification.requiresPrescription(requiresPrescription));
+    public List<MedicineResponseDto> searchMedicines(MedicineSearchDto searchDto) {
+        Specification<Medicine> spec = Specification.allOf(MedicineSpecification.hasKeyword(searchDto.getKeyword()))
+                .and(MedicineSpecification.hasCategoryName(searchDto.getCategoryName()))
+                .and(MedicineSpecification.hasDosageFormName(searchDto.getDosageFormName()))
+                .and(MedicineSpecification.hasTherapeuticClass(searchDto.getTherapeuticClass()))
+                .and(MedicineSpecification.requiresPrescription(searchDto.getRequiresPrescription()));
 
         return medicineRepository.findAll(spec)
                 .stream()

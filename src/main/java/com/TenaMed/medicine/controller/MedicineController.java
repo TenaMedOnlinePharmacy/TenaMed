@@ -2,6 +2,7 @@ package com.TenaMed.medicine.controller;
 
 import com.TenaMed.medicine.dto.MedicineRequestDto;
 import com.TenaMed.medicine.dto.MedicineResponseDto;
+import com.TenaMed.medicine.dto.MedicineSearchDto;
 import com.TenaMed.medicine.dto.MedicineDopingRuleRequestDto;
 import com.TenaMed.medicine.dto.MedicineDopingRuleResponseDto;
 import com.TenaMed.medicine.exception.MedicineAlreadyExistsException;
@@ -56,11 +57,8 @@ public class MedicineController {
 
     @GetMapping("/search")
     public ResponseEntity<List<MedicineResponseDto>> searchMedicines(
-            @RequestParam(required = false) String name,
-            @RequestParam(required = false) String category,
-            @RequestParam(required = false) String therapeuticClass,
-            @RequestParam(required = false) Boolean requiresPrescription) {
-        return ResponseEntity.ok(medicineService.searchMedicines(name, category, therapeuticClass, requiresPrescription));
+            @ModelAttribute MedicineSearchDto searchDto) {
+        return ResponseEntity.ok(medicineService.searchMedicines(searchDto));
     }
 
     @PutMapping("/{id}")
