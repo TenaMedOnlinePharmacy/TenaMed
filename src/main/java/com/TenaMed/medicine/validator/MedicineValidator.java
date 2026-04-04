@@ -4,7 +4,6 @@ import com.TenaMed.medicine.dto.MedicineRequestDto;
 import com.TenaMed.medicine.exception.MedicineValidationException;
 import org.springframework.stereotype.Component;
 
-import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -18,20 +17,20 @@ public class MedicineValidator {
             errors.add("Medicine name must not be blank");
         }
 
-        if (dto.getPrice() == null || dto.getPrice().compareTo(BigDecimal.ZERO) <= 0) {
-            errors.add("Price must be greater than zero");
-        }
-
         if (dto.getCategory() == null || dto.getCategory().isBlank()) {
             errors.add("Category must not be blank");
         }
 
-        if (dto.getManufacturer() == null || dto.getManufacturer().isBlank()) {
-            errors.add("Manufacturer must not be blank");
+        if (dto.getDosageForm() == null || dto.getDosageForm().isBlank()) {
+            errors.add("Dosage form must not be blank");
         }
 
-        if (dto.getStockQuantity() == null || dto.getStockQuantity() < 0) {
-            errors.add("Stock quantity must be zero or greater");
+        if (dto.getNeedManualReview() == null) {
+            errors.add("Manual review flag must be provided");
+        }
+
+        if (dto.getPregnancyCategory() != null && dto.getPregnancyCategory().length() > 1) {
+            errors.add("Pregnancy category must be a single character");
         }
 
         if (!errors.isEmpty()) {

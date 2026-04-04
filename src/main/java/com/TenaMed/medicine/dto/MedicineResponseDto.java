@@ -6,6 +6,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
+import java.util.UUID;
 
 @Data
 @NoArgsConstructor
@@ -13,13 +14,21 @@ import java.math.BigDecimal;
 @Builder
 public class MedicineResponseDto {
 
-    private Long id;
+    private UUID id;
     private String name;
-    private String description;
-    private BigDecimal price;
+    private String genericName;
     private String category;
-    private Integer stockQuantity;
-    private String manufacturer;
+    private String dosageForm;
+    private String therapeuticClass;
+    private String schedule;
+    private boolean needManualReview;
+    private BigDecimal doseValue;
+    private String doseUnit;
+    private String regulatoryCode;
     private boolean requiresPrescription;
-    private boolean inStock;
+    private String indications;
+    private String contraindications;
+    private String sideEffects;
+    private String dosageInstructions;
+    private String pregnancyCategory;
 }

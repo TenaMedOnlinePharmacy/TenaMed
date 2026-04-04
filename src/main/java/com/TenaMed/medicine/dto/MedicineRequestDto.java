@@ -11,21 +11,37 @@ public class MedicineRequestDto {
     @NotBlank(message = "Medicine name is required")
     private String name;
 
-    private String description;
-
-    @NotNull(message = "Price is required")
-    @DecimalMin(value = "0.0", inclusive = false, message = "Price must be greater than zero")
-    private BigDecimal price;
+    private String genericName;
 
     @NotBlank(message = "Category is required")
     private String category;
 
-    @NotNull(message = "Stock quantity is required")
-    @Min(value = 0, message = "Stock quantity cannot be negative")
-    private Integer stockQuantity;
+    @NotBlank(message = "Dosage form is required")
+    private String dosageForm;
 
-    @NotBlank(message = "Manufacturer is required")
-    private String manufacturer;
+    private String therapeuticClass;
+
+    private String schedule;
+
+    @NotNull(message = "Manual review flag is required")
+    private Boolean needManualReview;
+
+    private BigDecimal doseValue;
+
+    private String doseUnit;
+
+    private String regulatoryCode;
+
+    private String indications;
+
+    private String contraindications;
+
+    private String sideEffects;
+
+    private String dosageInstructions;
+
+    @Size(max = 1, message = "Pregnancy category must be a single character")
+    private String pregnancyCategory;
 
     private boolean requiresPrescription;
 }

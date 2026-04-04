@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/medicines")
@@ -37,7 +38,7 @@ public class MedicineController {
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<?> getMedicineById(@PathVariable Long id) {
+    public ResponseEntity<?> getMedicineById(@PathVariable UUID id) {
         try {
             MedicineResponseDto response = medicineService.getMedicineById(id);
             return ResponseEntity.ok(response);
@@ -55,13 +56,13 @@ public class MedicineController {
     public ResponseEntity<List<MedicineResponseDto>> searchMedicines(
             @RequestParam(required = false) String name,
             @RequestParam(required = false) String category,
-            @RequestParam(required = false) String manufacturer,
+            @RequestParam(required = false) String therapeuticClass,
             @RequestParam(required = false) Boolean requiresPrescription) {
-        return ResponseEntity.ok(medicineService.searchMedicines(name, category, manufacturer, requiresPrescription));
+        return ResponseEntity.ok(medicineService.searchMedicines(name, category, therapeuticClass, requiresPrescription));
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<?> updateMedicine(@PathVariable Long id,
+    public ResponseEntity<?> updateMedicine(@PathVariable UUID id,
                                             @Valid @RequestBody MedicineRequestDto requestDto) {
         try {
             MedicineResponseDto response = medicineService.updateMedicine(id, requestDto);
@@ -74,7 +75,7 @@ public class MedicineController {
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<?> deleteMedicine(@PathVariable Long id) {
+    public ResponseEntity<?> deleteMedicine(@PathVariable UUID id) {
         try {
             medicineService.deleteMedicine(id);
             return ResponseEntity.noContent().build();

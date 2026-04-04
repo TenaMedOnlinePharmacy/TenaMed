@@ -9,38 +9,60 @@ import org.springframework.stereotype.Component;
 public class MedicineMapper {
 
     public Medicine toEntity(MedicineRequestDto dto) {
-        return Medicine.builder()
-                .name(dto.getName())
-                .description(dto.getDescription())
-                .price(dto.getPrice())
-                .category(dto.getCategory())
-                .stockQuantity(dto.getStockQuantity())
-                .manufacturer(dto.getManufacturer())
-                .requiresPrescription(dto.isRequiresPrescription())
-                .build();
+        Medicine medicine = new Medicine();
+        medicine.setName(dto.getName());
+        medicine.setGenericName(dto.getGenericName());
+        medicine.setTherapeuticClass(dto.getTherapeuticClass());
+        medicine.setSchedule(dto.getSchedule());
+        medicine.setNeedManualReview(Boolean.TRUE.equals(dto.getNeedManualReview()));
+        medicine.setDoseValue(dto.getDoseValue());
+        medicine.setDoseUnit(dto.getDoseUnit());
+        medicine.setRegulatoryCode(dto.getRegulatoryCode());
+        medicine.setRequiresPrescription(dto.isRequiresPrescription());
+        medicine.setIndications(dto.getIndications());
+        medicine.setContraindications(dto.getContraindications());
+        medicine.setSideEffects(dto.getSideEffects());
+        medicine.setDosageInstructions(dto.getDosageInstructions());
+        medicine.setPregnancyCategory(dto.getPregnancyCategory());
+        return medicine;
     }
 
     public MedicineResponseDto toResponseDto(Medicine medicine) {
         return MedicineResponseDto.builder()
                 .id(medicine.getId())
                 .name(medicine.getName())
-                .description(medicine.getDescription())
-                .price(medicine.getPrice())
-                .category(medicine.getCategory())
-                .stockQuantity(medicine.getStockQuantity())
-                .manufacturer(medicine.getManufacturer())
+                .genericName(medicine.getGenericName())
+                .category(medicine.getCategory() != null ? medicine.getCategory().getName() : null)
+                .dosageForm(medicine.getDosageForm() != null ? medicine.getDosageForm().getName() : null)
+                .therapeuticClass(medicine.getTherapeuticClass())
+                .schedule(medicine.getSchedule())
+                .needManualReview(medicine.isNeedManualReview())
+                .doseValue(medicine.getDoseValue())
+                .doseUnit(medicine.getDoseUnit())
+                .regulatoryCode(medicine.getRegulatoryCode())
                 .requiresPrescription(medicine.isRequiresPrescription())
-                .inStock(medicine.getStockQuantity() != null && medicine.getStockQuantity() > 0)
+                .indications(medicine.getIndications())
+                .contraindications(medicine.getContraindications())
+                .sideEffects(medicine.getSideEffects())
+                .dosageInstructions(medicine.getDosageInstructions())
+                .pregnancyCategory(medicine.getPregnancyCategory())
                 .build();
     }
 
     public void updateEntityFromDto(MedicineRequestDto dto, Medicine medicine) {
         medicine.setName(dto.getName());
-        medicine.setDescription(dto.getDescription());
-        medicine.setPrice(dto.getPrice());
-        medicine.setCategory(dto.getCategory());
-        medicine.setStockQuantity(dto.getStockQuantity());
-        medicine.setManufacturer(dto.getManufacturer());
+        medicine.setGenericName(dto.getGenericName());
+        medicine.setTherapeuticClass(dto.getTherapeuticClass());
+        medicine.setSchedule(dto.getSchedule());
+        medicine.setNeedManualReview(Boolean.TRUE.equals(dto.getNeedManualReview()));
+        medicine.setDoseValue(dto.getDoseValue());
+        medicine.setDoseUnit(dto.getDoseUnit());
+        medicine.setRegulatoryCode(dto.getRegulatoryCode());
         medicine.setRequiresPrescription(dto.isRequiresPrescription());
+        medicine.setIndications(dto.getIndications());
+        medicine.setContraindications(dto.getContraindications());
+        medicine.setSideEffects(dto.getSideEffects());
+        medicine.setDosageInstructions(dto.getDosageInstructions());
+        medicine.setPregnancyCategory(dto.getPregnancyCategory());
     }
 }

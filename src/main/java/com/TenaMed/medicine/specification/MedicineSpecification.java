@@ -14,12 +14,12 @@ public class MedicineSpecification {
 
     public static Specification<Medicine> hasCategory(String category) {
         return (root, query, cb) ->
-                category == null ? null : cb.equal(cb.lower(root.get("category")), category.toLowerCase());
+                category == null ? null : cb.equal(cb.lower(root.join("category").get("name")), category.toLowerCase());
     }
 
-    public static Specification<Medicine> hasManufacturer(String manufacturer) {
+    public static Specification<Medicine> hasTherapeuticClass(String therapeuticClass) {
         return (root, query, cb) ->
-                manufacturer == null ? null : cb.equal(cb.lower(root.get("manufacturer")), manufacturer.toLowerCase());
+                therapeuticClass == null ? null : cb.equal(cb.lower(root.get("therapeuticClass")), therapeuticClass.toLowerCase());
     }
 
     public static Specification<Medicine> requiresPrescription(Boolean requiresPrescription) {
@@ -27,7 +27,8 @@ public class MedicineSpecification {
                 requiresPrescription == null ? null : cb.equal(root.get("requiresPrescription"), requiresPrescription);
     }
 
-    public static Specification<Medicine> isInStock() {
-        return (root, query, cb) -> cb.greaterThan(root.get("stockQuantity"), 0);
+    public static Specification<Medicine> hasDosageForm(String dosageForm) {
+        return (root, query, cb) ->
+                dosageForm == null ? null : cb.equal(cb.lower(root.join("dosageForm").get("name")), dosageForm.toLowerCase());
     }
 }

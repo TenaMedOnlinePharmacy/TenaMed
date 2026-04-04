@@ -1,8 +1,10 @@
 package com.TenaMed.medicine.exception;
 
+import java.util.UUID;
+
 public class MedicineNotFoundException extends RuntimeException {
 
-    public MedicineNotFoundException(Long id) {
+    public MedicineNotFoundException(UUID id) {
         super("Medicine not found with id: " + id);
     }
 

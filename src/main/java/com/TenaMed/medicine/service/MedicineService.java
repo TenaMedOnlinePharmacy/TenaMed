@@ -4,18 +4,19 @@ import com.TenaMed.medicine.dto.MedicineRequestDto;
 import com.TenaMed.medicine.dto.MedicineResponseDto;
 
 import java.util.List;
+import java.util.UUID;
 
 public interface MedicineService {
 
     MedicineResponseDto createMedicine(MedicineRequestDto requestDto);
 
-    MedicineResponseDto getMedicineById(Long id);
+    MedicineResponseDto getMedicineById(UUID id);
 
     List<MedicineResponseDto> getAllMedicines();
 
-    List<MedicineResponseDto> searchMedicines(String name, String category, String manufacturer, Boolean requiresPrescription);
+    List<MedicineResponseDto> searchMedicines(String name, String category, String therapeuticClass, Boolean requiresPrescription);
 
-    MedicineResponseDto updateMedicine(Long id, MedicineRequestDto requestDto);
+    MedicineResponseDto updateMedicine(UUID id, MedicineRequestDto requestDto);
 
-    void deleteMedicine(Long id);
+    void deleteMedicine(UUID id);
 }
