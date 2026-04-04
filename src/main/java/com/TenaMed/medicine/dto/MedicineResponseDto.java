@@ -6,6 +6,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
+import java.util.List;
 import java.util.UUID;
 
 @Data
@@ -31,4 +32,6 @@ public class MedicineResponseDto {
     private String sideEffects;
     private String dosageInstructions;
     private String pregnancyCategory;
+    private List<UUID> allergenIds;
+    private List<UUID> dopingRuleIds;
 }

@@ -3,6 +3,7 @@ package com.TenaMed.medicine.mapper;
 import com.TenaMed.medicine.dto.MedicineRequestDto;
 import com.TenaMed.medicine.dto.MedicineResponseDto;
 import com.TenaMed.medicine.entity.Medicine;
+import com.TenaMed.medicine.entity.MedicineDopingRule;
 import org.springframework.stereotype.Component;
 
 @Component
@@ -10,20 +11,7 @@ public class MedicineMapper {
 
     public Medicine toEntity(MedicineRequestDto dto) {
         Medicine medicine = new Medicine();
-        medicine.setName(dto.getName());
-        medicine.setGenericName(dto.getGenericName());
-        medicine.setTherapeuticClass(dto.getTherapeuticClass());
-        medicine.setSchedule(dto.getSchedule());
-        medicine.setNeedManualReview(Boolean.TRUE.equals(dto.getNeedManualReview()));
-        medicine.setDoseValue(dto.getDoseValue());
-        medicine.setDoseUnit(dto.getDoseUnit());
-        medicine.setRegulatoryCode(dto.getRegulatoryCode());
-        medicine.setRequiresPrescription(dto.isRequiresPrescription());
-        medicine.setIndications(dto.getIndications());
-        medicine.setContraindications(dto.getContraindications());
-        medicine.setSideEffects(dto.getSideEffects());
-        medicine.setDosageInstructions(dto.getDosageInstructions());
-        medicine.setPregnancyCategory(dto.getPregnancyCategory());
+        dto(dto, medicine);
         return medicine;
     }
 
@@ -46,10 +34,20 @@ public class MedicineMapper {
                 .sideEffects(medicine.getSideEffects())
                 .dosageInstructions(medicine.getDosageInstructions())
                 .pregnancyCategory(medicine.getPregnancyCategory())
+                .allergenIds(medicine.getMedicineAllergens().stream()
+                    .map(link -> link.getAllergen().getId())
+                    .toList())
+                .dopingRuleIds(medicine.getMedicineDopingRules().stream()
+                    .map(MedicineDopingRule::getId)
+                    .toList())
                 .build();
     }
 
     public void updateEntityFromDto(MedicineRequestDto dto, Medicine medicine) {
+        dto(dto, medicine);
+    }
+
+    private void dto(MedicineRequestDto dto, Medicine medicine) {
         medicine.setName(dto.getName());
         medicine.setGenericName(dto.getGenericName());
         medicine.setTherapeuticClass(dto.getTherapeuticClass());

@@ -12,8 +12,6 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-import java.util.UUID;
-
 @Entity
 @Table(
         name = "medicine_allergens",
@@ -30,6 +28,7 @@ public class MedicineAllergen extends BaseCreatedAtEntity {
     private Medicine medicine;
 
     @NotNull
-    @Column(name = "allergen_id", nullable = false)
-    private UUID allergenId;
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "allergen_id", nullable = false)
+    private Allergen allergen;
 }

@@ -2,6 +2,8 @@ package com.TenaMed.medicine.controller;
 
 import com.TenaMed.medicine.dto.MedicineRequestDto;
 import com.TenaMed.medicine.dto.MedicineResponseDto;
+import com.TenaMed.medicine.dto.MedicineDopingRuleRequestDto;
+import com.TenaMed.medicine.dto.MedicineDopingRuleResponseDto;
 import com.TenaMed.medicine.exception.MedicineAlreadyExistsException;
 import com.TenaMed.medicine.exception.MedicineNotFoundException;
 import com.TenaMed.medicine.exception.MedicineValidationException;
@@ -71,6 +73,52 @@ public class MedicineController {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", e.getMessage()));
         } catch (MedicineValidationException e) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    @PostMapping("/{medicineId}/allergens/{allergenId}")
+    public ResponseEntity<?> addAllergenToMedicine(@PathVariable UUID medicineId,
+                                                    @PathVariable UUID allergenId) {
+        try {
+            MedicineResponseDto response = medicineService.addAllergenToMedicine(medicineId, allergenId);
+            return ResponseEntity.status(HttpStatus.CREATED).body(response);
+        } catch (MedicineNotFoundException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", e.getMessage()));
+        } catch (MedicineValidationException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    @DeleteMapping("/{medicineId}/allergens/{allergenId}")
+    public ResponseEntity<?> removeAllergenFromMedicine(@PathVariable UUID medicineId,
+                                                         @PathVariable UUID allergenId) {
+        try {
+            MedicineResponseDto response = medicineService.removeAllergenFromMedicine(medicineId, allergenId);
+            return ResponseEntity.ok(response);
+        } catch (MedicineNotFoundException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    @PostMapping("/{medicineId}/doping-rules")
+    public ResponseEntity<?> addDopingRuleToMedicine(@PathVariable UUID medicineId,
+                                                     @Valid @RequestBody MedicineDopingRuleRequestDto requestDto) {
+        try {
+            MedicineDopingRuleResponseDto response = medicineService.addDopingRuleToMedicine(medicineId, requestDto);
+            return ResponseEntity.status(HttpStatus.CREATED).body(response);
+        } catch (MedicineNotFoundException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    @DeleteMapping("/{medicineId}/doping-rules/{ruleId}")
+    public ResponseEntity<?> removeDopingRuleFromMedicine(@PathVariable UUID medicineId,
+                                                           @PathVariable UUID ruleId) {
+        try {
+            medicineService.removeDopingRuleFromMedicine(medicineId, ruleId);
+            return ResponseEntity.noContent().build();
+        } catch (MedicineNotFoundException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", e.getMessage()));
         }
     }
 

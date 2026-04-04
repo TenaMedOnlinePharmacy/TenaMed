@@ -2,14 +2,23 @@ package com.TenaMed.medicine.service.impl;
 
 import com.TenaMed.medicine.dto.MedicineRequestDto;
 import com.TenaMed.medicine.dto.MedicineResponseDto;
+import com.TenaMed.medicine.dto.MedicineDopingRuleRequestDto;
+import com.TenaMed.medicine.dto.MedicineDopingRuleResponseDto;
+import com.TenaMed.medicine.entity.Allergen;
 import com.TenaMed.medicine.entity.Category;
 import com.TenaMed.medicine.entity.DosageForm;
 import com.TenaMed.medicine.entity.Medicine;
+import com.TenaMed.medicine.entity.MedicineAllergen;
+import com.TenaMed.medicine.entity.MedicineDopingRule;
 import com.TenaMed.medicine.exception.MedicineAlreadyExistsException;
 import com.TenaMed.medicine.exception.MedicineNotFoundException;
+import com.TenaMed.medicine.exception.MedicineValidationException;
 import com.TenaMed.medicine.mapper.MedicineMapper;
+import com.TenaMed.medicine.repository.AllergenRepository;
 import com.TenaMed.medicine.repository.CategoryRepository;
 import com.TenaMed.medicine.repository.DosageFormRepository;
+import com.TenaMed.medicine.repository.MedicineAllergenRepository;
+import com.TenaMed.medicine.repository.MedicineDopingRuleRepository;
 import com.TenaMed.medicine.repository.MedicineRepository;
 import com.TenaMed.medicine.service.MedicineService;
 import com.TenaMed.medicine.specification.MedicineSpecification;
@@ -28,17 +37,26 @@ public class MedicineServiceImpl implements MedicineService {
     private final MedicineRepository medicineRepository;
     private final CategoryRepository categoryRepository;
     private final DosageFormRepository dosageFormRepository;
+    private final AllergenRepository allergenRepository;
+    private final MedicineAllergenRepository medicineAllergenRepository;
+    private final MedicineDopingRuleRepository medicineDopingRuleRepository;
     private final MedicineMapper medicineMapper;
     private final MedicineValidator medicineValidator;
 
     public MedicineServiceImpl(MedicineRepository medicineRepository,
                                CategoryRepository categoryRepository,
                                DosageFormRepository dosageFormRepository,
+                               AllergenRepository allergenRepository,
+                               MedicineAllergenRepository medicineAllergenRepository,
+                               MedicineDopingRuleRepository medicineDopingRuleRepository,
                                MedicineMapper medicineMapper,
                                MedicineValidator medicineValidator) {
         this.medicineRepository = medicineRepository;
         this.categoryRepository = categoryRepository;
         this.dosageFormRepository = dosageFormRepository;
+        this.allergenRepository = allergenRepository;
+        this.medicineAllergenRepository = medicineAllergenRepository;
+        this.medicineDopingRuleRepository = medicineDopingRuleRepository;
         this.medicineMapper = medicineMapper;
         this.medicineValidator = medicineValidator;
     }
@@ -100,6 +118,76 @@ public class MedicineServiceImpl implements MedicineService {
         Medicine updated = medicineRepository.save(medicine);
         return medicineMapper.toResponseDto(updated);
     }
+
+        @Override
+        public MedicineResponseDto addAllergenToMedicine(UUID medicineId, UUID allergenId) {
+        Medicine medicine = medicineRepository.findById(medicineId)
+            .orElseThrow(() -> new MedicineNotFoundException(medicineId));
+        Allergen allergen = allergenRepository.findById(allergenId)
+            .orElseThrow(() -> new MedicineNotFoundException("Allergen not found with id: " + allergenId));
+
+        if (medicineAllergenRepository.existsByMedicine_IdAndAllergen_Id(medicineId, allergenId)) {
+            throw new MedicineValidationException(List.of("Allergen is already linked to this medicine"));
+        }
+
+        MedicineAllergen link = new MedicineAllergen();
+        link.setMedicine(medicine);
+        link.setAllergen(allergen);
+        medicineAllergenRepository.save(link);
+
+        return medicineMapper.toResponseDto(medicineRepository.findById(medicineId)
+            .orElseThrow(() -> new MedicineNotFoundException(medicineId)));
+        }
+
+        @Override
+        public MedicineResponseDto removeAllergenFromMedicine(UUID medicineId, UUID allergenId) {
+        medicineRepository.findById(medicineId)
+            .orElseThrow(() -> new MedicineNotFoundException(medicineId));
+
+        MedicineAllergen link = medicineAllergenRepository.findByMedicine_IdAndAllergen_Id(medicineId, allergenId)
+            .orElseThrow(() -> new MedicineNotFoundException(
+                "Allergen link not found for medicine id " + medicineId + " and allergen id " + allergenId));
+
+        medicineAllergenRepository.delete(link);
+
+        return medicineMapper.toResponseDto(medicineRepository.findById(medicineId)
+            .orElseThrow(() -> new MedicineNotFoundException(medicineId)));
+        }
+
+        @Override
+        public MedicineDopingRuleResponseDto addDopingRuleToMedicine(UUID medicineId, MedicineDopingRuleRequestDto requestDto) {
+        Medicine medicine = medicineRepository.findById(medicineId)
+            .orElseThrow(() -> new MedicineNotFoundException(medicineId));
+
+        MedicineDopingRule rule = new MedicineDopingRule();
+        rule.setMedicine(medicine);
+        rule.setRuleset(requestDto.getRuleset().trim());
+        rule.setRulesetYear(requestDto.getRulesetYear());
+        rule.setStatus(requestDto.getStatus().trim());
+        rule.setNotes(requestDto.getNotes());
+
+        MedicineDopingRule saved = medicineDopingRuleRepository.save(rule);
+        return MedicineDopingRuleResponseDto.builder()
+            .id(saved.getId())
+            .medicineId(medicineId)
+            .ruleset(saved.getRuleset())
+            .rulesetYear(saved.getRulesetYear())
+            .status(saved.getStatus())
+            .notes(saved.getNotes())
+            .build();
+        }
+
+        @Override
+        public void removeDopingRuleFromMedicine(UUID medicineId, UUID ruleId) {
+        medicineRepository.findById(medicineId)
+            .orElseThrow(() -> new MedicineNotFoundException(medicineId));
+
+        MedicineDopingRule rule = medicineDopingRuleRepository.findByIdAndMedicine_Id(ruleId, medicineId)
+            .orElseThrow(() -> new MedicineNotFoundException(
+                "Doping rule not found with id " + ruleId + " for medicine id " + medicineId));
+
+        medicineDopingRuleRepository.delete(rule);
+        }
 
     @Override
     public void deleteMedicine(UUID id) {
