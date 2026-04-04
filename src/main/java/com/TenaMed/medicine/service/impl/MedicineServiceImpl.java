@@ -95,8 +95,7 @@ public class MedicineServiceImpl implements MedicineService {
     @Transactional(readOnly = true)
     public List<MedicineResponseDto> searchMedicines(String name, String category,
                                  String therapeuticClass, Boolean requiresPrescription) {
-        Specification<Medicine> spec = Specification
-                .where(MedicineSpecification.hasName(name))
+        Specification<Medicine> spec = Specification.allOf(MedicineSpecification.hasName(name))
                 .and(MedicineSpecification.hasCategory(category))
             .and(MedicineSpecification.hasTherapeuticClass(therapeuticClass))
                 .and(MedicineSpecification.requiresPrescription(requiresPrescription));
