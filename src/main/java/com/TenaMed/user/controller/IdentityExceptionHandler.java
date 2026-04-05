@@ -4,6 +4,7 @@ import com.TenaMed.user.exception.AccountNotActiveException;
 import com.TenaMed.user.exception.EmailAlreadyRegisteredException;
 import com.TenaMed.user.exception.IdentityException;
 import com.TenaMed.user.exception.InvalidCredentialsException;
+import com.TenaMed.user.exception.InvalidSessionException;
 import com.TenaMed.user.exception.PhoneAlreadyUsedException;
 import com.TenaMed.user.exception.RoleAlreadyAssignedException;
 import com.TenaMed.user.exception.RoleNotFoundException;
@@ -41,6 +42,11 @@ public class IdentityExceptionHandler {
 
     @ExceptionHandler(InvalidCredentialsException.class)
     public ResponseEntity<Map<String, String>> handleInvalidCredentials(InvalidCredentialsException ex) {
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("error", ex.getMessage()));
+    }
+
+    @ExceptionHandler(InvalidSessionException.class)
+    public ResponseEntity<Map<String, String>> handleInvalidSession(InvalidSessionException ex) {
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("error", ex.getMessage()));
     }
 

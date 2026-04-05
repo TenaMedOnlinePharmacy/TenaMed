@@ -2,10 +2,12 @@ package com.TenaMed.user.controller;
 
 import com.TenaMed.user.dto.RegisterRequestDto;
 import com.TenaMed.user.dto.RegisterResponseDto;
+import com.TenaMed.user.service.AuthService;
 import com.TenaMed.user.service.IdentityService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
@@ -24,6 +26,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @WebMvcTest(AuthController.class)
+@AutoConfigureMockMvc(addFilters = false)
 class AuthControllerTests {
 
     @Autowired
@@ -34,6 +37,9 @@ class AuthControllerTests {
 
     @MockitoBean
     private IdentityService identityService;
+
+    @MockitoBean
+    private AuthService authService;
 
     @Test
     void shouldRegisterUserWithAuthEndpoint() throws Exception {
