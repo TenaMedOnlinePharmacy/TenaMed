@@ -2,6 +2,8 @@ package com.TenaMed.user.mapper;
 
 import com.TenaMed.user.dto.LoginResponseDto;
 import com.TenaMed.user.dto.RegisterResponseDto;
+import com.TenaMed.user.dto.UserDetailsResponseDto;
+import com.TenaMed.user.dto.UserRolesResponseDto;
 import com.TenaMed.user.entity.Account;
 import com.TenaMed.user.entity.User;
 import org.springframework.stereotype.Component;
@@ -38,6 +40,27 @@ public class IdentityMapper {
                 .accountStatus(account.getAccountStatus())
                 .lastLogin(account.getLastLogin())
                 .verifiedAt(account.getVerifiedAt())
+                .roles(sortedRoleNames(user))
+                .build();
+    }
+
+    public UserDetailsResponseDto toUserDetailsResponse(User user) {
+        Account account = user.getAccount();
+        return UserDetailsResponseDto.builder()
+                .userId(user.getId())
+                .accountId(account.getId())
+                .email(account.getEmail())
+                .firstName(user.getFirstName())
+                .lastName(user.getLastName())
+                .phone(user.getPhone())
+                .address(user.getAddress())
+                .roles(sortedRoleNames(user))
+                .build();
+    }
+
+    public UserRolesResponseDto toUserRolesResponse(User user) {
+        return UserRolesResponseDto.builder()
+                .userId(user.getId())
                 .roles(sortedRoleNames(user))
                 .build();
     }

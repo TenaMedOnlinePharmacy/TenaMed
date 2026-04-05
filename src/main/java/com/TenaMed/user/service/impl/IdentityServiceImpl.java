@@ -8,15 +8,20 @@ import com.TenaMed.user.entity.Account;
 import com.TenaMed.user.entity.Role;
 import com.TenaMed.user.entity.User;
 import com.TenaMed.user.entity.UserRole;
+import com.TenaMed.user.dto.UserDetailsResponseDto;
+import com.TenaMed.user.dto.UserRolesResponseDto;
 import com.TenaMed.user.exception.AccountNotActiveException;
 import com.TenaMed.user.exception.EmailAlreadyRegisteredException;
 import com.TenaMed.user.exception.InvalidCredentialsException;
 import com.TenaMed.user.exception.PhoneAlreadyUsedException;
 import com.TenaMed.user.exception.RoleNotFoundException;
+import com.TenaMed.user.exception.RoleAlreadyAssignedException;
+import com.TenaMed.user.exception.UserNotFoundException;
 import com.TenaMed.user.mapper.IdentityMapper;
 import com.TenaMed.user.repository.AccountRepository;
 import com.TenaMed.user.repository.RoleRepository;
 import com.TenaMed.user.repository.UserRepository;
+import com.TenaMed.user.repository.UserRoleRepository;
 import com.TenaMed.user.service.IdentityService;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -28,6 +33,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.function.Function;
@@ -42,17 +48,20 @@ public class IdentityServiceImpl implements IdentityService {
     private final AccountRepository accountRepository;
     private final UserRepository userRepository;
     private final RoleRepository roleRepository;
+    private final UserRoleRepository userRoleRepository;
     private final PasswordEncoder passwordEncoder;
     private final IdentityMapper identityMapper;
 
     public IdentityServiceImpl(AccountRepository accountRepository,
                                UserRepository userRepository,
                                RoleRepository roleRepository,
+                               UserRoleRepository userRoleRepository,
                                PasswordEncoder passwordEncoder,
                                IdentityMapper identityMapper) {
         this.accountRepository = accountRepository;
         this.userRepository = userRepository;
         this.roleRepository = roleRepository;
+        this.userRoleRepository = userRoleRepository;
         this.passwordEncoder = passwordEncoder;
         this.identityMapper = identityMapper;
     }
@@ -123,6 +132,42 @@ public class IdentityServiceImpl implements IdentityService {
         return identityMapper.toLoginResponse(user);
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public UserDetailsResponseDto getUserDetails(UUID userId) {
+        User user = fetchUser(userId);
+        return identityMapper.toUserDetailsResponse(user);
+    }
+
+    @Override
+    public UserRolesResponseDto assignRoleToUser(UUID userId, String roleName) {
+        User user = fetchUser(userId);
+        String normalizedRoleName = normalizeRoleName(roleName);
+
+        Role role = findRoleIgnoreCase(normalizedRoleName)
+                .orElseThrow(() -> new RoleNotFoundException(Set.of(normalizedRoleName)));
+
+        if (userRoleRepository.existsByUser_IdAndRole_Id(userId, role.getId())) {
+            throw new RoleAlreadyAssignedException(userId, role.getName());
+        }
+
+        UserRole userRole = new UserRole();
+        userRole.setUser(user);
+        userRole.setRole(role);
+        userRoleRepository.save(userRole);
+
+        return getUserRoles(userId);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public UserRolesResponseDto getUserRoles(UUID userId) {
+        User user = fetchUser(userId);
+        List<UserRole> roles = userRoleRepository.findByUserId(userId);
+        user.setUserRoles(roles.stream().collect(Collectors.toSet()));
+        return identityMapper.toUserRolesResponse(user);
+    }
+
     private List<Role> resolveRoles(Set<String> roleNames) {
         Set<String> normalizedNames = roleNames.stream()
                 .map(this::normalizeRoleName)
@@ -164,5 +209,17 @@ public class IdentityServiceImpl implements IdentityService {
             return null;
         }
         return new HashMap<>(address);
+    }
+
+    private User fetchUser(UUID userId) {
+        return userRepository.findById(userId)
+                .orElseThrow(() -> new UserNotFoundException(userId));
+    }
+
+    private Optional<Role> findRoleIgnoreCase(String normalizedRoleName) {
+        return roleRepository.findByName(normalizedRoleName)
+            .or(() -> roleRepository.findAll().stream()
+                .filter(role -> normalizeRoleName(role.getName()).equals(normalizedRoleName))
+                .findFirst());
     }
 }

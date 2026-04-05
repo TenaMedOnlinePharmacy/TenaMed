@@ -1,7 +1,5 @@
 package com.TenaMed.user.controller;
 
-import com.TenaMed.user.dto.LoginRequestDto;
-import com.TenaMed.user.dto.LoginResponseDto;
 import com.TenaMed.user.dto.RegisterRequestDto;
 import com.TenaMed.user.dto.RegisterResponseDto;
 import com.TenaMed.user.service.IdentityService;
@@ -14,24 +12,17 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping("/api/identity")
-public class IdentityController {
+@RequestMapping("/api/auth")
+public class AuthController {
 
     private final IdentityService identityService;
 
-    public IdentityController(IdentityService identityService) {
+    public AuthController(IdentityService identityService) {
         this.identityService = identityService;
     }
 
     @PostMapping("/register")
     public ResponseEntity<RegisterResponseDto> register(@Valid @RequestBody RegisterRequestDto requestDto) {
-        RegisterResponseDto responseDto = identityService.register(requestDto);
-        return ResponseEntity.status(HttpStatus.CREATED).body(responseDto);
-    }
-
-    @PostMapping("/login")
-    public ResponseEntity<LoginResponseDto> login(@Valid @RequestBody LoginRequestDto requestDto) {
-        LoginResponseDto responseDto = identityService.login(requestDto);
-        return ResponseEntity.ok(responseDto);
+        return ResponseEntity.status(HttpStatus.CREATED).body(identityService.register(requestDto));
     }
 }

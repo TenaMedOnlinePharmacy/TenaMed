@@ -6,10 +6,13 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 
 public interface RoleRepository extends JpaRepository<Role, UUID> {
+
+    Optional<Role> findByName(String name);
 
     @Query("select r from Role r where lower(r.name) in :normalizedNames")
     List<Role> findAllActiveByNormalizedNameIn(@Param("normalizedNames") Set<String> normalizedNames);

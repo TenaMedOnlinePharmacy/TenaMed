@@ -4,10 +4,20 @@ import com.TenaMed.user.dto.LoginRequestDto;
 import com.TenaMed.user.dto.LoginResponseDto;
 import com.TenaMed.user.dto.RegisterRequestDto;
 import com.TenaMed.user.dto.RegisterResponseDto;
+import com.TenaMed.user.dto.UserDetailsResponseDto;
+import com.TenaMed.user.dto.UserRolesResponseDto;
+
+import java.util.UUID;
 
 public interface IdentityService {
 
     RegisterResponseDto register(RegisterRequestDto requestDto);
 
     LoginResponseDto login(LoginRequestDto requestDto);
+
+    UserDetailsResponseDto getUserDetails(UUID userId);
+
+    UserRolesResponseDto assignRoleToUser(UUID userId, String roleName);
+
+    UserRolesResponseDto getUserRoles(UUID userId);
 }

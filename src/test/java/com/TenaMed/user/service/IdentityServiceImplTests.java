@@ -13,6 +13,7 @@ import com.TenaMed.user.mapper.IdentityMapper;
 import com.TenaMed.user.repository.AccountRepository;
 import com.TenaMed.user.repository.RoleRepository;
 import com.TenaMed.user.repository.UserRepository;
+import com.TenaMed.user.repository.UserRoleRepository;
 import com.TenaMed.user.service.impl.IdentityServiceImpl;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -47,6 +48,9 @@ class IdentityServiceImplTests {
 
     @Mock
     private RoleRepository roleRepository;
+
+    @Mock
+    private UserRoleRepository userRoleRepository;
 
     @Mock
     private PasswordEncoder passwordEncoder;

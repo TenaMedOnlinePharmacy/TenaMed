@@ -12,5 +12,8 @@ public interface UserRepository extends JpaRepository<User, UUID> {
     @EntityGraph(attributePaths = {"account", "userRoles", "userRoles.role"})
     Optional<User> findByAccount_Id(UUID accountId);
 
+    @EntityGraph(attributePaths = {"account", "userRoles", "userRoles.role"})
+    Optional<User> findByAccountId(UUID accountId);
+
     boolean existsByPhone(String phone);
 }
