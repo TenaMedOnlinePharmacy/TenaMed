@@ -38,7 +38,7 @@ public class CustomUserDetailsService implements UserDetailsService {
     }
 
     public AuthenticatedUserPrincipal loadPrincipalByUserId(UUID userId) {
-        User user = userRepository.findById(userId)
+        User user = userRepository.findWithAuthGraphById(userId)
                 .orElseThrow(() -> new UsernameNotFoundException("User not found"));
         return toPrincipal(user.getAccount(), user);
     }

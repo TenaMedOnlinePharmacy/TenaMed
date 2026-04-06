@@ -24,11 +24,13 @@ import com.TenaMed.user.repository.RoleRepository;
 import com.TenaMed.user.repository.UserRepository;
 import com.TenaMed.user.repository.UserRoleRepository;
 import com.TenaMed.user.service.IdentityService;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -45,6 +47,7 @@ import java.util.stream.Collectors;
 public class IdentityServiceImpl implements IdentityService {
 
     private static final String ACCOUNT_STATUS_ACTIVE = "ACTIVE";
+    private static final String DEFAULT_ROLES_FALLBACK = "ADMIN,PATIENT,DOCTOR,PHARMACIST";
 
     private final AccountRepository accountRepository;
     private final UserRepository userRepository;
@@ -52,6 +55,9 @@ public class IdentityServiceImpl implements IdentityService {
     private final UserRoleRepository userRoleRepository;
     private final PasswordEncoder passwordEncoder;
     private final IdentityMapper identityMapper;
+
+    @Value("${user.default-roles:" + DEFAULT_ROLES_FALLBACK + "}")
+    private String defaultRolesCsv;
 
     public IdentityServiceImpl(AccountRepository accountRepository,
                                UserRepository userRepository,
@@ -184,6 +190,43 @@ public class IdentityServiceImpl implements IdentityService {
         List<UserRole> roles = userRoleRepository.findByUserId(userId);
         user.setUserRoles(roles.stream().collect(Collectors.toSet()));
         return identityMapper.toUserRolesResponse(user);
+    }
+
+    @Override
+    public List<String> populateRoles() {
+        Set<String> existingRoleNames = roleRepository.findAll().stream()
+                .map(role -> normalizeRoleName(role.getName()))
+                .collect(Collectors.toSet());
+
+        List<Role> rolesToCreate = configuredDefaultRoles().stream()
+                .filter(roleName -> !existingRoleNames.contains(normalizeRoleName(roleName)))
+                .map(roleName -> {
+                    Role role = new Role();
+                    role.setName(roleName);
+                    return role;
+                })
+                .collect(Collectors.toList());
+
+        if (!rolesToCreate.isEmpty()) {
+            roleRepository.saveAll(rolesToCreate);
+        }
+
+        return rolesToCreate.stream()
+                .map(Role::getName)
+                .toList();
+    }
+
+    private List<String> configuredDefaultRoles() {
+        String source = normalizeNullable(defaultRolesCsv);
+        if (source == null) {
+            source = DEFAULT_ROLES_FALLBACK;
+        }
+
+        return Arrays.stream(source.split(","))
+                .map(String::trim)
+                .filter(value -> !value.isEmpty())
+                .distinct()
+                .toList();
     }
 
     private List<Role> resolveRoles(Set<String> roleNames) {

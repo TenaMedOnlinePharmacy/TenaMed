@@ -103,4 +103,14 @@ class AdminControllerTests {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.roles[1]").value("PATIENT"));
     }
+
+        @Test
+        void shouldPopulateRoles() throws Exception {
+                when(identityService.populateRoles()).thenReturn(List.of("ADMIN", "PATIENT", "DOCTOR", "PHARMACIST"));
+
+                mockMvc.perform(post("/api/admin/users/roles/populate"))
+                                .andExpect(status().isOk())
+                                .andExpect(jsonPath("$.createdCount").value(4))
+                                .andExpect(jsonPath("$.createdRoles[0]").value("ADMIN"));
+        }
 }

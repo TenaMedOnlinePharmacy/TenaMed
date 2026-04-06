@@ -14,6 +14,8 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @RestController
@@ -46,5 +48,14 @@ public class AdminController {
     @GetMapping("/{id}/roles")
     public ResponseEntity<UserRolesResponseDto> getUserRoles(@PathVariable UUID id) {
         return ResponseEntity.ok(identityService.getUserRoles(id));
+    }
+
+    @PostMapping("/roles/populate")
+    public ResponseEntity<Map<String, Object>> populateRoles() {
+        List<String> createdRoles = identityService.populateRoles();
+        return ResponseEntity.ok(Map.of(
+                "createdRoles", createdRoles,
+                "createdCount", createdRoles.size()
+        ));
     }
 }

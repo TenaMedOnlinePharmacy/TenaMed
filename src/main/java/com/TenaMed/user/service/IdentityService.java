@@ -7,6 +7,7 @@ import com.TenaMed.user.dto.RegisterResponseDto;
 import com.TenaMed.user.dto.UserDetailsResponseDto;
 import com.TenaMed.user.dto.UserRolesResponseDto;
 
+import java.util.List;
 import java.util.UUID;
 
 public interface IdentityService {
@@ -22,4 +23,6 @@ public interface IdentityService {
     UserRolesResponseDto removeRoleFromUser(UUID userId, String roleName);
 
     UserRolesResponseDto getUserRoles(UUID userId);
+
+    List<String> populateRoles();
 }
