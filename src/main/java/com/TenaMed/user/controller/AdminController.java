@@ -6,6 +6,7 @@ import com.TenaMed.user.dto.UserRolesResponseDto;
 import com.TenaMed.user.service.IdentityService;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -16,12 +17,12 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.UUID;
 
 @RestController
-@RequestMapping("/api/users")
-public class UserController {
+@RequestMapping("/api/admin/users")
+public class AdminController {
 
     private final IdentityService identityService;
 
-    public UserController(IdentityService identityService) {
+    public AdminController(IdentityService identityService) {
         this.identityService = identityService;
     }
 
@@ -34,6 +35,12 @@ public class UserController {
     public ResponseEntity<UserRolesResponseDto> assignRole(@PathVariable UUID id,
                                                            @Valid @RequestBody AssignRoleRequestDto requestDto) {
         return ResponseEntity.ok(identityService.assignRoleToUser(id, requestDto.getRoleName()));
+    }
+
+    @DeleteMapping("/{id}/roles/{roleName}")
+    public ResponseEntity<UserRolesResponseDto> removeRole(@PathVariable UUID id,
+                                                            @PathVariable String roleName) {
+        return ResponseEntity.ok(identityService.removeRoleFromUser(id, roleName));
     }
 
     @GetMapping("/{id}/roles")

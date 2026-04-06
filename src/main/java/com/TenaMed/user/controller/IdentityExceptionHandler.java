@@ -7,6 +7,7 @@ import com.TenaMed.user.exception.InvalidCredentialsException;
 import com.TenaMed.user.exception.InvalidSessionException;
 import com.TenaMed.user.exception.PhoneAlreadyUsedException;
 import com.TenaMed.user.exception.RoleAlreadyAssignedException;
+import com.TenaMed.user.exception.RoleNotAssignedException;
 import com.TenaMed.user.exception.RoleNotFoundException;
 import com.TenaMed.user.exception.UserNotFoundException;
 import org.springframework.http.HttpStatus;
@@ -32,6 +33,11 @@ public class IdentityExceptionHandler {
 
     @ExceptionHandler(RoleAlreadyAssignedException.class)
     public ResponseEntity<Map<String, String>> handleRoleAlreadyAssigned(RoleAlreadyAssignedException ex) {
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of("error", ex.getMessage()));
+    }
+
+    @ExceptionHandler(RoleNotAssignedException.class)
+    public ResponseEntity<Map<String, String>> handleRoleNotAssigned(RoleNotAssignedException ex) {
         return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of("error", ex.getMessage()));
     }
 

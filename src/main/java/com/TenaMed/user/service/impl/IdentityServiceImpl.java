@@ -16,6 +16,7 @@ import com.TenaMed.user.exception.InvalidCredentialsException;
 import com.TenaMed.user.exception.PhoneAlreadyUsedException;
 import com.TenaMed.user.exception.RoleNotFoundException;
 import com.TenaMed.user.exception.RoleAlreadyAssignedException;
+import com.TenaMed.user.exception.RoleNotAssignedException;
 import com.TenaMed.user.exception.UserNotFoundException;
 import com.TenaMed.user.mapper.IdentityMapper;
 import com.TenaMed.user.repository.AccountRepository;
@@ -83,6 +84,7 @@ public class IdentityServiceImpl implements IdentityService {
         Account account = new Account();
         account.setEmail(normalizedEmail);
         account.setPasswordHash(passwordEncoder.encode(requestDto.getPassword()));
+        //account status will be inactive and must be activiated after email verification
         account.setAccountStatus(ACCOUNT_STATUS_ACTIVE);
         account.setFailedLoginAttempts(0);
         Account savedAccount = accountRepository.save(account);
@@ -156,6 +158,22 @@ public class IdentityServiceImpl implements IdentityService {
         userRole.setRole(role);
         userRoleRepository.save(userRole);
 
+        return getUserRoles(userId);
+    }
+
+    @Override
+    public UserRolesResponseDto removeRoleFromUser(UUID userId, String roleName) {
+        fetchUser(userId);
+        String normalizedRoleName = normalizeRoleName(roleName);
+
+        Role role = findRoleIgnoreCase(normalizedRoleName)
+                .orElseThrow(() -> new RoleNotFoundException(Set.of(normalizedRoleName)));
+
+        if (!userRoleRepository.existsByUser_IdAndRole_Id(userId, role.getId())) {
+            throw new RoleNotAssignedException(userId, role.getName());
+        }
+
+        userRoleRepository.deleteByUser_IdAndRole_Id(userId, role.getId());
         return getUserRoles(userId);
     }
 

@@ -19,5 +19,7 @@ public interface IdentityService {
 
     UserRolesResponseDto assignRoleToUser(UUID userId, String roleName);
 
+    UserRolesResponseDto removeRoleFromUser(UUID userId, String roleName);
+
     UserRolesResponseDto getUserRoles(UUID userId);
 }

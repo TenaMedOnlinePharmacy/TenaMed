@@ -17,14 +17,15 @@ import java.util.List;
 import java.util.UUID;
 
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-@WebMvcTest(UserController.class)
+@WebMvcTest(AdminController.class)
 @AutoConfigureMockMvc(addFilters = false)
-class UserControllerTests {
+class AdminControllerTests {
 
     @Autowired
     private MockMvc mockMvc;
@@ -48,7 +49,7 @@ class UserControllerTests {
 
         when(identityService.getUserDetails(userId)).thenReturn(response);
 
-        mockMvc.perform(get("/api/users/{id}", userId))
+        mockMvc.perform(get("/api/admin/users/{id}", userId))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.email").value("test@tenamed.com"));
     }
@@ -66,11 +67,26 @@ class UserControllerTests {
 
         when(identityService.assignRoleToUser(userId, "ADMIN")).thenReturn(response);
 
-        mockMvc.perform(post("/api/users/{id}/roles", userId)
+        mockMvc.perform(post("/api/admin/users/{id}/roles", userId)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(requestDto)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.roles[0]").value("ADMIN"));
+    }
+
+    @Test
+    void shouldRemoveRoleFromUser() throws Exception {
+        UUID userId = UUID.randomUUID();
+        UserRolesResponseDto response = UserRolesResponseDto.builder()
+                .userId(userId)
+                .roles(List.of("PATIENT"))
+                .build();
+
+        when(identityService.removeRoleFromUser(userId, "ADMIN")).thenReturn(response);
+
+        mockMvc.perform(delete("/api/admin/users/{id}/roles/{roleName}", userId, "ADMIN"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.roles[0]").value("PATIENT"));
     }
 
     @Test
@@ -83,7 +99,7 @@ class UserControllerTests {
 
         when(identityService.getUserRoles(userId)).thenReturn(response);
 
-        mockMvc.perform(get("/api/users/{id}/roles", userId))
+        mockMvc.perform(get("/api/admin/users/{id}/roles", userId))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.roles[1]").value("PATIENT"));
     }
