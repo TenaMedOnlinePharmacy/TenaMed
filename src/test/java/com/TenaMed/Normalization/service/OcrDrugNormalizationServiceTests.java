@@ -16,7 +16,7 @@ class OcrDrugNormalizationServiceTests {
 
     @Test
     void shouldPreserveOcrEnvelopeAndAppendNormalizationFields() {
-        DrugNormalizationService normalizationService = new DrugNormalizationService(new InMemoryDrugLookupService(), 0.90, 0.02);
+        DrugNormalizationService normalizationService = new DrugNormalizationService(defaultLookup(), 0.90, 0.02);
         OcrDrugNormalizationService service = new OcrDrugNormalizationService(normalizationService);
 
         OcrResultDto ocrResult = new OcrResultDto(
@@ -51,7 +51,7 @@ class OcrDrugNormalizationServiceTests {
 
     @Test
     void shouldHandleNullInputSafely() {
-        DrugNormalizationService normalizationService = new DrugNormalizationService(new InMemoryDrugLookupService(), 0.90, 0.02);
+        DrugNormalizationService normalizationService = new DrugNormalizationService(defaultLookup(), 0.90, 0.02);
         OcrDrugNormalizationService service = new OcrDrugNormalizationService(normalizationService);
 
         NormalizedOcrResultDto result = service.normalize(null);
@@ -59,5 +59,39 @@ class OcrDrugNormalizationServiceTests {
         assertFalse(result.isSuccess());
         assertEquals(0.0, result.getConfidence());
         assertTrue(result.getMedicines().isEmpty());
+    }
+
+    private DrugLookupService defaultLookup() {
+        return new DrugLookupService() {
+            @Override
+            public List<String> getStandardDrugNames() {
+                return List.of(
+                        "Metformin",
+                        "Amoxicillin",
+                        "Paracetamol",
+                        "Ibuprofen",
+                        "Atorvastatin",
+                        "Omeprazole",
+                        "Amlodipine",
+                        "Losartan",
+                        "ascorbic acid",
+                        "FeSo43"
+                );
+            }
+
+            @Override
+            public java.util.Map<String, String> getSynonymMappings() {
+                return java.util.Map.ofEntries(
+                        java.util.Map.entry("acetaminophen", "Paracetamol"),
+                        java.util.Map.entry("tylenol", "Paracetamol"),
+                        java.util.Map.entry("glucophage", "Metformin"),
+                        java.util.Map.entry("amox", "Amoxicillin"),
+                        java.util.Map.entry("lipitor", "Atorvastatin"),
+                        java.util.Map.entry("norvasc", "Amlodipine"),
+                        java.util.Map.entry("cozaar", "Losartan"),
+                        java.util.Map.entry("test", "Ascorbic Acid")
+                );
+            }
+        };
     }
 }

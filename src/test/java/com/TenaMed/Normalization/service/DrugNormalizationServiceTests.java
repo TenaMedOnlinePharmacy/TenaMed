@@ -15,7 +15,7 @@ class DrugNormalizationServiceTests {
 
     @Test
     void shouldNormalizeByExactMatch() {
-        DrugNormalizationService service = new DrugNormalizationService(new InMemoryDrugLookupService(), 0.90, 0.02);
+        DrugNormalizationService service = new DrugNormalizationService(defaultLookup(), 0.90, 0.02);
 
         NormalizedMedicine result = service.normalize(new InputMedicine("Metformin"));
 
@@ -28,7 +28,7 @@ class DrugNormalizationServiceTests {
 
     @Test
     void shouldNormalizeBySynonym() {
-        DrugNormalizationService service = new DrugNormalizationService(new InMemoryDrugLookupService(), 0.90, 0.02);
+        DrugNormalizationService service = new DrugNormalizationService(defaultLookup(), 0.90, 0.02);
 
         NormalizedMedicine result = service.normalize(new InputMedicine("Tylenol"));
 
@@ -41,7 +41,7 @@ class DrugNormalizationServiceTests {
 
     @Test
     void shouldNormalizeByFuzzyWhenSafe() {
-        DrugNormalizationService service = new DrugNormalizationService(new InMemoryDrugLookupService(), 0.90, 0.02);
+        DrugNormalizationService service = new DrugNormalizationService(defaultLookup(), 0.90, 0.02);
 
         NormalizedMedicine result = service.normalize(new InputMedicine("Metfornin"));
 
@@ -77,7 +77,7 @@ class DrugNormalizationServiceTests {
 
     @Test
     void shouldReturnUnknownWhenNoReliableMatch() {
-        DrugNormalizationService service = new DrugNormalizationService(new InMemoryDrugLookupService(), 0.90, 0.02);
+        DrugNormalizationService service = new DrugNormalizationService(defaultLookup(), 0.90, 0.02);
 
         NormalizedMedicine result = service.normalize(new InputMedicine("zzzzzz"));
 
@@ -90,7 +90,7 @@ class DrugNormalizationServiceTests {
 
     @Test
     void shouldReturnUnknownForShortInputAndSkipFuzzy() {
-        DrugNormalizationService service = new DrugNormalizationService(new InMemoryDrugLookupService(), 0.90, 0.02);
+        DrugNormalizationService service = new DrugNormalizationService(defaultLookup(), 0.90, 0.02);
 
         NormalizedMedicine result = service.normalize(new InputMedicine("am"));
 
@@ -144,5 +144,39 @@ class DrugNormalizationServiceTests {
         assertEquals(MatchType.UNKNOWN, result.getMatchType());
         assertEquals(0.0, result.getConfidence());
         assertTrue(result.isNeedsReview());
+    }
+
+    private DrugLookupService defaultLookup() {
+        return new DrugLookupService() {
+            @Override
+            public List<String> getStandardDrugNames() {
+                return List.of(
+                        "Metformin",
+                        "Amoxicillin",
+                        "Paracetamol",
+                        "Ibuprofen",
+                        "Atorvastatin",
+                        "Omeprazole",
+                        "Amlodipine",
+                        "Losartan",
+                        "ascorbic acid",
+                        "FeSo43"
+                );
+            }
+
+            @Override
+            public Map<String, String> getSynonymMappings() {
+                return Map.ofEntries(
+                        Map.entry("acetaminophen", "Paracetamol"),
+                        Map.entry("tylenol", "Paracetamol"),
+                        Map.entry("glucophage", "Metformin"),
+                        Map.entry("amox", "Amoxicillin"),
+                        Map.entry("lipitor", "Atorvastatin"),
+                        Map.entry("norvasc", "Amlodipine"),
+                        Map.entry("cozaar", "Losartan"),
+                        Map.entry("test", "Ascorbic Acid")
+                );
+            }
+        };
     }
 }
