@@ -38,6 +38,7 @@ class OcrDrugNormalizationServiceTests {
         assertEquals("Paracetamol", result.getMedicines().get(0).getNormalizedName());
         assertEquals(MatchType.SYNONYM, result.getMedicines().get(0).getMatchType());
         assertEquals(1.0, result.getMedicines().get(0).getConfidence());
+        assertEquals(0.698, result.getMedicines().get(0).getOcrConfidence());
         assertFalse(result.getMedicines().get(0).isNeedsReview());
         assertEquals("tat #30; Sig A.D.", result.getMedicines().get(0).getInstruction());
 
@@ -45,6 +46,7 @@ class OcrDrugNormalizationServiceTests {
         assertEquals(null, result.getMedicines().get(1).getNormalizedName());
         assertEquals(MatchType.UNKNOWN, result.getMedicines().get(1).getMatchType());
         assertEquals(0.0, result.getMedicines().get(1).getConfidence());
+        assertEquals(0.698, result.getMedicines().get(1).getOcrConfidence());
         assertTrue(result.getMedicines().get(1).isNeedsReview());
         assertEquals("#30; Sig. Once a day", result.getMedicines().get(1).getInstruction());
     }

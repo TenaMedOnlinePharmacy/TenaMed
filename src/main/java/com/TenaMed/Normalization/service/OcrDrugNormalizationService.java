@@ -42,18 +42,24 @@ public class OcrDrugNormalizationService {
             String originalName = ocrItem == null ? null : ocrItem.getName();
             String normalizedName = normalizedItem == null ? null : normalizedItem.getNormalizedName();
             MatchType matchType = normalizedItem == null ? MatchType.UNKNOWN : normalizedItem.getMatchType();
-            double confidence = normalizedItem == null ? 0.0 : normalizedItem.getConfidence();
+                double confidence = normalizedItem == null ? 0.0 : normalizedItem.getConfidence();
+                double ocrConfidence = ocrResult.getConfidence();
             boolean needsReview = normalizedItem == null
                     || normalizedItem.isNeedsReview()
                     || matchType == MatchType.UNKNOWN;
             Integer quantity = ocrItem == null ? null : ocrItem.getQuantity();
             String instruction = ocrItem == null ? null : ocrItem.getInstruction();
 
+                if (normalizedItem != null) {
+                normalizedItem.setOcrConfidence(ocrConfidence);
+                }
+
             merged.add(new NormalizedOcrMedicineItem(
                     originalName,
                     normalizedName,
                     matchType,
                     confidence,
+                    ocrConfidence,
                     needsReview,
                     quantity,
                     instruction

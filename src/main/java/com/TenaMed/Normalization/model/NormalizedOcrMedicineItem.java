@@ -12,6 +12,7 @@ public class NormalizedOcrMedicineItem {
     private String normalizedName;
     private MatchType matchType;
     private double confidence;
+    private double ocrConfidence;
     private boolean needsReview;
     private Integer quantity;
     private String instruction;
