@@ -1,7 +1,10 @@
 package com.TenaMed.prescription.verification.workflow;
 
+import com.TenaMed.prescription.verification.dto.VerificationDecision;
 import com.TenaMed.prescription.verification.enums.ReviewReason;
+import org.springframework.stereotype.Component;
 
+@Component
 public class VerificationEngine {
 
 	public boolean isDigital(String type) {
@@ -34,5 +37,30 @@ public class VerificationEngine {
 		}
 
 		return null;
+	}
+
+	public VerificationDecision evaluate(String type, boolean ocrSuccess, double confidence, boolean highRisk) {
+		if (isDigital(type)) {
+			return VerificationDecision.builder()
+					.verified(true)
+					.requiresManualReview(false)
+					.reviewReason(null)
+					.build();
+		}
+
+		ReviewReason reviewReason = determineReviewReason(ocrSuccess, confidence, highRisk);
+		if (reviewReason != null) {
+			return VerificationDecision.builder()
+					.verified(false)
+					.requiresManualReview(true)
+					.reviewReason(reviewReason)
+					.build();
+		}
+
+		return VerificationDecision.builder()
+				.verified(true)
+				.requiresManualReview(false)
+				.reviewReason(null)
+				.build();
 	}
 }
