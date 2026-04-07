@@ -102,6 +102,33 @@ class DrugNormalizationServiceTests {
     }
 
     @Test
+    void shouldMatchExactAndSynonymBeforeShortInputGuard() {
+        DrugLookupService shortLookup = new DrugLookupService() {
+            @Override
+            public List<String> getStandardDrugNames() {
+                return List.of("AB");
+            }
+
+            @Override
+            public Map<String, String> getSynonymMappings() {
+                return Map.of("cd", "AB");
+            }
+        };
+
+        DrugNormalizationService service = new DrugNormalizationService(shortLookup, 0.90, 0.02);
+
+        NormalizedMedicine exactResult = service.normalize(new InputMedicine("ab"));
+        assertEquals(MatchType.EXACT, exactResult.getMatchType());
+        assertEquals("AB", exactResult.getNormalizedName());
+        assertTrue(!exactResult.isNeedsReview());
+
+        NormalizedMedicine synonymResult = service.normalize(new InputMedicine("cd"));
+        assertEquals(MatchType.SYNONYM, synonymResult.getMatchType());
+        assertEquals("AB", synonymResult.getNormalizedName());
+        assertTrue(!synonymResult.isNeedsReview());
+    }
+
+    @Test
     void shouldIgnoreSynonymThatPointsToInvalidStandardDrug() {
         DrugLookupService invalidSynonymLookup = new DrugLookupService() {
             @Override

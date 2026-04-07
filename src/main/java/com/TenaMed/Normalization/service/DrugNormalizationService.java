@@ -27,6 +27,7 @@ public class DrugNormalizationService {
     private final double ambiguityDelta;
     private final Map<String, String> standardByNormalized;
     private final Map<String, String> synonymsByNormalized;
+    private final Map<String, String> fuzzyCandidatesByNormalized;
     private final JaroWinklerSimilarity similarity;
 
     public DrugNormalizationService(
@@ -40,9 +41,16 @@ public class DrugNormalizationService {
 
         Map<String, String> standardLookup = buildStandardLookup(drugLookupService.getStandardDrugNames());
         this.standardByNormalized = Map.copyOf(standardLookup);
-        this.synonymsByNormalized = Map.copyOf(
-            buildNormalizedSynonymLookup(drugLookupService.getSynonymMappings(), standardLookup)
+
+        Map<String, String> synonymLookup = buildNormalizedSynonymLookup(
+            drugLookupService.getSynonymMappings(),
+            standardLookup
         );
+        this.synonymsByNormalized = Map.copyOf(synonymLookup);
+
+        Map<String, String> fuzzyLookup = new LinkedHashMap<>(standardLookup);
+        synonymLookup.forEach(fuzzyLookup::putIfAbsent);
+        this.fuzzyCandidatesByNormalized = Map.copyOf(fuzzyLookup);
     }
 
     public NormalizedMedicine normalize(InputMedicine input) {
@@ -52,12 +60,6 @@ public class DrugNormalizationService {
         if (normalizedInput == null) {
             NormalizedMedicine decision = unknown(originalName);
             logDecision(originalName, MatchType.UNKNOWN, null, decision.getConfidence(), "EMPTY_INPUT");
-            return decision;
-        }
-
-        if (normalizedInput.length() < MIN_FUZZY_INPUT_LENGTH) {
-            NormalizedMedicine decision = unknown(originalName);
-            logDecision(originalName, MatchType.UNKNOWN, null, decision.getConfidence(), "SHORT_INPUT");
             return decision;
         }
 
@@ -75,7 +77,13 @@ public class DrugNormalizationService {
             return decision;
         }
 
-        FuzzyCandidate bestCandidate = findBestFuzzyMatch(normalizedInput, standardByNormalized);
+        if (normalizedInput.length() < MIN_FUZZY_INPUT_LENGTH) {
+            NormalizedMedicine decision = unknown(originalName);
+            logDecision(originalName, MatchType.UNKNOWN, null, decision.getConfidence(), "SHORT_INPUT");
+            return decision;
+        }
+
+        FuzzyCandidate bestCandidate = findBestFuzzyMatch(normalizedInput, fuzzyCandidatesByNormalized);
         if (!bestCandidate.accepted()) {
             NormalizedMedicine decision = unknown(originalName);
             logDecision(originalName, MatchType.UNKNOWN, null, decision.getConfidence(), "FUZZY_REJECTED");
