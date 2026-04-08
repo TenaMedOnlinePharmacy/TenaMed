@@ -71,8 +71,6 @@ public class Prescription extends BaseEntity {
     @Column(name = "used_by")
     private UUID usedBy;
 
-    @Column(name = "status")
-    private String status;
 
     @Column(name = "review_reason", nullable = true)
     private String reviewReason;

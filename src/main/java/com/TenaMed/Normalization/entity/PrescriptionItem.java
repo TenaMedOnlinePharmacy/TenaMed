@@ -1,7 +1,8 @@
-package com.TenaMed.prescription.entity;
+package com.TenaMed.Normalization.entity;
 
 import com.TenaMed.common.entity.BaseEntity;
 import com.TenaMed.medicine.entity.Medicine;
+import com.TenaMed.prescription.entity.Prescription;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;

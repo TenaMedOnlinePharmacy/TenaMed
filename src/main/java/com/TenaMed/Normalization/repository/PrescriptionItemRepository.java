@@ -1,6 +1,6 @@
-package com.TenaMed.prescription.repository;
+package com.TenaMed.Normalization.repository;
 
-import com.TenaMed.prescription.entity.PrescriptionItem;
+import com.TenaMed.Normalization.entity.PrescriptionItem;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.UUID;

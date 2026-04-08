@@ -1,6 +1,6 @@
-package com.TenaMed.prescription.service;
+package com.TenaMed.Normalization.service;
 
-import com.TenaMed.prescription.entity.PrescriptionItem;
+import com.TenaMed.Normalization.entity.PrescriptionItem;
 
 public interface PrescriptionItemService {
 

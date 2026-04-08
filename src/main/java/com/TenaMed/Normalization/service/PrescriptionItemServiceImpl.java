@@ -1,8 +1,7 @@
-package com.TenaMed.prescription.service.impl;
+package com.TenaMed.Normalization.service;
 
-import com.TenaMed.prescription.entity.PrescriptionItem;
-import com.TenaMed.prescription.repository.PrescriptionItemRepository;
-import com.TenaMed.prescription.service.PrescriptionItemService;
+import com.TenaMed.Normalization.entity.PrescriptionItem;
+import com.TenaMed.Normalization.repository.PrescriptionItemRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -32,6 +31,8 @@ public class PrescriptionItemServiceImpl implements PrescriptionItemService {
         if (prescriptionItem.getMedicine() == null) {
             throw new IllegalArgumentException("Medicine is required");
         }
-
+        if (prescriptionItem.getQuantity() != null && prescriptionItem.getQuantity() <= 0) {
+            throw new IllegalArgumentException("Quantity must be greater than zero");
+        }
     }
 }
