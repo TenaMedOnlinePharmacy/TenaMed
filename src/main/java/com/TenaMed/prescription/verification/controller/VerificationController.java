@@ -28,8 +28,8 @@ public class VerificationController {
 	}
 
 	@PostMapping("/{id}/process")
-	public ResponseEntity<VerificationResponseDto> process(@PathVariable("id") UUID id) {
-		return ResponseEntity.ok(prescriptionVerificationService.verify(id));
+	public VerificationResponseDto process(@PathVariable("id") UUID id) {
+		return prescriptionVerificationService.verify(id);
 	}
 
 	@PostMapping("/{id}/approve")
