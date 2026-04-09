@@ -5,6 +5,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.stereotype.Repository;
 
+import java.util.Optional;
 import java.util.UUID;
 
 @Repository
@@ -12,4 +13,6 @@ public interface MedicineRepository extends JpaRepository<Medicine, UUID>,
         JpaSpecificationExecutor<Medicine> {
 
     boolean existsByNameIgnoreCase(String name);
+
+    Optional<Medicine> findByNameIgnoreCase(String name);
 }

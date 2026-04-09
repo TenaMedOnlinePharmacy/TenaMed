@@ -27,11 +27,11 @@ public class OcrService {
         OcrResultDto result = ocrClient.processPrescription(imageUrl);
 
         if (result == null) {
-            return new OcrResultDto(false, 0.0, java.util.List.of());
+            return new OcrResultDto(false, 0.0, java.util.List.of(), null);
         }
 
         if (result.getConfidence() < confidenceThreshold) {
-            return new OcrResultDto(false, result.getConfidence(), result.getMedicines());
+            return new OcrResultDto(false, result.getConfidence(), result.getMedicines(), result.getPrescription());
         }
 
         return result;

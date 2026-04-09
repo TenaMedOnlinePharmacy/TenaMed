@@ -3,6 +3,7 @@ package com.TenaMed.ocr.mapper;
 import com.TenaMed.ocr.dto.MedicineOcrItem;
 import com.TenaMed.ocr.dto.OcrResultDto;
 import com.TenaMed.ocr.dto.external.VeryfiOcrResponseDto;
+import com.TenaMed.prescription.entity.Prescription;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
@@ -17,9 +18,9 @@ public class OcrMapper {
         return objectMapper.readValue(responseBody, VeryfiOcrResponseDto.class);
     }
 
-    public OcrResultDto map(VeryfiOcrResponseDto response) {
+    public OcrResultDto map(VeryfiOcrResponseDto response, Prescription prescriptions) {
         if (response == null) {
-            return new OcrResultDto(false, 0.0, List.of());
+            return new OcrResultDto(false, 0.0, List.of(), prescriptions);
         }
 
         List<MedicineOcrItem> medicines = new ArrayList<>();
@@ -55,10 +56,10 @@ public class OcrMapper {
         );
 
         if (!hasUsableMedicine) {
-            return new OcrResultDto(false, confidence, List.of());
+            return new OcrResultDto(false, confidence, List.of(), prescriptions);
         }
 
-        return new OcrResultDto(true, confidence, medicines);
+        return new OcrResultDto(true, confidence, medicines, prescriptions);
     }
 
     private double extractConfidence(VeryfiOcrResponseDto response) {

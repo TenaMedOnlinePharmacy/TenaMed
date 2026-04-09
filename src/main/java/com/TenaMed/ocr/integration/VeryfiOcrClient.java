@@ -3,9 +3,10 @@ package com.TenaMed.ocr.integration;
 import com.TenaMed.ocr.dto.OcrResultDto;
 import com.TenaMed.ocr.dto.external.VeryfiOcrResponseDto;
 import com.TenaMed.ocr.mapper.OcrMapper;
+import com.TenaMed.prescription.entity.Prescription;
+import com.TenaMed.prescription.service.PrescriptionService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.stereotype.Component;
@@ -18,7 +19,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeoutException;
-import com.TenaMed.ocr.integration.OcrClient;
 
 
 @Slf4j
@@ -27,6 +27,7 @@ public class VeryfiOcrClient implements OcrClient {
 
     private final WebClient webClient;
     private final OcrMapper ocrMapper;
+    private final PrescriptionService prescriptionService;
     private final String processUrl;
     private final int timeoutSeconds;
 
@@ -38,9 +39,11 @@ public class VeryfiOcrClient implements OcrClient {
             @Value("${ocr.veryfi.client-secret:}") String clientSecret,
             @Value("${ocr.veryfi.api-key:}") String apiKey,
             @Value("${ocr.veryfi.username:}") String username,
-            @Value("${ocr.veryfi.timeout-seconds:15}") int timeoutSeconds
+            @Value("${ocr.veryfi.timeout-seconds:15}") int timeoutSeconds,
+            PrescriptionService prescriptionService
     ) {
         this.ocrMapper = new OcrMapper();
+        this.prescriptionService = prescriptionService;
         this.processUrl = processEndpoint;
         this.timeoutSeconds = timeoutSeconds;
 
@@ -92,9 +95,15 @@ public class VeryfiOcrClient implements OcrClient {
 
             log.info("Veryfi OCR raw response: {}", responseBody);
 
-                VeryfiOcrResponseDto veryfiResponse = ocrMapper.mapToVeryfiResponse(responseBody);
-            log.info("Veryfi OCR response parsed successfully:" + veryfiResponse);
-            OcrResultDto result = ocrMapper.map(veryfiResponse);
+            VeryfiOcrResponseDto veryfiResponse = ocrMapper.mapToVeryfiResponse(responseBody);
+            Prescription prescription = null;
+            try {
+                prescription = prescriptionService.createFromOcrDates(veryfiResponse.getCreatedDate(), veryfiResponse.getExpirationDate());
+            } catch (Exception saveEx) {
+                log.warn("Failed to save OCR-created prescription: {}", saveEx.getMessage());
+            }
+            log.info("Veryfi OCR response parsed successfully:{}", veryfiResponse);
+            OcrResultDto result = ocrMapper.map(veryfiResponse, prescription);
             log.info(
                     "OCR response received: success={} confidence={} medicinesCount={}",
                     result.isSuccess(),
@@ -131,7 +140,7 @@ public class VeryfiOcrClient implements OcrClient {
     }
 
     private OcrResultDto failureResult() {
-        return new OcrResultDto(false, 0.0, List.of());
+        return new OcrResultDto(false, 0.0, List.of(), null);
     }
 
     private String summarize(String content) {

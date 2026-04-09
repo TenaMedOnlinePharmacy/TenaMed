@@ -1,5 +1,6 @@
 package com.TenaMed.ocr.dto;
 
+import com.TenaMed.prescription.entity.Prescription;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -13,4 +14,5 @@ public class OcrResultDto {
     private boolean success;
     private double confidence;
     private List<MedicineOcrItem> medicines;
+    private Prescription prescription;
 }
