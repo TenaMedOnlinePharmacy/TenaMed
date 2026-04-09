@@ -9,6 +9,7 @@ import com.TenaMed.ocr.dto.MedicineOcrItem;
 import com.TenaMed.ocr.dto.OcrResultDto;
 import com.TenaMed.prescription.entity.Prescription;
 import com.TenaMed.prescription.repository.PrescriptionRepository;
+import com.TenaMed.prescription.verification.service.PrescriptionVerificationService;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 
@@ -32,26 +33,28 @@ class OcrDrugNormalizationServiceTests {
     @Test
     void shouldPreserveOcrEnvelopeAndAppendNormalizationFields() {
         DrugNormalizationService normalizationService = new DrugNormalizationService(defaultLookup(), 0.90, 0.02);
-    PrescriptionRepository prescriptionRepository = mock(PrescriptionRepository.class);
-    PrescriptionItemRepository prescriptionItemRepository = mock(PrescriptionItemRepository.class);
-    MedicineRepository medicineRepository = mock(MedicineRepository.class);
+        PrescriptionRepository prescriptionRepository = mock(PrescriptionRepository.class);
+        PrescriptionItemRepository prescriptionItemRepository = mock(PrescriptionItemRepository.class);
+        MedicineRepository medicineRepository = mock(MedicineRepository.class);
+        PrescriptionVerificationService prescriptionVerificationService = mock(PrescriptionVerificationService.class);
 
-    OcrDrugNormalizationService service = new OcrDrugNormalizationService(
-        normalizationService,
-        prescriptionRepository,
-        prescriptionItemRepository,
-        medicineRepository
-    );
+        OcrDrugNormalizationService service = new OcrDrugNormalizationService(
+                normalizationService,
+                prescriptionRepository,
+                prescriptionItemRepository,
+                medicineRepository,
+                prescriptionVerificationService
+        );
 
-    UUID prescriptionId = UUID.randomUUID();
-    Prescription prescription = new Prescription();
-    prescription.setId(prescriptionId);
+        UUID prescriptionId = UUID.randomUUID();
+        Prescription prescription = new Prescription();
+        prescription.setId(prescriptionId);
 
-    Medicine paracetamol = new Medicine();
-    paracetamol.setName("Paracetamol");
-    when(medicineRepository.findByNameIgnoreCase("Tylenol")).thenReturn(Optional.of(paracetamol));
-    when(medicineRepository.findByNameIgnoreCase("zzzzzz")).thenReturn(Optional.empty());
-    when(prescriptionRepository.updateOcrOutcomeById(any(), any(), any())).thenReturn(1);
+        Medicine paracetamol = new Medicine();
+        paracetamol.setName("Paracetamol");
+        when(medicineRepository.findByNameIgnoreCase("Tylenol")).thenReturn(Optional.of(paracetamol));
+        when(medicineRepository.findByNameIgnoreCase("zzzzzz")).thenReturn(Optional.empty());
+        when(prescriptionRepository.updateOcrOutcomeById(any(), any(), any())).thenReturn(1);
 
         OcrResultDto ocrResult = new OcrResultDto(
                 true,
@@ -88,6 +91,7 @@ class OcrDrugNormalizationServiceTests {
         verify(prescriptionRepository).updateOcrOutcomeById(eq(prescriptionId), eq(true), eq(0.599));
         verify(prescriptionItemRepository).deleteByPrescriptionId(prescriptionId);
         verify(prescriptionItemRepository, times(1)).save(any());
+        verify(prescriptionVerificationService).verify(prescriptionId, null);
     }
 
     @Test
@@ -96,12 +100,14 @@ class OcrDrugNormalizationServiceTests {
         PrescriptionRepository prescriptionRepository = mock(PrescriptionRepository.class);
         PrescriptionItemRepository prescriptionItemRepository = mock(PrescriptionItemRepository.class);
         MedicineRepository medicineRepository = mock(MedicineRepository.class);
+        PrescriptionVerificationService prescriptionVerificationService = mock(PrescriptionVerificationService.class);
 
         OcrDrugNormalizationService service = new OcrDrugNormalizationService(
             normalizationService,
             prescriptionRepository,
             prescriptionItemRepository,
-            medicineRepository
+            medicineRepository,
+            prescriptionVerificationService
         );
 
         NormalizedOcrResultDto result = service.normalize(null);
@@ -113,7 +119,8 @@ class OcrDrugNormalizationServiceTests {
         verify(prescriptionRepository, never()).updateOcrOutcomeById(any(), any(), any());
         verify(prescriptionItemRepository, never()).deleteByPrescriptionId(any());
         verify(prescriptionItemRepository, never()).save(any());
-        }
+        verify(prescriptionVerificationService, never()).verify(any(), any());
+    }
 
         @Test
         void shouldSkipPersistenceWhenPrescriptionMissing() {
@@ -121,12 +128,14 @@ class OcrDrugNormalizationServiceTests {
         PrescriptionRepository prescriptionRepository = mock(PrescriptionRepository.class);
         PrescriptionItemRepository prescriptionItemRepository = mock(PrescriptionItemRepository.class);
         MedicineRepository medicineRepository = mock(MedicineRepository.class);
+        PrescriptionVerificationService prescriptionVerificationService = mock(PrescriptionVerificationService.class);
 
         OcrDrugNormalizationService service = new OcrDrugNormalizationService(
             normalizationService,
             prescriptionRepository,
             prescriptionItemRepository,
-            medicineRepository
+            medicineRepository,
+            prescriptionVerificationService
         );
 
         OcrResultDto ocrResult = new OcrResultDto(
@@ -141,7 +150,8 @@ class OcrDrugNormalizationServiceTests {
         verify(prescriptionRepository, never()).updateOcrOutcomeById(any(), any(), any());
         verify(prescriptionItemRepository, never()).deleteByPrescriptionId(any());
         verify(prescriptionItemRepository, never()).save(any());
-        }
+        verify(prescriptionVerificationService, never()).verify(any(), any());
+    }
 
         @Test
         void shouldPersistItemWithQuantityAndInstruction() {
@@ -149,12 +159,14 @@ class OcrDrugNormalizationServiceTests {
         PrescriptionRepository prescriptionRepository = mock(PrescriptionRepository.class);
         PrescriptionItemRepository prescriptionItemRepository = mock(PrescriptionItemRepository.class);
         MedicineRepository medicineRepository = mock(MedicineRepository.class);
+        PrescriptionVerificationService prescriptionVerificationService = mock(PrescriptionVerificationService.class);
 
         OcrDrugNormalizationService service = new OcrDrugNormalizationService(
             normalizationService,
             prescriptionRepository,
             prescriptionItemRepository,
-            medicineRepository
+            medicineRepository,
+            prescriptionVerificationService
         );
 
         UUID prescriptionId = UUID.randomUUID();
@@ -184,6 +196,7 @@ class OcrDrugNormalizationServiceTests {
         assertEquals(matchedMedicine, saved.getMedicine());
         assertEquals(30, saved.getQuantity());
         assertEquals("Take after meal", saved.getInstructions());
+        verify(prescriptionVerificationService).verify(prescriptionId, null);
     }
 
     @Test
@@ -192,12 +205,14 @@ class OcrDrugNormalizationServiceTests {
         PrescriptionRepository prescriptionRepository = mock(PrescriptionRepository.class);
         PrescriptionItemRepository prescriptionItemRepository = mock(PrescriptionItemRepository.class);
         MedicineRepository medicineRepository = mock(MedicineRepository.class);
+        PrescriptionVerificationService prescriptionVerificationService = mock(PrescriptionVerificationService.class);
 
         OcrDrugNormalizationService service = new OcrDrugNormalizationService(
                 normalizationService,
                 prescriptionRepository,
                 prescriptionItemRepository,
-                medicineRepository
+            medicineRepository,
+            prescriptionVerificationService
         );
 
         UUID prescriptionId = UUID.randomUUID();
@@ -219,6 +234,7 @@ class OcrDrugNormalizationServiceTests {
         service.normalize(ocrResult);
 
         verify(prescriptionItemRepository).save(any());
+        verify(prescriptionVerificationService).verify(prescriptionId, null);
     }
 
     private DrugLookupService defaultLookup() {

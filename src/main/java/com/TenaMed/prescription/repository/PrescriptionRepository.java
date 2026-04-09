@@ -50,14 +50,13 @@ public interface PrescriptionRepository extends JpaRepository<Prescription, UUID
             SET p.status = 'PENDING_MANUAL_REVIEW',
             p.reviewReason = :reviewReason,
             p.isVerified = false,
-            p.verifiedBy = :verifiedBy,
+            p.verifiedBy = null,
             p.verifiedAt = null
             WHERE p.id = :id
             """)
         int markPendingManualReview(
             @Param("id") UUID id,
-            @Param("reviewReason") String reviewReason,
-            @Param("verifiedBy") UUID verifiedBy
+            @Param("reviewReason") String reviewReason
         );
 
         @Modifying

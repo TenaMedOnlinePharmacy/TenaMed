@@ -13,6 +13,7 @@ import com.TenaMed.ocr.dto.MedicineOcrItem;
 import com.TenaMed.ocr.dto.OcrResultDto;
 import com.TenaMed.prescription.entity.Prescription;
 import com.TenaMed.prescription.repository.PrescriptionRepository;
+import com.TenaMed.prescription.verification.service.PrescriptionVerificationService;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.stereotype.Service;
 
@@ -27,17 +28,20 @@ public class OcrDrugNormalizationService {
     private final PrescriptionRepository prescriptionRepository;
     private final PrescriptionItemRepository prescriptionItemRepository;
     private final MedicineRepository medicineRepository;
+    private final PrescriptionVerificationService prescriptionVerificationService;
 
     public OcrDrugNormalizationService(
             DrugNormalizationService drugNormalizationService,
             PrescriptionRepository prescriptionRepository,
             PrescriptionItemRepository prescriptionItemRepository,
-            MedicineRepository medicineRepository
+            MedicineRepository medicineRepository,
+            PrescriptionVerificationService prescriptionVerificationService
     ) {
         this.drugNormalizationService = drugNormalizationService;
         this.prescriptionRepository = prescriptionRepository;
         this.prescriptionItemRepository = prescriptionItemRepository;
         this.medicineRepository = medicineRepository;
+        this.prescriptionVerificationService = prescriptionVerificationService;
     }
 
     @Transactional
@@ -138,6 +142,8 @@ public class OcrDrugNormalizationService {
             item.setInstructions(ocrItem == null ? null : ocrItem.getInstruction());
             prescriptionItemRepository.save(item);
         }
+
+        prescriptionVerificationService.verify(prescriptionId, null);
     }
 
     private Medicine findMedicineByName(String name) {

@@ -38,19 +38,19 @@ public class VerificationController {
 	@PostMapping("/{id}/approve")
 	public ResponseEntity<Void> approve(
 			@PathVariable("id") UUID id,
-			@RequestParam UUID pharmacistId
+			@AuthenticationPrincipal AuthenticatedUserPrincipal principal
 	) {
-		manualReviewService.approve(id, pharmacistId);
+		manualReviewService.approve(id, principal.getUserId());
 		return ResponseEntity.ok().build();
 	}
 
 	@PostMapping("/{id}/reject")
 	public ResponseEntity<Void> reject(
 			@PathVariable("id") UUID id,
-			@RequestParam UUID pharmacistId,
+			@AuthenticationPrincipal AuthenticatedUserPrincipal principal,
 			@RequestParam String reason
 	) {
-		manualReviewService.reject(id, pharmacistId, reason);
+		manualReviewService.reject(id, principal.getUserId(), reason);
 		return ResponseEntity.ok().build();
 	}
 }

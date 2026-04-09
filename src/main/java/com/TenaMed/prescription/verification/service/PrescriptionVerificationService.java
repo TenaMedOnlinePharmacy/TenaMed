@@ -35,7 +35,7 @@ public class PrescriptionVerificationService {
 				.orElseThrow(() -> new PrescriptionNotFoundException(prescriptionId));
 
 		if (verificationEngine.isDigital(prescription.getType())) {
-			prescriptionRepository.markVerified(prescriptionId, requesterUserId, LocalDateTime.now());
+			prescriptionRepository.markVerified(prescriptionId, null, LocalDateTime.now());
 			publisher.publishEvent(new PrescriptionVerifiedEvent(prescriptionId));
 			return new VerificationResponseDto("VERIFIED", null, "ORDER_ALLOWED");
 		}
@@ -48,12 +48,12 @@ public class PrescriptionVerificationService {
 
 		if (decision.isRequiresManualReview()) {
 			String reason = decision.getReviewReason() == null ? null : decision.getReviewReason().name();
-			prescriptionRepository.markPendingManualReview(prescriptionId, reason, requesterUserId);
+			prescriptionRepository.markPendingManualReview(prescriptionId, reason);
 			return new VerificationResponseDto("PENDING_MANUAL_REVIEW", reason, "WAIT_FOR_PHARMACIST");
 		}
 
 		if (decision.isVerified()) {
-			prescriptionRepository.markVerified(prescriptionId, requesterUserId, LocalDateTime.now());
+			prescriptionRepository.markVerified(prescriptionId, null, LocalDateTime.now());
 			publisher.publishEvent(new PrescriptionVerifiedEvent(prescriptionId));
 			return new VerificationResponseDto("VERIFIED", null, "ORDER_ALLOWED");
 		}
