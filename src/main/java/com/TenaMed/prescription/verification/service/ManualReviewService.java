@@ -33,10 +33,7 @@ public class ManualReviewService {
 			throw new InvalidVerificationStateException("Prescription is not pending manual review");
 		}
 
-		prescription.setStatus("VERIFIED");
-		prescription.setVerifiedBy(pharmacistId);
-		prescription.setVerifiedAt(LocalDateTime.now());
-		prescriptionRepository.save(prescription);
+		prescriptionRepository.markVerified(prescriptionId, pharmacistId, LocalDateTime.now());
 		publisher.publishEvent(new PrescriptionVerifiedEvent(prescriptionId));
 	}
 
@@ -49,9 +46,7 @@ public class ManualReviewService {
 			throw new InvalidVerificationStateException("Prescription is not pending manual review");
 		}
 
-		prescription.setStatus("REJECTED");
-		prescription.setRejectionReason(reason);
-		prescriptionRepository.save(prescription);
+		prescriptionRepository.markRejected(prescriptionId, reason, pharmacistId);
 		publisher.publishEvent(new PrescriptionRejectedEvent(prescriptionId, reason));
 	}
 }

@@ -112,12 +112,21 @@ public class OcrDrugNormalizationService {
         );
 
         prescriptionItemRepository.deleteByPrescriptionId(prescriptionId);
-        for (MedicineOcrItem ocrItem : ocrMedicines) {
-            if (ocrItem == null || ocrItem.getName() == null || ocrItem.getName().isBlank()) {
+        for (int i = 0; i < ocrMedicines.size(); i++) {
+            MedicineOcrItem ocrItem = ocrMedicines.get(i);
+            NormalizedMedicine normalizedItem = i < normalized.size() ? normalized.get(i) : null;
+
+            String originalName = ocrItem == null ? null : ocrItem.getName();
+            String normalizedName = normalizedItem == null ? null : normalizedItem.getNormalizedName();
+            if ((originalName == null || originalName.isBlank())
+                    && (normalizedName == null || normalizedName.isBlank())) {
                 continue;
             }
 
-            Medicine medicine = medicineRepository.findByNameIgnoreCase(ocrItem.getName()).orElse(null);
+            Medicine medicine = findMedicineByName(normalizedName);
+            if (medicine == null) {
+                medicine = findMedicineByName(originalName);
+            }
             if (medicine == null) {
                 continue;
             }
@@ -125,10 +134,19 @@ public class OcrDrugNormalizationService {
             PrescriptionItem item = new PrescriptionItem();
             item.setPrescription(prescription);
             item.setMedicine(medicine);
-            item.setQuantity(ocrItem.getQuantity());
-            item.setInstructions(ocrItem.getInstruction());
+            item.setQuantity(ocrItem == null ? null : ocrItem.getQuantity());
+            item.setInstructions(ocrItem == null ? null : ocrItem.getInstruction());
             prescriptionItemRepository.save(item);
         }
+    }
+
+    private Medicine findMedicineByName(String name) {
+        if (name == null || name.isBlank()) {
+            return null;
+        }
+
+        var found = medicineRepository.findByNameIgnoreCase(name);
+        return found == null ? null : found.orElse(null);
     }
 
     private double averageNormalizedConfidence(List<NormalizedMedicine> normalized) {

@@ -30,14 +30,12 @@ public class PrescriptionVerificationService {
 	}
 
 	@Transactional
-	public VerificationResponseDto verify(UUID prescriptionId) {
+	public VerificationResponseDto verify(UUID prescriptionId, UUID requesterUserId) {
 		Prescription prescription = prescriptionRepository.findById(prescriptionId)
 				.orElseThrow(() -> new PrescriptionNotFoundException(prescriptionId));
 
 		if (verificationEngine.isDigital(prescription.getType())) {
-			prescription.setStatus("VERIFIED");
-			prescription.setVerifiedAt(LocalDateTime.now());
-			prescriptionRepository.save(prescription);
+			prescriptionRepository.markVerified(prescriptionId, requesterUserId, LocalDateTime.now());
 			publisher.publishEvent(new PrescriptionVerifiedEvent(prescriptionId));
 			return new VerificationResponseDto("VERIFIED", null, "ORDER_ALLOWED");
 		}
@@ -50,17 +48,12 @@ public class PrescriptionVerificationService {
 
 		if (decision.isRequiresManualReview()) {
 			String reason = decision.getReviewReason() == null ? null : decision.getReviewReason().name();
-			prescription.setStatus("PENDING_MANUAL_REVIEW");
-			prescription.setReviewReason(reason);
-			prescriptionRepository.save(prescription);
+			prescriptionRepository.markPendingManualReview(prescriptionId, reason, requesterUserId);
 			return new VerificationResponseDto("PENDING_MANUAL_REVIEW", reason, "WAIT_FOR_PHARMACIST");
 		}
 
 		if (decision.isVerified()) {
-			prescription.setStatus("VERIFIED");
-			prescription.setVerifiedAt(LocalDateTime.now());
-			prescription.setVerifiedBy(null);
-			prescriptionRepository.save(prescription);
+			prescriptionRepository.markVerified(prescriptionId, requesterUserId, LocalDateTime.now());
 			publisher.publishEvent(new PrescriptionVerifiedEvent(prescriptionId));
 			return new VerificationResponseDto("VERIFIED", null, "ORDER_ALLOWED");
 		}

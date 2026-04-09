@@ -186,6 +186,41 @@ class OcrDrugNormalizationServiceTests {
         assertEquals("Take after meal", saved.getInstructions());
     }
 
+    @Test
+    void shouldFallbackToOriginalNameWhenNormalizedNameNotFound() {
+        DrugNormalizationService normalizationService = new DrugNormalizationService(defaultLookup(), 0.90, 0.02);
+        PrescriptionRepository prescriptionRepository = mock(PrescriptionRepository.class);
+        PrescriptionItemRepository prescriptionItemRepository = mock(PrescriptionItemRepository.class);
+        MedicineRepository medicineRepository = mock(MedicineRepository.class);
+
+        OcrDrugNormalizationService service = new OcrDrugNormalizationService(
+                normalizationService,
+                prescriptionRepository,
+                prescriptionItemRepository,
+                medicineRepository
+        );
+
+        UUID prescriptionId = UUID.randomUUID();
+        Prescription prescription = new Prescription();
+        prescription.setId(prescriptionId);
+
+        Medicine matchedMedicine = new Medicine();
+        matchedMedicine.setName("FeSO4");
+        when(medicineRepository.findByNameIgnoreCase("FeSO4")).thenReturn(Optional.of(matchedMedicine));
+        when(prescriptionRepository.updateOcrOutcomeById(any(), any(), any())).thenReturn(1);
+
+        OcrResultDto ocrResult = new OcrResultDto(
+                true,
+                0.70,
+                List.of(new MedicineOcrItem("FeSO4", 30, "Once daily")),
+                prescription
+        );
+
+        service.normalize(ocrResult);
+
+        verify(prescriptionItemRepository).save(any());
+    }
+
     private DrugLookupService defaultLookup() {
         return new DrugLookupService() {
             @Override

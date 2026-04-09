@@ -1,6 +1,7 @@
 package com.TenaMed.prescription.service.impl;
 
 import com.TenaMed.prescription.entity.Prescription;
+import com.TenaMed.prescription.entity.PrescriptionType;
 import com.TenaMed.prescription.repository.PrescriptionRepository;
 import com.TenaMed.prescription.service.PrescriptionService;
 import org.springframework.stereotype.Service;
@@ -25,6 +26,7 @@ public class PrescriptionServiceImpl implements PrescriptionService {
         Prescription prescription = new Prescription();
         prescription.setIssueDate(parseToLocalDate(createdDate));
         prescription.setExpiryDate(parseToLocalDate(expirationDate));
+        prescription.setType(PrescriptionType.UPLOADED);
         return prescriptionRepository.save(prescription);
     }
 

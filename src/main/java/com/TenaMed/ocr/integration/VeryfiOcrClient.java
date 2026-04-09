@@ -96,6 +96,9 @@ public class VeryfiOcrClient implements OcrClient {
             log.info("Veryfi OCR raw response: {}", responseBody);
 
             VeryfiOcrResponseDto veryfiResponse = ocrMapper.mapToVeryfiResponse(responseBody);
+            System.out.println( "expire " + veryfiResponse.getExpirationDate());
+            System.out.println( "issued " + veryfiResponse.getDate());
+            System.out.println( "meta " + veryfiResponse.getMeta());
             Prescription prescription = null;
             try {
                 prescription = prescriptionService.createFromOcrDates(veryfiResponse.getCreatedDate(), veryfiResponse.getExpirationDate());

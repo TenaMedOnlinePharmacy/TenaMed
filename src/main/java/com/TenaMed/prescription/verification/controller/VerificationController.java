@@ -3,7 +3,9 @@ package com.TenaMed.prescription.verification.controller;
 import com.TenaMed.prescription.verification.dto.VerificationResponseDto;
 import com.TenaMed.prescription.verification.service.ManualReviewService;
 import com.TenaMed.prescription.verification.service.PrescriptionVerificationService;
+import com.TenaMed.user.security.AuthenticatedUserPrincipal;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -28,8 +30,9 @@ public class VerificationController {
 	}
 
 	@PostMapping("/{id}/process")
-	public VerificationResponseDto process(@PathVariable("id") UUID id) {
-		return prescriptionVerificationService.verify(id);
+	public VerificationResponseDto process(@PathVariable("id") UUID id,
+										 @AuthenticationPrincipal AuthenticatedUserPrincipal principal) {
+		return prescriptionVerificationService.verify(id, principal.getUserId());
 	}
 
 	@PostMapping("/{id}/approve")

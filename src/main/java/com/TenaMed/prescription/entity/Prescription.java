@@ -3,6 +3,8 @@ package com.TenaMed.prescription.entity;
 import com.TenaMed.common.entity.BaseEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
@@ -29,7 +31,7 @@ public class Prescription extends BaseEntity {
     @Column(name = "profile_id")
     private UUID profileId;
 
-    @Column(name = "patient_id", nullable = false)
+    @Column(name = "patient_id", nullable = true)
     private UUID patientId;
 
     @Column(name = "issue_date")
@@ -41,7 +43,7 @@ public class Prescription extends BaseEntity {
     @Column(name = "original_images")
     private String originalImages;
 
-    @Column(name = "ocr_response", columnDefinition = "json")
+    @Column(name = "ocr_response")
     private String ocrResponse;
 
     @Column(name = "is_verified")
@@ -72,6 +74,9 @@ public class Prescription extends BaseEntity {
     private UUID usedBy;
 
 
+    @Column(name = "status")
+    private String status;
+
     @Column(name = "review_reason", nullable = true)
     private String reviewReason;
 
@@ -84,8 +89,9 @@ public class Prescription extends BaseEntity {
     @Column(name = "high_risk")
     private Boolean highRisk;
 
-    @Column(name = "type", nullable = false)
-    private String type;
+    @Enumerated(EnumType.STRING)
+    @Column(name = "type", nullable = true)
+    private PrescriptionType type;
 
     @Column(name = "confidence_score")
     private Double confidenceScore;

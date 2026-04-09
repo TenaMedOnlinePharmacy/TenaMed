@@ -6,6 +6,7 @@ import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.time.LocalDateTime;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -25,4 +26,53 @@ public interface PrescriptionRepository extends JpaRepository<Prescription, UUID
             @Param("ocrSuccess") Boolean ocrSuccess,
             @Param("confidenceScore") Double confidenceScore
     );
+
+        @Modifying
+        @Query("""
+            UPDATE Prescription p
+            SET p.status = 'VERIFIED',
+            p.isVerified = true,
+            p.verifiedBy = :verifiedBy,
+            p.verifiedAt = :verifiedAt,
+            p.reviewReason = null,
+            p.rejectionReason = null
+            WHERE p.id = :id
+            """)
+        int markVerified(
+            @Param("id") UUID id,
+            @Param("verifiedBy") UUID verifiedBy,
+            @Param("verifiedAt") LocalDateTime verifiedAt
+        );
+
+        @Modifying
+        @Query("""
+            UPDATE Prescription p
+            SET p.status = 'PENDING_MANUAL_REVIEW',
+            p.reviewReason = :reviewReason,
+            p.isVerified = false,
+            p.verifiedBy = :verifiedBy,
+            p.verifiedAt = null
+            WHERE p.id = :id
+            """)
+        int markPendingManualReview(
+            @Param("id") UUID id,
+            @Param("reviewReason") String reviewReason,
+            @Param("verifiedBy") UUID verifiedBy
+        );
+
+        @Modifying
+        @Query("""
+            UPDATE Prescription p
+            SET p.status = 'REJECTED',
+            p.rejectionReason = :rejectionReason,
+            p.isVerified = false,
+            p.verifiedBy = :verifiedBy,
+            p.verifiedAt = null
+            WHERE p.id = :id
+            """)
+        int markRejected(
+            @Param("id") UUID id,
+            @Param("rejectionReason") String rejectionReason,
+            @Param("verifiedBy") UUID verifiedBy
+        );
 }

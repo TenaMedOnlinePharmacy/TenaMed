@@ -1,14 +1,15 @@
 package com.TenaMed.prescription.verification.workflow;
 
 import com.TenaMed.prescription.verification.dto.VerificationDecision;
+import com.TenaMed.prescription.entity.PrescriptionType;
 import com.TenaMed.prescription.verification.enums.ReviewReason;
 import org.springframework.stereotype.Component;
 
 @Component
 public class VerificationEngine {
 
-	public boolean isDigital(String type) {
-		return type != null && "DIGITAL".equalsIgnoreCase(type);
+	public boolean isDigital(PrescriptionType type) {
+		return type == PrescriptionType.DIGITAL;
 	}
 
 	public boolean isOcrFailed(boolean ocrSuccess) {
@@ -39,7 +40,7 @@ public class VerificationEngine {
 		return null;
 	}
 
-	public VerificationDecision evaluate(String type, boolean ocrSuccess, double confidence, boolean highRisk) {
+	public VerificationDecision evaluate(PrescriptionType type, boolean ocrSuccess, double confidence, boolean highRisk) {
 		if (isDigital(type)) {
 			return VerificationDecision.builder()
 					.verified(true)
