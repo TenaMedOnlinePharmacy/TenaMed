@@ -1,0 +1,19 @@
+package com.TenaMed.pharmacy.service;
+
+import com.TenaMed.pharmacy.dto.request.CreateOrderRequest;
+import com.TenaMed.pharmacy.dto.response.OrderResponse;
+import com.TenaMed.pharmacy.enums.PaymentStatus;
+import com.TenaMed.pharmacy.enums.StaffRole;
+
+import java.util.UUID;
+
+public interface OrderService {
+
+    OrderResponse createOrder(CreateOrderRequest request);
+
+    OrderResponse acceptOrder(UUID orderId, UUID actorUserId, StaffRole actorRole);
+
+    OrderResponse rejectOrder(UUID orderId, String rejectionReason);
+
+    OrderResponse updatePaymentStatus(UUID orderId, PaymentStatus paymentStatus);
+}
