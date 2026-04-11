@@ -9,7 +9,7 @@ public interface PharmacyService {
 
     PharmacyResponse createPharmacy(CreatePharmacyRequest request);
 
-    PharmacyResponse verifyPharmacy(UUID pharmacyId, UUID verifiedBy);
+    PharmacyResponse verifyPharmacy(UUID pharmacyId);
 
     PharmacyResponse getPharmacy(UUID pharmacyId);
 }

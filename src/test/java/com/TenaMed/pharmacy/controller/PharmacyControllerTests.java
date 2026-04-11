@@ -1,7 +1,6 @@
 package com.TenaMed.pharmacy.controller;
 
 import com.TenaMed.pharmacy.dto.request.CreatePharmacyRequest;
-import com.TenaMed.pharmacy.dto.request.VerifyPharmacyRequest;
 import com.TenaMed.pharmacy.dto.response.PharmacyResponse;
 import com.TenaMed.pharmacy.enums.PharmacyStatus;
 import com.TenaMed.pharmacy.service.PharmacyService;
@@ -17,7 +16,6 @@ import org.springframework.test.web.servlet.MockMvc;
 import java.util.UUID;
 
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -75,16 +73,11 @@ class PharmacyControllerTests {
     @Test
     void shouldVerifyPharmacy() throws Exception {
         UUID id = UUID.randomUUID();
-        UUID verifier = UUID.randomUUID();
-        VerifyPharmacyRequest request = new VerifyPharmacyRequest();
-        request.setVerifiedBy(verifier);
         PharmacyResponse response = PharmacyResponse.builder().id(id).status(PharmacyStatus.VERIFIED).build();
 
-        when(pharmacyService.verifyPharmacy(eq(id), eq(verifier))).thenReturn(response);
+        when(pharmacyService.verifyPharmacy(id)).thenReturn(response);
 
-        mockMvc.perform(post("/api/pharmacies/{id}/verify", id)
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(request)))
+        mockMvc.perform(post("/api/pharmacies/{id}/verify", id))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.status").value("VERIFIED"));
     }

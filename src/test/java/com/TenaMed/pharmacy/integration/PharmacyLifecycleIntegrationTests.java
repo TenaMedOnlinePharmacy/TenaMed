@@ -3,13 +3,19 @@ package com.TenaMed.pharmacy.integration;
 import com.TenaMed.pharmacy.entity.Order;
 import com.TenaMed.pharmacy.enums.OrderStatus;
 import com.TenaMed.pharmacy.enums.PaymentStatus;
+import com.TenaMed.inventory.service.InventoryService;
+import com.TenaMed.user.security.AuthenticatedUserPrincipal;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
@@ -42,12 +48,17 @@ class PharmacyLifecycleIntegrationTests {
     private com.TenaMed.pharmacy.repository.OrderRepository orderRepository;
 
     @MockitoBean
-    private InventoryAdapter inventoryAdapter;
+    private InventoryService inventoryService;
+
+    @AfterEach
+    void clearSecurityContext() {
+      SecurityContextHolder.clearContext();
+    }
 
     @Test
     void shouldCompleteFullOrderLifecycle() throws Exception {
-        when(inventoryAdapter.checkAvailability(any(), any(), any())).thenReturn(true);
-        when(inventoryAdapter.reserveStock(any(), any(), any())).thenReturn(true);
+        when(inventoryService.checkAvailability(any(), any(), any())).thenReturn(true);
+        when(inventoryService.reserveStock(any(), any(), any())).thenReturn(true);
 
         UUID ownerId = UUID.randomUUID();
         UUID staffUserId = UUID.randomUUID();
@@ -55,6 +66,7 @@ class PharmacyLifecycleIntegrationTests {
         String createPharmacyBody = """
             {
               "name": "Lifecycle Pharmacy",
+              "legalName": "Lifecycle Pharmacy PLC",
               "licenseNumber": "LIC-LIFE-100",
               "email": "life@pharmacy.com",
               "phone": "+251900111111",
@@ -71,15 +83,9 @@ class PharmacyLifecycleIntegrationTests {
 
         UUID pharmacyId = readUuid(createPharmacyResult, "id");
 
-        String verifyPharmacyBody = """
-            {
-              "verifiedBy": "%s"
-            }
-            """.formatted(ownerId);
+        setAdminPrincipal(ownerId);
 
-        mockMvc.perform(post("/api/pharmacies/{id}/verify", pharmacyId)
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(verifyPharmacyBody))
+        mockMvc.perform(post("/api/pharmacies/{id}/verify", pharmacyId))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.status").value("VERIFIED"));
 
@@ -159,12 +165,13 @@ class PharmacyLifecycleIntegrationTests {
 
     @Test
     void shouldReturnBadRequestWhenStockUnavailable() throws Exception {
-        when(inventoryAdapter.checkAvailability(any(), any(), any())).thenReturn(false);
+        when(inventoryService.checkAvailability(any(), any(), any())).thenReturn(false);
 
         UUID ownerId = UUID.randomUUID();
         String createPharmacyBody = """
             {
               "name": "Edge Pharmacy",
+              "legalName": "Edge Pharmacy PLC",
               "licenseNumber": "LIC-EDGE-101",
               "email": "edge@pharmacy.com",
               "phone": "+251900222222",
@@ -180,9 +187,9 @@ class PharmacyLifecycleIntegrationTests {
 
         UUID pharmacyId = readUuid(createPharmacyResult, "id");
 
-        mockMvc.perform(post("/api/pharmacies/{id}/verify", pharmacyId)
-                .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"verifiedBy\":\"" + ownerId + "\"}"))
+        setAdminPrincipal(ownerId);
+
+        mockMvc.perform(post("/api/pharmacies/{id}/verify", pharmacyId))
             .andExpect(status().isOk());
 
         String createOrderBody = """
@@ -209,12 +216,13 @@ class PharmacyLifecycleIntegrationTests {
 
     @Test
     void shouldRejectAcceptOrderForTechnicianRole() throws Exception {
-        when(inventoryAdapter.checkAvailability(any(), any(), any())).thenReturn(true);
+        when(inventoryService.checkAvailability(any(), any(), any())).thenReturn(true);
 
         UUID ownerId = UUID.randomUUID();
         String createPharmacyBody = """
             {
               "name": "Role Pharmacy",
+              "legalName": "Role Pharmacy PLC",
               "licenseNumber": "LIC-ROLE-102",
               "email": "role@pharmacy.com",
               "phone": "+251900333333",
@@ -230,9 +238,9 @@ class PharmacyLifecycleIntegrationTests {
 
         UUID pharmacyId = readUuid(createPharmacyResult, "id");
 
-        mockMvc.perform(post("/api/pharmacies/{id}/verify", pharmacyId)
-                .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"verifiedBy\":\"" + ownerId + "\"}"))
+        setAdminPrincipal(ownerId);
+
+        mockMvc.perform(post("/api/pharmacies/{id}/verify", pharmacyId))
             .andExpect(status().isOk());
 
         String createOrderBody = """
@@ -275,5 +283,19 @@ class PharmacyLifecycleIntegrationTests {
     private UUID readUuid(MvcResult result, String field) throws Exception {
         JsonNode root = objectMapper.readTree(result.getResponse().getContentAsString());
         return UUID.fromString(root.path(field).asText());
+    }
+
+    private void setAdminPrincipal(UUID userId) {
+      AuthenticatedUserPrincipal principal = new AuthenticatedUserPrincipal(
+        userId,
+        UUID.randomUUID(),
+        "admin@tenamed.com",
+        "pwd",
+        java.util.List.of(new SimpleGrantedAuthority("ROLE_ADMIN")),
+        true
+      );
+      SecurityContextHolder.getContext().setAuthentication(
+        new UsernamePasswordAuthenticationToken(principal, null, principal.getAuthorities())
+      );
     }
 }

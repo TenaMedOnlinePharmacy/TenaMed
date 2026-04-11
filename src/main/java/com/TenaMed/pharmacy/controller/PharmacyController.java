@@ -1,7 +1,6 @@
 package com.TenaMed.pharmacy.controller;
 
 import com.TenaMed.pharmacy.dto.request.CreatePharmacyRequest;
-import com.TenaMed.pharmacy.dto.request.VerifyPharmacyRequest;
 import com.TenaMed.pharmacy.dto.response.PharmacyResponse;
 import com.TenaMed.pharmacy.exception.PharmacyException;
 import com.TenaMed.pharmacy.service.PharmacyService;
@@ -48,10 +47,9 @@ public class PharmacyController {
     }
 
     @PostMapping("/{id}/verify")
-    public ResponseEntity<?> verifyPharmacy(@PathVariable UUID id,
-                                            @Valid @RequestBody VerifyPharmacyRequest request) {
+    public ResponseEntity<?> verifyPharmacy(@PathVariable UUID id) {
         try {
-            return ResponseEntity.ok(pharmacyService.verifyPharmacy(id, request.getVerifiedBy()));
+            return ResponseEntity.ok(pharmacyService.verifyPharmacy(id));
         } catch (PharmacyException ex) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("error", ex.getMessage()));
         }

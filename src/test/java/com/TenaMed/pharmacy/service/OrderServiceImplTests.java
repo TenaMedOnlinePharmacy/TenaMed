@@ -12,13 +12,13 @@ import com.TenaMed.pharmacy.enums.PharmacyStatus;
 import com.TenaMed.pharmacy.enums.StaffRole;
 import com.TenaMed.pharmacy.exception.OrderAuthorizationException;
 import com.TenaMed.pharmacy.exception.PharmacyValidationException;
-import com.TenaMed.pharmacy.integration.InventoryAdapter;
-import com.TenaMed.pharmacy.integration.PrescriptionAdapter;
+import com.TenaMed.inventory.service.InventoryService;
 import com.TenaMed.pharmacy.mapper.OrderMapper;
 import com.TenaMed.pharmacy.repository.OrderItemRepository;
 import com.TenaMed.pharmacy.repository.OrderRepository;
 import com.TenaMed.pharmacy.repository.PharmacyRepository;
 import com.TenaMed.pharmacy.service.impl.OrderServiceImpl;
+import com.TenaMed.prescription.service.PrescriptionService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -49,10 +49,10 @@ class OrderServiceImplTests {
     private PharmacyRepository pharmacyRepository;
 
     @Mock
-    private InventoryAdapter inventoryAdapter;
+    private InventoryService inventoryService;
 
     @Mock
-    private PrescriptionAdapter prescriptionAdapter;
+    private PrescriptionService prescriptionService;
 
     @Mock
     private OrderMapper orderMapper;
@@ -85,7 +85,7 @@ class OrderServiceImplTests {
         OrderResponse response = OrderResponse.builder().id(mappedOrder.getId()).status(OrderStatus.PENDING_REVIEW).build();
 
         when(pharmacyRepository.findById(pharmacyId)).thenReturn(Optional.of(pharmacy));
-        when(inventoryAdapter.checkAvailability(pharmacyId, request.getItems().getFirst().getMedicineId(), 2)).thenReturn(true);
+        when(inventoryService.checkAvailability(pharmacyId, request.getItems().getFirst().getMedicineId(), 2)).thenReturn(true);
         when(orderMapper.toEntity(request, pharmacy)).thenReturn(mappedOrder);
         when(orderRepository.save(mappedOrder)).thenReturn(mappedOrder);
         when(orderMapper.toOrderItemEntity(any(OrderItemRequest.class), any(Order.class))).thenReturn(item);
@@ -127,7 +127,7 @@ class OrderServiceImplTests {
         OrderResponse response = OrderResponse.builder().status(OrderStatus.PENDING_PAYMENT).acceptedBy(actorId).build();
 
         when(orderRepository.findById(orderId)).thenReturn(Optional.of(order));
-        when(inventoryAdapter.reserveStock(order.getPharmacy().getId(), itemMedicineId(order), 1)).thenReturn(true);
+        when(inventoryService.reserveStock(order.getPharmacy().getId(), itemMedicineId(order), 1)).thenReturn(true);
         when(orderRepository.save(order)).thenReturn(order);
         when(orderMapper.toResponse(order)).thenReturn(response);
 
