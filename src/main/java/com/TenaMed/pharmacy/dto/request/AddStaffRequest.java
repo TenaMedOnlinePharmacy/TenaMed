@@ -16,7 +16,6 @@ public class AddStaffRequest {
     @NotNull
     private UUID userId;
 
-    @NotNull
     private UUID pharmacyId;
 
     @NotNull

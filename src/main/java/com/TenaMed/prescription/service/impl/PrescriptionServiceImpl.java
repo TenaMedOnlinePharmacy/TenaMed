@@ -10,6 +10,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
+import java.util.UUID;
 
 @Service
 @Transactional
@@ -28,6 +29,12 @@ public class PrescriptionServiceImpl implements PrescriptionService {
         prescription.setExpiryDate(parseToLocalDate(expirationDate));
         prescription.setType(PrescriptionType.UPLOADED);
         return prescriptionRepository.save(prescription);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Prescription getPrescription(UUID id) {
+        return prescriptionRepository.findById(id).orElse(null);
     }
 
     private LocalDate parseToLocalDate(String value) {

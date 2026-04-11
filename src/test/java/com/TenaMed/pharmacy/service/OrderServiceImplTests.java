@@ -12,12 +12,13 @@ import com.TenaMed.pharmacy.enums.PharmacyStatus;
 import com.TenaMed.pharmacy.enums.StaffRole;
 import com.TenaMed.pharmacy.exception.OrderAuthorizationException;
 import com.TenaMed.pharmacy.exception.PharmacyValidationException;
+import com.TenaMed.pharmacy.integration.InventoryAdapter;
+import com.TenaMed.pharmacy.integration.PrescriptionAdapter;
 import com.TenaMed.pharmacy.mapper.OrderMapper;
 import com.TenaMed.pharmacy.repository.OrderItemRepository;
 import com.TenaMed.pharmacy.repository.OrderRepository;
 import com.TenaMed.pharmacy.repository.PharmacyRepository;
 import com.TenaMed.pharmacy.service.impl.OrderServiceImpl;
-import com.TenaMed.prescription.repository.PrescriptionRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -48,16 +49,13 @@ class OrderServiceImplTests {
     private PharmacyRepository pharmacyRepository;
 
     @Mock
-    private PrescriptionRepository prescriptionRepository;
+    private InventoryAdapter inventoryAdapter;
+
+    @Mock
+    private PrescriptionAdapter prescriptionAdapter;
 
     @Mock
     private OrderMapper orderMapper;
-
-    @Mock
-    private PharmacyInventoryValidator pharmacyInventoryValidator;
-
-    @Mock
-    private OrderInventoryGateway orderInventoryGateway;
 
     @InjectMocks
     private OrderServiceImpl orderService;
@@ -87,7 +85,7 @@ class OrderServiceImplTests {
         OrderResponse response = OrderResponse.builder().id(mappedOrder.getId()).status(OrderStatus.PENDING_REVIEW).build();
 
         when(pharmacyRepository.findById(pharmacyId)).thenReturn(Optional.of(pharmacy));
-        when(pharmacyInventoryValidator.itemsBelongToPharmacy(pharmacyId, request.getItems())).thenReturn(true);
+        when(inventoryAdapter.checkAvailability(pharmacyId, request.getItems().getFirst().getMedicineId(), 2)).thenReturn(true);
         when(orderMapper.toEntity(request, pharmacy)).thenReturn(mappedOrder);
         when(orderRepository.save(mappedOrder)).thenReturn(mappedOrder);
         when(orderMapper.toOrderItemEntity(any(OrderItemRequest.class), any(Order.class))).thenReturn(item);
@@ -129,7 +127,7 @@ class OrderServiceImplTests {
         OrderResponse response = OrderResponse.builder().status(OrderStatus.PENDING_PAYMENT).acceptedBy(actorId).build();
 
         when(orderRepository.findById(orderId)).thenReturn(Optional.of(order));
-        when(orderInventoryGateway.reserveForOrder(order)).thenReturn(true);
+        when(inventoryAdapter.reserveStock(order.getPharmacy().getId(), itemMedicineId(order), 1)).thenReturn(true);
         when(orderRepository.save(order)).thenReturn(order);
         when(orderMapper.toResponse(order)).thenReturn(response);
 
@@ -189,5 +187,15 @@ class OrderServiceImplTests {
         item.setUnitPrice(new BigDecimal("50.00"));
         request.setItems(List.of(item));
         return request;
+    }
+
+    private UUID itemMedicineId(Order order) {
+        if (order.getItems().isEmpty()) {
+            OrderItem item = new OrderItem();
+            item.setMedicineId(UUID.randomUUID());
+            item.setQuantity(1);
+            order.setItems(Set.of(item));
+        }
+        return order.getItems().iterator().next().getMedicineId();
     }
 }

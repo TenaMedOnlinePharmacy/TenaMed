@@ -14,15 +14,13 @@ import com.TenaMed.pharmacy.exception.OrderAuthorizationException;
 import com.TenaMed.pharmacy.exception.OrderNotFoundException;
 import com.TenaMed.pharmacy.exception.PharmacyNotFoundException;
 import com.TenaMed.pharmacy.exception.PharmacyValidationException;
-import com.TenaMed.pharmacy.exception.PrescriptionValidationException;
+import com.TenaMed.pharmacy.integration.InventoryAdapter;
+import com.TenaMed.pharmacy.integration.PrescriptionAdapter;
 import com.TenaMed.pharmacy.mapper.OrderMapper;
 import com.TenaMed.pharmacy.repository.OrderItemRepository;
 import com.TenaMed.pharmacy.repository.OrderRepository;
 import com.TenaMed.pharmacy.repository.PharmacyRepository;
-import com.TenaMed.pharmacy.service.OrderInventoryGateway;
 import com.TenaMed.pharmacy.service.OrderService;
-import com.TenaMed.pharmacy.service.PharmacyInventoryValidator;
-import com.TenaMed.prescription.repository.PrescriptionRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -36,25 +34,22 @@ public class OrderServiceImpl implements OrderService {
     private final OrderRepository orderRepository;
     private final OrderItemRepository orderItemRepository;
     private final PharmacyRepository pharmacyRepository;
-    private final PrescriptionRepository prescriptionRepository;
     private final OrderMapper orderMapper;
-    private final PharmacyInventoryValidator pharmacyInventoryValidator;
-    private final OrderInventoryGateway orderInventoryGateway;
+    private final InventoryAdapter inventoryAdapter;
+    private final PrescriptionAdapter prescriptionAdapter;
 
     public OrderServiceImpl(OrderRepository orderRepository,
                             OrderItemRepository orderItemRepository,
                             PharmacyRepository pharmacyRepository,
-                            PrescriptionRepository prescriptionRepository,
                             OrderMapper orderMapper,
-                            PharmacyInventoryValidator pharmacyInventoryValidator,
-                            OrderInventoryGateway orderInventoryGateway) {
+                            InventoryAdapter inventoryAdapter,
+                            PrescriptionAdapter prescriptionAdapter) {
         this.orderRepository = orderRepository;
         this.orderItemRepository = orderItemRepository;
         this.pharmacyRepository = pharmacyRepository;
-        this.prescriptionRepository = prescriptionRepository;
         this.orderMapper = orderMapper;
-        this.pharmacyInventoryValidator = pharmacyInventoryValidator;
-        this.orderInventoryGateway = orderInventoryGateway;
+        this.inventoryAdapter = inventoryAdapter;
+        this.prescriptionAdapter = prescriptionAdapter;
     }
 
     @Override
@@ -66,13 +61,11 @@ public class OrderServiceImpl implements OrderService {
             throw new PharmacyValidationException("Pharmacy must be VERIFIED before placing orders");
         }
 
-        if (!pharmacyInventoryValidator.itemsBelongToPharmacy(request.getPharmacyId(), request.getItems())) {
-            throw new PharmacyValidationException("Order contains items not owned by the selected pharmacy");
+        if (request.getPrescriptionId() != null) {
+            prescriptionAdapter.getPrescription(request.getPrescriptionId());
         }
 
-        if (request.getPrescriptionId() != null && !prescriptionRepository.existsById(request.getPrescriptionId())) {
-            throw new PrescriptionValidationException(request.getPrescriptionId());
-        }
+        validateItemAvailability(request.getPharmacyId(), request.getItems());
 
         Order order = orderMapper.toEntity(request, pharmacy);
         order.setStatus(OrderStatus.PENDING_REVIEW);
@@ -95,9 +88,7 @@ public class OrderServiceImpl implements OrderService {
             throw new OrderAuthorizationException();
         }
 
-        if (!orderInventoryGateway.reserveForOrder(order)) {
-            throw new PharmacyValidationException("Unable to reserve inventory for order");
-        }
+        reserveOrderItems(order);
 
         order.setAcceptedBy(actorUserId);
         order.setStatus(OrderStatus.ACCEPTED);
@@ -129,5 +120,27 @@ public class OrderServiceImpl implements OrderService {
     private Order fetchOrder(UUID orderId) {
         return orderRepository.findById(orderId)
             .orElseThrow(() -> new OrderNotFoundException(orderId));
+    }
+
+    private void validateItemAvailability(UUID pharmacyId, List<OrderItemRequest> items) {
+        for (OrderItemRequest item : items) {
+            boolean available = inventoryAdapter.checkAvailability(pharmacyId, item.getMedicineId(), item.getQuantity());
+            if (!available) {
+                throw new PharmacyValidationException("Insufficient stock for medicine " + item.getMedicineId());
+            }
+        }
+    }
+
+    private void reserveOrderItems(Order order) {
+        for (OrderItem item : order.getItems()) {
+            boolean reserved = inventoryAdapter.reserveStock(
+                order.getPharmacy().getId(),
+                item.getMedicineId(),
+                item.getQuantity()
+            );
+            if (!reserved) {
+                throw new PharmacyValidationException("Unable to reserve stock for medicine " + item.getMedicineId());
+            }
+        }
     }
 }
