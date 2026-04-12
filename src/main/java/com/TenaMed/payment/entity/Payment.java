@@ -38,8 +38,8 @@ public class Payment extends BaseEntity {
     @Column(name = "payment_gateway")
     private String paymentGateway;
 
-    @Column(name = "gateway_transaction_id")
-    private String gatewayTransactionId;
+    @Column(name = "tx_ref", unique = true)
+    private UUID txRef;
 
     @Column(name = "status")
     private String status;

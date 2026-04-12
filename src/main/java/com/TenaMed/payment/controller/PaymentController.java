@@ -2,11 +2,14 @@ package com.TenaMed.payment.controller;
 
 import com.TenaMed.payment.dto.CancelPaymentResponse;
 import com.TenaMed.payment.dto.PaymentRequest;
+import com.TenaMed.payment.dto.PaymentWebhookResponse;
 import com.TenaMed.payment.service.PaymentService;
+import com.TenaMed.user.security.AuthenticatedUserPrincipal;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.io.IOException;
@@ -26,35 +29,19 @@ public class PaymentController {
 
     @GetMapping("/test")
     public ResponseEntity<Map<String, String>> testInitialize() {
-        try {
-            String checkoutUrl = paymentService.initializePayment(
-                    java.util.UUID.randomUUID(),
-                    "100",
-                    "CARD",
-                    "test@tenamed.com",
-                    "Test",
-                    "User",
-                    "0911000000"
-            );
-            return ResponseEntity.ok(Map.of("checkout_url", checkoutUrl == null ? "" : checkoutUrl));
-        } catch (IOException ex) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(Map.of("checkout_url", ""));
-        }
+        return ResponseEntity.status(HttpStatus.NOT_IMPLEMENTED)
+                .body(Map.of("checkout_url", "Use POST /api/payments/initialize"));
     }
 
     @PostMapping("/initialize")
-    public ResponseEntity<Map<String, String>> initialize(@RequestBody PaymentRequest request) {
+    public ResponseEntity<Map<String, String>> initialize(@RequestBody PaymentRequest request,
+                                                          @AuthenticationPrincipal AuthenticatedUserPrincipal principal) {
         try {
-            String checkoutUrl = paymentService.initializePayment(
-                    request.getOrderId(),
-                    request.getAmount(),
-                    request.getPaymentMethod(),
-                    request.getEmail(),
-                    request.getFirstName(),
-                    request.getLastName(),
-                    request.getPhone()
-            );
+            if (principal == null) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("checkout_url", "error"));
+            }
+
+            String checkoutUrl = paymentService.initializePayment(request.getOrderId(), principal.getUserId());
             return ResponseEntity.ok(Map.of("checkout_url", checkoutUrl == null ? "erro2" : checkoutUrl));
         } catch (IllegalArgumentException ex) {
             return ResponseEntity.badRequest().body(Map.of("checkout_url", "error"));
@@ -71,12 +58,12 @@ public class PaymentController {
 
     @RequestMapping(value = "/webhook", method = {RequestMethod.POST, RequestMethod.GET})
     //this methode response must be saved in database
-    public ResponseEntity<String> webhook(
+        public ResponseEntity<PaymentWebhookResponse> webhook(
             @RequestBody(required = false) String payload,
             @RequestParam(required = false) String tx_ref
     ) {
-
         try {
+            System.out.println("here");
             String txRef = tx_ref;
 
             if (txRef == null && payload != null) {
@@ -85,23 +72,37 @@ public class PaymentController {
 
 
             if (txRef == null || txRef.isBlank()) {
-                System.out.println("PAYMENT FAILED");
-                return ResponseEntity.ok("FAILED");
+                return ResponseEntity.badRequest().body(new PaymentWebhookResponse(
+                        "tx_ref is required",
+                        "failed",
+                        null,
+                        null,
+                        null,
+                        null,
+                        null
+                ));
             }
 
             String verificationResponse = paymentService.verifyPayment(txRef);
-
-            if (isSuccessStatus(verificationResponse)) {
-                System.out.println("PAYMENT SUCCESS");
-            } else {
-                System.out.println("PAYMENT FAILED");
+            boolean success = isSuccessStatus(verificationResponse);
+            PaymentWebhookResponse response = paymentService.processWebhook(txRef, success);
+            System.out.println(response);
+            if (!success) {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
             }
 
-            return ResponseEntity.ok("OK");
+            return ResponseEntity.ok(response);
 
         } catch (Exception ex) {
-            ex.printStackTrace();
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("ERROR");
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(new PaymentWebhookResponse(
+                    "Unable to process webhook",
+                    "error",
+                    null,
+                    null,
+                    null,
+                    null,
+                    null
+            ));
         }
     }
 

@@ -30,7 +30,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             "/api/auth/login",
             "/api/auth/refresh",
             "/api/identity/login",
-            "/api/identity/register"
+            "/api/identity/register",
+            "/api/payments/webhook"
     );
 
     private final JwtService jwtService;
