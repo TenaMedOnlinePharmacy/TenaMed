@@ -12,6 +12,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -50,11 +51,20 @@ public class PrescriptionInventoryMatchServiceImpl implements PrescriptionInvent
 
         List<Inventory> inventories = inventoryRepository.findByMedicineIdIn(medicineIds);
 
-        return inventories.stream()
-            .map(inv -> PrescriptionInventoryMatchDto.builder()
-                .pharmacyId(inv.getPharmacyId())
-                .medicineId(inv.getMedicineId())
-                .build())
+        Map<UUID, List<Inventory>> inventoriesByMedicineId = inventories.stream()
+            .collect(Collectors.groupingBy(Inventory::getMedicineId));
+
+        return prescriptionItems.stream()
+            .flatMap(item -> {
+                UUID medicineId = item.getMedicine().getId();
+                List<Inventory> matches = inventoriesByMedicineId.getOrDefault(medicineId, List.of());
+                return matches.stream().map(inv -> PrescriptionInventoryMatchDto.builder()
+                    .prescriptionId(prescriptionId)
+                    .prescriptionItemId(item.getId())
+                    .pharmacyId(inv.getPharmacyId())
+                    .medicineId(inv.getMedicineId())
+                    .build());
+            })
             .toList();
     }
 }

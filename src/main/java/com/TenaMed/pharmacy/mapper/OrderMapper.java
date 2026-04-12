@@ -17,14 +17,14 @@ import java.util.List;
 @Component
 public class OrderMapper {
 
-    public Order toEntity(CreateOrderRequest request, Pharmacy pharmacy) {
+    public Order toEntity(CreateOrderRequest request, Pharmacy pharmacy, java.util.UUID customerId) {
         Order order = new Order();
-        order.setCustomerId(request.getCustomerId());
+        order.setCustomerId(customerId);
         order.setPharmacy(pharmacy);
         order.setPrescriptionId(request.getPrescriptionId());
         order.setStatus(OrderStatus.PENDING_REVIEW);
         order.setPaymentStatus(PaymentStatus.PENDING);
-        order.setTotalAmount(calculateTotal(request.getItems()));
+        order.setTotalAmount(BigDecimal.ZERO);
         return order;
     }
 
@@ -69,9 +69,4 @@ public class OrderMapper {
             .build();
     }
 
-    private BigDecimal calculateTotal(List<OrderItemRequest> items) {
-        return items.stream()
-            .map(item -> item.getUnitPrice().multiply(BigDecimal.valueOf(item.getQuantity())))
-            .reduce(BigDecimal.ZERO, BigDecimal::add);
-    }
 }

@@ -53,6 +53,7 @@ class PrescriptionInventoryMatchServiceImplTests {
     @Test
     void shouldReturnMatchesFromInventoryUsingPrescriptionItemsMedicineIds() {
         UUID prescriptionId = UUID.randomUUID();
+        UUID prescriptionItemId = UUID.randomUUID();
         UUID medicineId = UUID.randomUUID();
         UUID pharmacyId = UUID.randomUUID();
 
@@ -63,6 +64,7 @@ class PrescriptionInventoryMatchServiceImplTests {
         when(medicine.getId()).thenReturn(medicineId);
 
         PrescriptionItem item = new PrescriptionItem();
+        item.setId(prescriptionItemId);
         item.setPrescription(prescription);
         item.setMedicine(medicine);
 
@@ -77,6 +79,8 @@ class PrescriptionInventoryMatchServiceImplTests {
         List<PrescriptionInventoryMatchDto> result = service.findInventoryMatchesByPrescription(prescriptionId);
 
         assertEquals(1, result.size());
+        assertEquals(prescriptionId, result.getFirst().getPrescriptionId());
+        assertEquals(prescriptionItemId, result.getFirst().getPrescriptionItemId());
         assertEquals(pharmacyId, result.getFirst().getPharmacyId());
         assertEquals(medicineId, result.getFirst().getMedicineId());
     }

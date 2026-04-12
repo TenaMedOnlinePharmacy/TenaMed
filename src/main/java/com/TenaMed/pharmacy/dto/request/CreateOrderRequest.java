@@ -1,6 +1,5 @@
 package com.TenaMed.pharmacy.dto.request;
 
-import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 import lombok.Getter;
@@ -14,14 +13,11 @@ import java.util.UUID;
 public class CreateOrderRequest {
 
     @NotNull
-    private UUID customerId;
-
-    @NotNull
     private UUID pharmacyId;
 
     private UUID prescriptionId;
 
-    @Valid
     @NotEmpty
-    private List<OrderItemRequest> items;
+    private List<UUID> prescriptionItemIds;
+
 }

@@ -9,6 +9,8 @@ import java.util.UUID;
 @Builder
 public class PrescriptionInventoryMatchDto {
 
+    private UUID prescriptionId;
+    private UUID prescriptionItemId;
     private UUID pharmacyId;
     private UUID medicineId;
 }

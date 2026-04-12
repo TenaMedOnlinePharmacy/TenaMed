@@ -10,6 +10,7 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
+import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -48,4 +49,11 @@ public class PrescriptionItem extends BaseEntity {
 
     @Column(name = "instructions", columnDefinition = "TEXT")
     private String instructions;
+
+    @PrePersist
+    protected void applyDefaults() {
+        if (quantity == null) {
+            quantity = 1;
+        }
+    }
 }

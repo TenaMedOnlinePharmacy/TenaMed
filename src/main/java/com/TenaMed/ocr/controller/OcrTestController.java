@@ -4,20 +4,19 @@ import com.TenaMed.Normalization.model.NormalizedOcrResultDto;
 import com.TenaMed.ocr.dto.OcrResultDto;
 import com.TenaMed.ocr.integration.OcrClient;
 import com.TenaMed.ocr.service.OcrService;
+import com.TenaMed.pharmacy.service.PrescriptionInventoryMatchService;
+import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/ocr")
+@RequiredArgsConstructor
 public class OcrTestController {
 
     private final OcrClient ocrClient;
     private  final OcrService ocrService;
 
-    public OcrTestController(OcrClient ocrClient, OcrService ocrService) {
-        this.ocrClient = ocrClient;
-        this.ocrService = ocrService;
-    }
 
     @GetMapping("/test")
     public ResponseEntity<NormalizedOcrResultDto> testOcr() {

@@ -1,7 +1,12 @@
 package com.TenaMed.pharmacy.service.impl;
 
+import com.TenaMed.Normalization.entity.PrescriptionItem;
+import com.TenaMed.Normalization.repository.PrescriptionItemRepository;
+import com.TenaMed.inventory.entity.Batch;
+import com.TenaMed.inventory.enums.BatchStatus;
+import com.TenaMed.inventory.repository.BatchRepository;
+import com.TenaMed.inventory.repository.InventoryRepository;
 import com.TenaMed.pharmacy.dto.request.CreateOrderRequest;
-import com.TenaMed.pharmacy.dto.request.OrderItemRequest;
 import com.TenaMed.pharmacy.dto.response.OrderResponse;
 import com.TenaMed.pharmacy.entity.Order;
 import com.TenaMed.pharmacy.entity.OrderItem;
@@ -25,8 +30,12 @@ import com.TenaMed.prescription.service.PrescriptionService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 @Service
 @Transactional
@@ -38,23 +47,32 @@ public class OrderServiceImpl implements OrderService {
     private final OrderMapper orderMapper;
     private final InventoryService inventoryService;
     private final PrescriptionService prescriptionService;
+    private final PrescriptionItemRepository prescriptionItemRepository;
+    private final InventoryRepository inventoryRepository;
+    private final BatchRepository batchRepository;
 
     public OrderServiceImpl(OrderRepository orderRepository,
                             OrderItemRepository orderItemRepository,
                             PharmacyRepository pharmacyRepository,
                             OrderMapper orderMapper,
                             InventoryService inventoryService,
-                            PrescriptionService prescriptionService) {
+                            PrescriptionService prescriptionService,
+                            PrescriptionItemRepository prescriptionItemRepository,
+                            InventoryRepository inventoryRepository,
+                            BatchRepository batchRepository) {
         this.orderRepository = orderRepository;
         this.orderItemRepository = orderItemRepository;
         this.pharmacyRepository = pharmacyRepository;
         this.orderMapper = orderMapper;
         this.inventoryService = inventoryService;
         this.prescriptionService = prescriptionService;
+        this.prescriptionItemRepository = prescriptionItemRepository;
+        this.inventoryRepository = inventoryRepository;
+        this.batchRepository = batchRepository;
     }
 
     @Override
-    public OrderResponse createOrder(CreateOrderRequest request) {
+    public OrderResponse createOrder(CreateOrderRequest request, UUID customerId) {
         Pharmacy pharmacy = pharmacyRepository.findById(request.getPharmacyId())
             .orElseThrow(() -> new PharmacyNotFoundException(request.getPharmacyId()));
 
@@ -68,16 +86,16 @@ public class OrderServiceImpl implements OrderService {
             }
         }
 
-        validateItemAvailability(request.getPharmacyId(), request.getItems());
+        List<OrderItem> derivedItems = buildOrderItems(request);
+        validateItemAvailability(request.getPharmacyId(), derivedItems);
 
-        Order order = orderMapper.toEntity(request, pharmacy);
+        Order order = orderMapper.toEntity(request, pharmacy, customerId);
         order.setStatus(OrderStatus.PENDING_REVIEW);
+        order.setTotalAmount(calculateTotal(derivedItems));
         Order savedOrder = orderRepository.save(order);
 
-        List<OrderItem> items = request.getItems().stream()
-            .map(item -> orderMapper.toOrderItemEntity(item, savedOrder))
-            .toList();
-        List<OrderItem> savedItems = orderItemRepository.saveAll(items);
+        derivedItems.forEach(item -> item.setOrder(savedOrder));
+        List<OrderItem> savedItems = orderItemRepository.saveAll(derivedItems);
         savedOrder.getItems().addAll(savedItems);
 
         return orderMapper.toResponse(savedOrder);
@@ -125,13 +143,70 @@ public class OrderServiceImpl implements OrderService {
             .orElseThrow(() -> new OrderNotFoundException(orderId));
     }
 
-    private void validateItemAvailability(UUID pharmacyId, List<OrderItemRequest> items) {
-        for (OrderItemRequest item : items) {
+    private void validateItemAvailability(UUID pharmacyId, List<OrderItem> items) {
+        for (OrderItem item : items) {
             boolean available = inventoryService.checkAvailability(pharmacyId, item.getMedicineId(), item.getQuantity());
             if (!available) {
                 throw new PharmacyValidationException("Insufficient stock for medicine " + item.getMedicineId());
             }
         }
+    }
+
+    private List<OrderItem> buildOrderItems(CreateOrderRequest request) {
+        List<UUID> prescriptionItemIds = request.getPrescriptionItemIds();
+        List<PrescriptionItem> prescriptionItems = prescriptionItemRepository.findAllById(prescriptionItemIds);
+
+        if (prescriptionItems.size() != prescriptionItemIds.size()) {
+            throw new PharmacyValidationException("Some prescription item IDs do not exist");
+        }
+
+        Map<UUID, PrescriptionItem> byId = prescriptionItems.stream()
+            .collect(Collectors.toMap(PrescriptionItem::getId, Function.identity()));
+
+        return prescriptionItemIds.stream()
+            .map(id -> toOrderItem(byId.get(id), request))
+            .toList();
+    }
+
+    private OrderItem toOrderItem(PrescriptionItem prescriptionItem, CreateOrderRequest request) {
+        if (prescriptionItem == null || prescriptionItem.getMedicine() == null || prescriptionItem.getMedicine().getId() == null) {
+            throw new PharmacyValidationException("Invalid prescription item reference");
+        }
+        if (prescriptionItem.getQuantity() == null || prescriptionItem.getQuantity() <= 0) {
+            throw new PharmacyValidationException("Prescription item quantity must be greater than zero");
+        }
+        if (request.getPrescriptionId() != null
+            && !request.getPrescriptionId().equals(prescriptionItem.getPrescription().getId())) {
+            throw new PharmacyValidationException("Prescription item does not belong to the provided prescriptionId");
+        }
+
+        UUID medicineId = prescriptionItem.getMedicine().getId();
+        UUID inventoryId = inventoryRepository.findByPharmacyIdAndMedicineId(request.getPharmacyId(), medicineId)
+            .map(inv -> inv.getId())
+            .orElseThrow(() -> new PharmacyValidationException("Inventory not found for medicine " + medicineId));
+
+        Batch activeBatch = batchRepository
+            .findByInventoryIdAndStatusOrderByExpiryDateAsc(inventoryId, BatchStatus.ACTIVE)
+            .stream()
+            .findFirst()
+            .orElseThrow(() -> new PharmacyValidationException("No active batch found for inventory " + inventoryId));
+
+        if (activeBatch.getSellingPrice() == null) {
+            throw new PharmacyValidationException("Active batch selling price is missing for inventory " + inventoryId);
+        }
+
+        OrderItem orderItem = new OrderItem();
+        orderItem.setInventoryId(inventoryId);
+        orderItem.setMedicineId(medicineId);
+        orderItem.setQuantity(prescriptionItem.getQuantity());
+        orderItem.setUnitPrice(activeBatch.getSellingPrice());
+        return orderItem;
+    }
+
+    private BigDecimal calculateTotal(List<OrderItem> items) {
+        return items.stream()
+            .map(item -> item.getUnitPrice().multiply(BigDecimal.valueOf(item.getQuantity())))
+            .reduce(BigDecimal.ZERO, BigDecimal::add);
     }
 
     private void reserveOrderItems(Order order) {

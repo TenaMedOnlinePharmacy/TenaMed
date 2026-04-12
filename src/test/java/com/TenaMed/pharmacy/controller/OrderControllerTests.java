@@ -1,8 +1,6 @@
 package com.TenaMed.pharmacy.controller;
 
-import com.TenaMed.pharmacy.dto.request.AcceptOrderRequest;
 import com.TenaMed.pharmacy.dto.request.CreateOrderRequest;
-import com.TenaMed.pharmacy.dto.request.OrderItemRequest;
 import com.TenaMed.pharmacy.dto.request.RejectOrderRequest;
 import com.TenaMed.pharmacy.dto.request.UpdatePaymentStatusRequest;
 import com.TenaMed.pharmacy.dto.response.OrderResponse;
@@ -10,16 +8,18 @@ import com.TenaMed.pharmacy.enums.OrderStatus;
 import com.TenaMed.pharmacy.enums.PaymentStatus;
 import com.TenaMed.pharmacy.enums.StaffRole;
 import com.TenaMed.pharmacy.service.OrderService;
+import com.TenaMed.user.security.AuthenticatedUserPrincipal;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.http.MediaType;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
-import java.math.BigDecimal;
 import java.util.List;
 import java.util.UUID;
 
@@ -46,19 +46,23 @@ class OrderControllerTests {
     @Test
     void shouldCreateOrder() throws Exception {
         CreateOrderRequest request = new CreateOrderRequest();
-        request.setCustomerId(UUID.randomUUID());
         request.setPharmacyId(UUID.randomUUID());
-        OrderItemRequest item = new OrderItemRequest();
-        item.setInventoryId(UUID.randomUUID());
-        item.setMedicineId(UUID.randomUUID());
-        item.setQuantity(1);
-        item.setUnitPrice(new BigDecimal("10"));
-        request.setItems(List.of(item));
+        request.setPrescriptionItemIds(List.of(UUID.randomUUID()));
+
+        AuthenticatedUserPrincipal principal = new AuthenticatedUserPrincipal(
+            UUID.randomUUID(),
+            UUID.randomUUID(),
+            "user@test.com",
+            "pwd",
+            List.of(),
+            true
+        );
 
         OrderResponse response = OrderResponse.builder().id(UUID.randomUUID()).status(OrderStatus.PENDING_REVIEW).build();
-        when(orderService.createOrder(any(CreateOrderRequest.class))).thenReturn(response);
+        when(orderService.createOrder(any(CreateOrderRequest.class), any(UUID.class))).thenReturn(response);
 
         mockMvc.perform(post("/api/orders")
+            .principal(new UsernamePasswordAuthenticationToken(principal, null, principal.getAuthorities()))
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(request)))
             .andExpect(status().isCreated())
@@ -66,19 +70,56 @@ class OrderControllerTests {
     }
 
     @Test
-    void shouldAcceptOrder() throws Exception {
-        UUID id = UUID.randomUUID();
-        AcceptOrderRequest request = new AcceptOrderRequest();
-        request.setActorUserId(UUID.randomUUID());
-        request.setActorRole(StaffRole.OWNER);
-        OrderResponse response = OrderResponse.builder().status(OrderStatus.PENDING_PAYMENT).build();
-        when(orderService.acceptOrder(eq(id), eq(request.getActorUserId()), eq(StaffRole.OWNER))).thenReturn(response);
+    void shouldRejectCreateOrderWhenUnauthenticated() throws Exception {
+        CreateOrderRequest request = new CreateOrderRequest();
+        request.setPharmacyId(UUID.randomUUID());
+        request.setPrescriptionItemIds(List.of(UUID.randomUUID()));
 
-        mockMvc.perform(post("/api/orders/{id}/accept", id)
+        mockMvc.perform(post("/api/orders")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(request)))
+            .andExpect(status().isUnauthorized())
+            .andExpect(jsonPath("$.error").value("Authentication required"));
+    }
+
+    @Test
+    void shouldAcceptOrder() throws Exception {
+        UUID id = UUID.randomUUID();
+        UUID actorUserId = UUID.randomUUID();
+        AuthenticatedUserPrincipal principal = new AuthenticatedUserPrincipal(
+            actorUserId,
+            UUID.randomUUID(),
+            "owner@test.com",
+            "pwd",
+            List.of(new SimpleGrantedAuthority("ROLE_OWNER")),
+            true
+        );
+        OrderResponse response = OrderResponse.builder().status(OrderStatus.PENDING_PAYMENT).build();
+        when(orderService.acceptOrder(eq(id), eq(actorUserId), eq(StaffRole.OWNER))).thenReturn(response);
+
+        mockMvc.perform(post("/api/orders/{id}/accept", id)
+                .principal(new UsernamePasswordAuthenticationToken(principal, null, principal.getAuthorities())))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.status").value("PENDING_PAYMENT"));
+    }
+
+    @Test
+    void shouldReturnForbiddenForAcceptOrderWhenRoleNotAllowed() throws Exception {
+        UUID id = UUID.randomUUID();
+        UUID actorUserId = UUID.randomUUID();
+        AuthenticatedUserPrincipal principal = new AuthenticatedUserPrincipal(
+            actorUserId,
+            UUID.randomUUID(),
+            "patient@test.com",
+            "pwd",
+            List.of(new SimpleGrantedAuthority("ROLE_PATIENT")),
+            true
+        );
+
+        mockMvc.perform(post("/api/orders/{id}/accept", id)
+                .principal(new UsernamePasswordAuthenticationToken(principal, null, principal.getAuthorities())))
+            .andExpect(status().isForbidden())
+            .andExpect(jsonPath("$.error").value("Only pharmacy owner or pharmacist can accept orders"));
     }
 
     @Test

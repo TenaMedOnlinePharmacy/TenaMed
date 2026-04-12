@@ -3,31 +3,42 @@ package com.TenaMed.payment.service;
 import com.TenaMed.payment.ChapaHttpClient;
 import com.TenaMed.payment.dto.CancelPaymentData;
 import com.TenaMed.payment.dto.CancelPaymentResponse;
+import com.TenaMed.payment.entity.Payment;
+import com.TenaMed.payment.repository.PaymentRepository;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
+import java.math.BigDecimal;
 import java.util.UUID;
 
 @Service
 public class PaymentService {
 
     private final ChapaHttpClient chapaHttpClient;
+    private final PaymentRepository paymentRepository;
     private final ObjectMapper objectMapper;
 
-    public PaymentService(ChapaHttpClient chapaHttpClient) {
+    public PaymentService(ChapaHttpClient chapaHttpClient, PaymentRepository paymentRepository) {
         this.chapaHttpClient = chapaHttpClient;
+        this.paymentRepository = paymentRepository;
         this.objectMapper = new ObjectMapper();
     }
 
     public String initializePayment(
+            UUID orderId,
             String amount,
+            String paymentMethod,
             String email,
             String firstName,
             String lastName,
             String phoneNumber
     ) throws IOException {
+        if (orderId == null) {
+            throw new IllegalArgumentException("orderId is required");
+        }
+
         String txRef = UUID.randomUUID().toString();
 
         String jsonBody = "{" +
@@ -45,8 +56,13 @@ public class PaymentService {
                 "}";
 
         String rawResponse = chapaHttpClient.initializeTransaction(jsonBody);
-        System.out.println(txRef);
-        return extractCheckoutUrl(rawResponse);
+        String checkoutUrl = extractCheckoutUrl(rawResponse);
+
+        if (checkoutUrl != null && !checkoutUrl.isBlank()) {
+            saveInitializedPayment(orderId, amount, paymentMethod, txRef);
+        }
+
+        return checkoutUrl;
     }
 
     public String verifyPayment(String txRef) throws IOException {
@@ -107,6 +123,30 @@ public class PaymentService {
             }
             return checkoutUrl;
         } catch (IOException ignored) {
+            return null;
+        }
+    }
+
+    private void saveInitializedPayment(UUID orderId, String amount, String paymentMethod, String txRef) {
+        Payment payment = paymentRepository.findByOrderId(orderId).orElseGet(Payment::new);
+        payment.setOrderId(orderId);
+        payment.setAmount(parseAmount(amount));
+        payment.setPaymentMethod(paymentMethod);
+        payment.setPaymentGateway("CHAPA");
+        payment.setGatewayTransactionId(txRef);
+        payment.setStatus("PENDING");
+
+        paymentRepository.save(payment);
+    }
+
+    private BigDecimal parseAmount(String amount) {
+        if (amount == null || amount.isBlank()) {
+            return null;
+        }
+
+        try {
+            return new BigDecimal(amount.trim());
+        } catch (NumberFormatException ex) {
             return null;
         }
     }

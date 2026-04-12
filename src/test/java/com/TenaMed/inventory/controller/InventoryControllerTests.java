@@ -41,8 +41,10 @@ class InventoryControllerTests {
     @Test
     void shouldCreateInventory() throws Exception {
         CreateInventoryRequest request = new CreateInventoryRequest();
-        request.setPharmacyId(UUID.randomUUID());
-        request.setMedicineId(UUID.randomUUID());
+        UUID pharmacyId = UUID.randomUUID();
+        UUID medicineId = UUID.randomUUID();
+        request.setPharmacyId(pharmacyId);
+        request.setMedicineId(medicineId);
         request.setTotalQuantity(10);
         request.setReservedQuantity(0);
 

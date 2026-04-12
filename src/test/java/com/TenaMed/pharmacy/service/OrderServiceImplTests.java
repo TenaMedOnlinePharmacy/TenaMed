@@ -1,10 +1,17 @@
 package com.TenaMed.pharmacy.service;
 
+import com.TenaMed.Normalization.entity.PrescriptionItem;
+import com.TenaMed.Normalization.repository.PrescriptionItemRepository;
+import com.TenaMed.inventory.entity.Batch;
+import com.TenaMed.inventory.enums.BatchStatus;
+import com.TenaMed.inventory.entity.Inventory;
+import com.TenaMed.inventory.repository.BatchRepository;
+import com.TenaMed.inventory.repository.InventoryRepository;
 import com.TenaMed.pharmacy.dto.request.CreateOrderRequest;
-import com.TenaMed.pharmacy.dto.request.OrderItemRequest;
 import com.TenaMed.pharmacy.dto.response.OrderResponse;
 import com.TenaMed.pharmacy.entity.Order;
 import com.TenaMed.pharmacy.entity.OrderItem;
+import com.TenaMed.medicine.entity.Medicine;
 import com.TenaMed.pharmacy.entity.Pharmacy;
 import com.TenaMed.pharmacy.enums.OrderStatus;
 import com.TenaMed.pharmacy.enums.PaymentStatus;
@@ -23,6 +30,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.ArgumentCaptor;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
@@ -34,6 +42,7 @@ import java.util.UUID;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -55,6 +64,15 @@ class OrderServiceImplTests {
     private PrescriptionService prescriptionService;
 
     @Mock
+    private PrescriptionItemRepository prescriptionItemRepository;
+
+    @Mock
+    private InventoryRepository inventoryRepository;
+
+    @Mock
+    private BatchRepository batchRepository;
+
+    @Mock
     private OrderMapper orderMapper;
 
     @InjectMocks
@@ -63,11 +81,31 @@ class OrderServiceImplTests {
     @Test
     void shouldCreateOrderOnHappyPath() {
         UUID pharmacyId = UUID.randomUUID();
+        UUID customerId = UUID.randomUUID();
         CreateOrderRequest request = buildCreateOrderRequest(pharmacyId);
+        UUID prescriptionItemId = request.getPrescriptionItemIds().getFirst();
+        UUID medicineId = UUID.randomUUID();
+        UUID inventoryId = UUID.randomUUID();
+        BigDecimal sellingPrice = new BigDecimal("75.50");
 
         Pharmacy pharmacy = new Pharmacy();
         pharmacy.setId(pharmacyId);
         pharmacy.setStatus(PharmacyStatus.VERIFIED);
+
+        Medicine medicine = mock(Medicine.class);
+        when(medicine.getId()).thenReturn(medicineId);
+
+        PrescriptionItem prescriptionItem = new PrescriptionItem();
+        prescriptionItem.setId(prescriptionItemId);
+        prescriptionItem.setMedicine(medicine);
+        prescriptionItem.setQuantity(2);
+
+        Inventory inventory = new Inventory();
+        inventory.setId(inventoryId);
+
+        Batch batch = new Batch();
+        batch.setStatus(BatchStatus.ACTIVE);
+        batch.setSellingPrice(sellingPrice);
 
         Order mappedOrder = new Order();
         mappedOrder.setId(UUID.randomUUID());
@@ -75,27 +113,29 @@ class OrderServiceImplTests {
         mappedOrder.setStatus(OrderStatus.PENDING_REVIEW);
         mappedOrder.setPaymentStatus(PaymentStatus.PENDING);
 
-        OrderItem item = new OrderItem();
-        item.setOrder(mappedOrder);
-        item.setInventoryId(request.getItems().getFirst().getInventoryId());
-        item.setMedicineId(request.getItems().getFirst().getMedicineId());
-        item.setQuantity(2);
-        item.setUnitPrice(new BigDecimal("50.00"));
-
         OrderResponse response = OrderResponse.builder().id(mappedOrder.getId()).status(OrderStatus.PENDING_REVIEW).build();
 
         when(pharmacyRepository.findById(pharmacyId)).thenReturn(Optional.of(pharmacy));
-        when(inventoryService.checkAvailability(pharmacyId, request.getItems().getFirst().getMedicineId(), 2)).thenReturn(true);
-        when(orderMapper.toEntity(request, pharmacy)).thenReturn(mappedOrder);
+        when(prescriptionItemRepository.findAllById(request.getPrescriptionItemIds())).thenReturn(List.of(prescriptionItem));
+        when(inventoryRepository.findByPharmacyIdAndMedicineId(pharmacyId, medicineId)).thenReturn(Optional.of(inventory));
+        when(batchRepository.findByInventoryIdAndStatusOrderByExpiryDateAsc(inventoryId, BatchStatus.ACTIVE))
+            .thenReturn(List.of(batch));
+        when(inventoryService.checkAvailability(pharmacyId, medicineId, 2)).thenReturn(true);
+        when(orderMapper.toEntity(request, pharmacy, customerId)).thenReturn(mappedOrder);
         when(orderRepository.save(mappedOrder)).thenReturn(mappedOrder);
-        when(orderMapper.toOrderItemEntity(any(OrderItemRequest.class), any(Order.class))).thenReturn(item);
-        when(orderItemRepository.saveAll(any())).thenReturn(List.of(item));
+        when(orderItemRepository.saveAll(any())).thenAnswer(invocation -> invocation.getArgument(0));
         when(orderMapper.toResponse(mappedOrder)).thenReturn(response);
 
-        OrderResponse actual = orderService.createOrder(request);
+        OrderResponse actual = orderService.createOrder(request, customerId);
+
+        ArgumentCaptor<List<OrderItem>> orderItemsCaptor = ArgumentCaptor.forClass(List.class);
+        org.mockito.Mockito.verify(orderItemRepository).saveAll(orderItemsCaptor.capture());
+        List<OrderItem> savedItems = orderItemsCaptor.getValue();
 
         assertEquals(mappedOrder.getId(), actual.getId());
         assertEquals(OrderStatus.PENDING_REVIEW, actual.getStatus());
+        assertEquals(sellingPrice, savedItems.getFirst().getUnitPrice());
+        assertEquals(new BigDecimal("151.00"), mappedOrder.getTotalAmount());
     }
 
     @Test
@@ -109,7 +149,7 @@ class OrderServiceImplTests {
 
         when(pharmacyRepository.findById(pharmacyId)).thenReturn(Optional.of(pharmacy));
 
-        assertThrows(PharmacyValidationException.class, () -> orderService.createOrder(request));
+        assertThrows(PharmacyValidationException.class, () -> orderService.createOrder(request, UUID.randomUUID()));
     }
 
     @Test
@@ -177,15 +217,8 @@ class OrderServiceImplTests {
 
     private CreateOrderRequest buildCreateOrderRequest(UUID pharmacyId) {
         CreateOrderRequest request = new CreateOrderRequest();
-        request.setCustomerId(UUID.randomUUID());
         request.setPharmacyId(pharmacyId);
-
-        OrderItemRequest item = new OrderItemRequest();
-        item.setInventoryId(UUID.randomUUID());
-        item.setMedicineId(UUID.randomUUID());
-        item.setQuantity(2);
-        item.setUnitPrice(new BigDecimal("50.00"));
-        request.setItems(List.of(item));
+        request.setPrescriptionItemIds(List.of(UUID.randomUUID()));
         return request;
     }
 

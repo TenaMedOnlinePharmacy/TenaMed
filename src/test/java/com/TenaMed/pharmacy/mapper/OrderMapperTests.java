@@ -1,7 +1,6 @@
 package com.TenaMed.pharmacy.mapper;
 
 import com.TenaMed.pharmacy.dto.request.CreateOrderRequest;
-import com.TenaMed.pharmacy.dto.request.OrderItemRequest;
 import com.TenaMed.pharmacy.dto.response.OrderResponse;
 import com.TenaMed.pharmacy.entity.Order;
 import com.TenaMed.pharmacy.entity.OrderItem;
@@ -26,23 +25,17 @@ class OrderMapperTests {
         Pharmacy pharmacy = new Pharmacy();
         pharmacy.setId(UUID.randomUUID());
 
-        OrderItemRequest item = new OrderItemRequest();
-        item.setInventoryId(UUID.randomUUID());
-        item.setMedicineId(UUID.randomUUID());
-        item.setQuantity(2);
-        item.setUnitPrice(new BigDecimal("15.00"));
-
         CreateOrderRequest request = new CreateOrderRequest();
-        request.setCustomerId(UUID.randomUUID());
+        UUID customerId = UUID.randomUUID();
         request.setPharmacyId(pharmacy.getId());
-        request.setItems(List.of(item));
+        request.setPrescriptionItemIds(List.of(UUID.randomUUID()));
 
-        Order order = orderMapper.toEntity(request, pharmacy);
+        Order order = orderMapper.toEntity(request, pharmacy, customerId);
 
-        assertEquals(request.getCustomerId(), order.getCustomerId());
+        assertEquals(customerId, order.getCustomerId());
         assertEquals(OrderStatus.PENDING_REVIEW, order.getStatus());
         assertEquals(PaymentStatus.PENDING, order.getPaymentStatus());
-        assertEquals(new BigDecimal("30.00"), order.getTotalAmount());
+        assertEquals(BigDecimal.ZERO, order.getTotalAmount());
     }
 
     @Test

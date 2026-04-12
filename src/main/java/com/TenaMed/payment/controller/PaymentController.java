@@ -28,7 +28,9 @@ public class PaymentController {
     public ResponseEntity<Map<String, String>> testInitialize() {
         try {
             String checkoutUrl = paymentService.initializePayment(
+                    java.util.UUID.randomUUID(),
                     "100",
+                    "CARD",
                     "test@tenamed.com",
                     "Test",
                     "User",
@@ -45,13 +47,17 @@ public class PaymentController {
     public ResponseEntity<Map<String, String>> initialize(@RequestBody PaymentRequest request) {
         try {
             String checkoutUrl = paymentService.initializePayment(
+                    request.getOrderId(),
                     request.getAmount(),
+                    request.getPaymentMethod(),
                     request.getEmail(),
                     request.getFirstName(),
                     request.getLastName(),
                     request.getPhone()
             );
             return ResponseEntity.ok(Map.of("checkout_url", checkoutUrl == null ? "erro2" : checkoutUrl));
+        } catch (IllegalArgumentException ex) {
+            return ResponseEntity.badRequest().body(Map.of("checkout_url", "error"));
         } catch (IOException ex) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(Map.of("checkout_url", "error"));
