@@ -1,0 +1,22 @@
+package com.TenaMed.manualreview.service;
+
+import com.TenaMed.manualreview.entity.ManualReviewTask;
+import com.TenaMed.manualreview.entity.TaskPriority;
+import com.TenaMed.manualreview.entity.TaskReason;
+import com.TenaMed.prescription.verification.dto.PrescriptionItemRequestDto;
+
+import java.util.List;
+import java.util.UUID;
+
+public interface ManualReviewService {
+
+    ManualReviewTask createTask(UUID prescriptionId, TaskReason reason, TaskPriority priority);
+
+    boolean claimTask(UUID taskId, UUID pharmacistId);
+
+    void completeTask(UUID taskId, UUID pharmacistId, List<PrescriptionItemRequestDto> items);
+
+    List<ManualReviewTask> getPendingTasks();
+
+    List<ManualReviewTask> getMyTasks(UUID pharmacistId);
+}
