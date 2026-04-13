@@ -4,10 +4,15 @@ import com.TenaMed.Normalization.model.NormalizedOcrResultDto;
 import com.TenaMed.ocr.dto.OcrResultDto;
 import com.TenaMed.ocr.integration.OcrClient;
 import com.TenaMed.ocr.service.OcrService;
-import com.TenaMed.pharmacy.service.PrescriptionInventoryMatchService;
+import com.TenaMed.ocr.service.SupabaseStorageService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestPart;
+import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
 @RestController
 @RequestMapping("/api/ocr")
@@ -15,12 +20,12 @@ import org.springframework.web.bind.annotation.*;
 public class OcrTestController {
 
     private final OcrClient ocrClient;
-    private  final OcrService ocrService;
+    private final OcrService ocrService;
+    private final SupabaseStorageService supabaseStorageService;
 
-
-    @GetMapping("/test")
-    public ResponseEntity<NormalizedOcrResultDto> testOcr() {
-        String imageUrl ="https://ytpspmmgeaxouldfeovf.supabase.co/storage/v1/object/sign/book/medical2.jpg?token=eyJraWQiOiJzdG9yYWdlLXVybC1zaWduaW5nLWtleV84ZmIxZjAzMy1mYjgxLTQwZWItYWVkZC1mNGFiODFkMDk3YjgiLCJhbGciOiJIUzI1NiJ9.eyJ1cmwiOiJib29rL21lZGljYWwyLmpwZyIsImlhdCI6MTc3NTcyNDkwNywiZXhwIjoxODA3MjYwOTA3fQ.hxmKp6Iw-zySlg5TBjC-wErbip_LOM4UCuLx1UgjFaI";
+    @PostMapping(value = "/test", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<NormalizedOcrResultDto> testOcr(@RequestPart("file") MultipartFile file) {
+        String imageUrl = supabaseStorageService.uploadAndGetSignedUrl(file);
         OcrResultDto result = ocrClient.processPrescription(imageUrl);
         NormalizedOcrResultDto normalizedResult = ocrService.processOcrResult(result);
         return ResponseEntity.ok(normalizedResult);
