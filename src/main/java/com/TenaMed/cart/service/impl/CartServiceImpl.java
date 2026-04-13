@@ -23,10 +23,14 @@ import com.TenaMed.prescription.service.PrescriptionService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Service
 public class CartServiceImpl implements CartService {
@@ -61,6 +65,7 @@ public class CartServiceImpl implements CartService {
     @Transactional
     public CartResponse addItem(UUID userId, AddCartItemRequest request) {
         validateUserId(userId);
+        validatePharmacyId(request.getPharmacyId());
         validateQuantity(request.getQuantity());
 
         Cart cart = getOrCreateActiveCart(userId);
@@ -71,7 +76,7 @@ public class CartServiceImpl implements CartService {
             throw new CartValidationException("Medicine details not found");
         }
 
-        ensureStockAvailable(request.getMedicineId(), request.getQuantity());
+        ensureStockAvailable(request.getPharmacyId(), request.getMedicineId(), request.getQuantity());
 
         if (medicine.isRequiresPrescription()) {
             if (request.getPrescriptionId() == null) {
@@ -82,23 +87,19 @@ public class CartServiceImpl implements CartService {
             }
         }
 
-        Optional<CartItem> existingItem = cart.getItems().stream()
-                .filter(item -> item.getMedicineId().equals(request.getMedicineId()))
-                .filter(item -> {
-                    if (item.getPrescriptionId() == null && request.getPrescriptionId() == null) {
-                        return true;
-                    }
-                    if (item.getPrescriptionId() == null || request.getPrescriptionId() == null) {
-                        return false;
-                    }
-                    return item.getPrescriptionId().equals(request.getPrescriptionId());
-                })
-                .findFirst();
+        Optional<CartItem> existingItem = cartItemRepository.findByCartIdAndMedicineIdAndPharmacyId(
+                cart.getId(),
+                request.getMedicineId(),
+                request.getPharmacyId()
+        );
 
         if (existingItem.isPresent()) {
             CartItem item = existingItem.get();
+            if (!isSamePrescription(item.getPrescriptionId(), request.getPrescriptionId())) {
+                throw new CartValidationException("Cannot change prescription for an existing cart item");
+            }
             int updatedQty = item.getQuantity() + request.getQuantity();
-            ensureStockAvailable(item.getMedicineId(), updatedQty);
+            ensureStockAvailable(item.getPharmacyId(), item.getMedicineId(), updatedQty);
             item.setQuantity(updatedQty);
             item.setUnitPrice(unitPrice);
             item.calculateTotalPrice();
@@ -106,6 +107,7 @@ public class CartServiceImpl implements CartService {
             CartItem item = new CartItem();
             item.setCart(cart);
             item.setMedicineId(request.getMedicineId());
+            item.setPharmacyId(request.getPharmacyId());
             item.setQuantity(request.getQuantity());
             item.setUnitPrice(unitPrice);
             item.setRequiresPrescription(medicine.isRequiresPrescription());
@@ -129,7 +131,7 @@ public class CartServiceImpl implements CartService {
                 .findFirst()
                 .orElseThrow(() -> new CartItemNotFoundException(itemId));
 
-        ensureStockAvailable(item.getMedicineId(), request.getQuantity());
+        ensureStockAvailable(item.getPharmacyId(), item.getMedicineId(), request.getQuantity());
         item.setQuantity(request.getQuantity());
         item.calculateTotalPrice();
 
@@ -189,22 +191,33 @@ public class CartServiceImpl implements CartService {
             throw new CartValidationException("Cart is empty");
         }
 
-        for (CartItem item : cart.getItems()) {
-            ensureStockAvailable(item.getMedicineId(), item.getQuantity());
-            if (Boolean.TRUE.equals(item.getRequiresPrescription())) {
-                if (item.getPrescriptionId() == null) {
-                    throw new CartValidationException("Prescription is required for checkout");
-                }
-                if (!prescriptionService.isPrescriptionValid(item.getPrescriptionId())) {
-                    throw new CartValidationException("Invalid prescription during checkout");
+        Map<UUID, List<CartItem>> itemsByPharmacy = cart.getItems().stream()
+                .collect(Collectors.groupingBy(CartItem::getPharmacyId));
+
+        List<UUID> orderIds = new ArrayList<>();
+
+        for (Map.Entry<UUID, List<CartItem>> pharmacyGroup : itemsByPharmacy.entrySet()) {
+            UUID pharmacyId = pharmacyGroup.getKey();
+            List<CartItem> items = pharmacyGroup.getValue();
+
+            for (CartItem item : items) {
+                ensureStockAvailable(pharmacyId, item.getMedicineId(), item.getQuantity());
+                if (Boolean.TRUE.equals(item.getRequiresPrescription())) {
+                    if (item.getPrescriptionId() == null) {
+                        throw new CartValidationException("Prescription is required for checkout");
+                    }
+                    if (!prescriptionService.isPrescriptionValid(item.getPrescriptionId())) {
+                        throw new CartValidationException("Invalid prescription during checkout");
+                    }
                 }
             }
-        }
 
-        CreateOrderFromCartRequest orderRequest = cartMapper.toOrderRequest(cart);
-        OrderResponse orderResponse = orderService.createOrderFromCart(userId, orderRequest);
-        if (orderResponse == null || orderResponse.getId() == null) {
-            throw new CartValidationException("Failed to create order from cart");
+            CreateOrderFromCartRequest orderRequest = cartMapper.toOrderRequest(pharmacyId, items);
+            OrderResponse orderResponse = orderService.createOrderFromCart(userId, orderRequest);
+            if (orderResponse == null || orderResponse.getId() == null) {
+                throw new CartValidationException("Failed to create order from cart for pharmacy: " + pharmacyId);
+            }
+            orderIds.add(orderResponse.getId());
         }
 
         cart.setStatus(CartStatus.CHECKED_OUT);
@@ -212,7 +225,7 @@ public class CartServiceImpl implements CartService {
         cartRepository.save(cart);
 
         return CheckoutCartResponse.builder()
-            .orderId(orderResponse.getId())
+                .orderIds(orderIds)
                 .message("Cart checked out successfully")
                 .status("SUCCESS")
                 .build();
@@ -271,9 +284,25 @@ public class CartServiceImpl implements CartService {
         }
     }
 
-    private void ensureStockAvailable(UUID medicineId, int quantity) {
-        if (!inventoryService.checkAvailability(medicineId, quantity)) {
-            throw new CartValidationException("Insufficient stock for medicine: " + medicineId);
+    private void validatePharmacyId(UUID pharmacyId) {
+        if (pharmacyId == null) {
+            throw new CartValidationException("pharmacyId is required");
+        }
+    }
+
+    private boolean isSamePrescription(UUID existingPrescriptionId, UUID requestPrescriptionId) {
+        if (existingPrescriptionId == null && requestPrescriptionId == null) {
+            return true;
+        }
+        if (existingPrescriptionId == null || requestPrescriptionId == null) {
+            return false;
+        }
+        return existingPrescriptionId.equals(requestPrescriptionId);
+    }
+
+    private void ensureStockAvailable(UUID pharmacyId, UUID medicineId, int quantity) {
+        if (!inventoryService.checkAvailability(pharmacyId, medicineId, quantity)) {
+            throw new CartValidationException("Insufficient stock for medicine: " + medicineId + " at pharmacy: " + pharmacyId);
         }
     }
 }

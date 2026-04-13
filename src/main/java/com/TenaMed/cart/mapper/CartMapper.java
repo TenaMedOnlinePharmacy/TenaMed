@@ -39,6 +39,7 @@ public class CartMapper {
         return CartItemResponse.builder()
                 .id(item.getId())
                 .medicineId(item.getMedicineId())
+                .pharmacyId(item.getPharmacyId())
                 .quantity(item.getQuantity())
                 .unitPrice(item.getUnitPrice())
                 .totalPrice(item.getTotalPrice())
@@ -49,8 +50,8 @@ public class CartMapper {
                 .build();
     }
 
-        public CreateOrderFromCartRequest toOrderRequest(Cart cart) {
-                List<CreateOrderFromCartRequest.Item> items = cart.getItems().stream()
+    public CreateOrderFromCartRequest toOrderRequest(UUID pharmacyId, List<CartItem> cartItems) {
+                List<CreateOrderFromCartRequest.Item> items = cartItems.stream()
                                 .map(item -> {
                                         CreateOrderFromCartRequest.Item orderItem = new CreateOrderFromCartRequest.Item();
                                         orderItem.setMedicineId(item.getMedicineId());
@@ -62,6 +63,7 @@ public class CartMapper {
                                 .toList();
 
                 CreateOrderFromCartRequest request = new CreateOrderFromCartRequest();
+                                request.setPharmacyId(pharmacyId);
                 request.setItems(items);
                 return request;
     }

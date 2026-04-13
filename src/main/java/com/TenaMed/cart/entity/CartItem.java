@@ -11,6 +11,7 @@ import jakarta.persistence.ManyToOne;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -19,7 +20,12 @@ import java.math.BigDecimal;
 import java.util.UUID;
 
 @Entity
-@Table(name = "cart_item")
+@Table(
+    name = "cart_item",
+    uniqueConstraints = {
+        @UniqueConstraint(name = "uk_cart_item_cart_medicine_pharmacy", columnNames = {"cart_id", "medicine_id", "pharmacy_id"})
+    }
+)
 @Getter
 @Setter
 @NoArgsConstructor
@@ -36,6 +42,9 @@ public class CartItem extends BaseEntity {
 
     @Column(name = "medicine_id", nullable = false)
     private UUID medicineId;
+
+    @Column(name = "pharmacy_id", nullable = false)
+    private UUID pharmacyId;
 
     @Column(name = "quantity", nullable = false)
     private Integer quantity;

@@ -149,9 +149,12 @@ public class OrderServiceImpl implements OrderService {
         if (request == null || request.getItems() == null || request.getItems().isEmpty()) {
             throw new PharmacyValidationException("Cart items are required");
         }
+        if (request.getPharmacyId() == null) {
+            throw new PharmacyValidationException("pharmacyId is required");
+        }
 
-        UUID selectedPharmacyId = resolvePharmacyForCart(request.getItems());
-        Pharmacy pharmacy = pharmacyRepository.findByIdAndStatus(selectedPharmacyId, PharmacyStatus.VERIFIED)
+        UUID selectedPharmacyId = request.getPharmacyId();
+        Pharmacy pharmacy = pharmacyRepository.findByIdAndStatus(request.getPharmacyId(), PharmacyStatus.VERIFIED)
                 .orElseThrow(() -> new PharmacyValidationException("No verified pharmacy found for checkout"));
 
         Order order = new Order();
@@ -201,29 +204,6 @@ public class OrderServiceImpl implements OrderService {
         }
 
         return orderMapper.toResponse(savedOrder);
-    }
-
-    private UUID resolvePharmacyForCart(List<CreateOrderFromCartRequest.Item> items) {
-        Set<UUID> candidatePharmacyIds = null;
-
-        for (CreateOrderFromCartRequest.Item item : items) {
-            List<UUID> pharmaciesForItem = inventoryService.findPharmacyIdsWithAvailableMedicine(item.getMedicineId(), item.getQuantity());
-            if (pharmaciesForItem.isEmpty()) {
-                throw new PharmacyValidationException("No pharmacy has stock for medicine " + item.getMedicineId());
-            }
-
-            if (candidatePharmacyIds == null) {
-                candidatePharmacyIds = new LinkedHashSet<>(pharmaciesForItem);
-            } else {
-                candidatePharmacyIds.retainAll(pharmaciesForItem);
-            }
-
-            if (candidatePharmacyIds == null || candidatePharmacyIds.isEmpty()) {
-                throw new PharmacyValidationException("No single pharmacy can fulfill all cart items");
-            }
-        }
-
-        return candidatePharmacyIds.iterator().next();
     }
 
     private Order fetchOrder(UUID orderId) {

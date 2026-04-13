@@ -13,6 +13,9 @@ public class AddCartItemRequest {
     private UUID medicineId;
 
     @NotNull
+    private UUID pharmacyId;
+
+    @NotNull
     @Min(1)
     private Integer quantity;
 

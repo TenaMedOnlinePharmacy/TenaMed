@@ -12,6 +12,7 @@ import java.util.UUID;
 public class CartItemResponse {
     UUID id;
     UUID medicineId;
+    UUID pharmacyId;
     Integer quantity;
     BigDecimal unitPrice;
     BigDecimal totalPrice;

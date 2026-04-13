@@ -14,6 +14,9 @@ import java.util.UUID;
 @Setter
 public class CreateOrderFromCartRequest {
 
+    @NotNull
+    private UUID pharmacyId;
+
     @NotEmpty
     private List<Item> items;
 
