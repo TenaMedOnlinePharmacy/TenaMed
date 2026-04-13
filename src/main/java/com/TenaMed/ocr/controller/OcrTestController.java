@@ -5,14 +5,21 @@ import com.TenaMed.ocr.dto.OcrResultDto;
 import com.TenaMed.ocr.integration.OcrClient;
 import com.TenaMed.ocr.service.OcrService;
 import com.TenaMed.ocr.service.SupabaseStorageService;
+import com.TenaMed.pharmacy.dto.response.PrescriptionInventoryMatchDto;
+import com.TenaMed.pharmacy.service.PrescriptionInventoryMatchService;
+import com.TenaMed.prescription.verification.service.PrescriptionVerificationService;
+import com.TenaMed.user.security.AuthenticatedUserPrincipal;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
+
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/ocr")
@@ -22,12 +29,15 @@ public class OcrTestController {
     private final OcrClient ocrClient;
     private final OcrService ocrService;
     private final SupabaseStorageService supabaseStorageService;
-
-    @PostMapping(value = "/test", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public ResponseEntity<NormalizedOcrResultDto> testOcr(@RequestPart("file") MultipartFile file) {
+    private final PrescriptionVerificationService prescriptionVerificationService;
+    private final  PrescriptionInventoryMatchService prescriptionInventoryMatchService;
+    @PostMapping(value = "/upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<List<PrescriptionInventoryMatchDto>> upload(@RequestPart("file") MultipartFile file ,@AuthenticationPrincipal AuthenticatedUserPrincipal principal) {
         String imageUrl = supabaseStorageService.uploadAndGetSignedUrl(file);
         OcrResultDto result = ocrClient.processPrescription(imageUrl);
         NormalizedOcrResultDto normalizedResult = ocrService.processOcrResult(result);
-        return ResponseEntity.ok(normalizedResult);
+        prescriptionVerificationService.verify(result.getPrescription().getId(),principal.getUserId());
+        List<PrescriptionInventoryMatchDto> dto = prescriptionInventoryMatchService.findInventoryMatchesByPrescription(result.getPrescription().getId());
+        return ResponseEntity.ok(dto);
     }
 }

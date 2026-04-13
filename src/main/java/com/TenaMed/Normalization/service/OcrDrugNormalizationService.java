@@ -68,7 +68,7 @@ public class OcrDrugNormalizationService {
             MatchType matchType = normalizedItem == null ? MatchType.UNKNOWN : normalizedItem.getMatchType();
                 double confidence = normalizedItem == null ? 0.0 : normalizedItem.getConfidence();
                 double ocrConfidence = ocrResult.getConfidence();
-            boolean needsReview = normalizedItem == null
+                boolean needsReview = normalizedItem == null
                     || normalizedItem.isNeedsReview()
                     || matchType == MatchType.UNKNOWN;
             Integer quantity = ocrItem == null ? null : ocrItem.getQuantity();
