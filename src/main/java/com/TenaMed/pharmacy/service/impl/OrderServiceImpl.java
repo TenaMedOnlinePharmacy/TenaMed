@@ -6,6 +6,7 @@ import com.TenaMed.inventory.entity.Batch;
 import com.TenaMed.inventory.enums.BatchStatus;
 import com.TenaMed.inventory.repository.BatchRepository;
 import com.TenaMed.inventory.repository.InventoryRepository;
+import com.TenaMed.pharmacy.dto.request.CreateOrderFromCartRequest;
 import com.TenaMed.pharmacy.dto.request.CreateOrderRequest;
 import com.TenaMed.pharmacy.dto.response.OrderResponse;
 import com.TenaMed.pharmacy.entity.Order;
@@ -31,8 +32,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -136,6 +139,91 @@ public class OrderServiceImpl implements OrderService {
             order.setStatus(OrderStatus.CANCELLED);
         }
         return orderMapper.toResponse(orderRepository.save(order));
+    }
+
+    @Override
+    public OrderResponse createOrderFromCart(UUID customerId, CreateOrderFromCartRequest request) {
+        if (customerId == null) {
+            throw new PharmacyValidationException("customerId is required");
+        }
+        if (request == null || request.getItems() == null || request.getItems().isEmpty()) {
+            throw new PharmacyValidationException("Cart items are required");
+        }
+
+        UUID selectedPharmacyId = resolvePharmacyForCart(request.getItems());
+        Pharmacy pharmacy = pharmacyRepository.findByIdAndStatus(selectedPharmacyId, PharmacyStatus.VERIFIED)
+                .orElseThrow(() -> new PharmacyValidationException("No verified pharmacy found for checkout"));
+
+        Order order = new Order();
+        order.setCustomerId(customerId);
+        order.setPharmacy(pharmacy);
+        order.setStatus(OrderStatus.PENDING_PAYMENT);
+        order.setPaymentStatus(PaymentStatus.PENDING);
+
+        BigDecimal total = BigDecimal.ZERO;
+        Set<OrderItem> orderItems = new LinkedHashSet<>();
+
+        for (CreateOrderFromCartRequest.Item itemRequest : request.getItems()) {
+            UUID medicineId = itemRequest.getMedicineId();
+            Integer quantity = itemRequest.getQuantity();
+
+            if (!inventoryService.checkAvailability(selectedPharmacyId, medicineId, quantity)) {
+                throw new PharmacyValidationException("Insufficient stock for medicine " + medicineId);
+            }
+
+            UUID inventoryId = inventoryRepository.findByPharmacyIdAndMedicineId(selectedPharmacyId, medicineId)
+                    .map(inv -> inv.getId())
+                    .orElseThrow(() -> new PharmacyValidationException("Inventory not found for medicine " + medicineId));
+
+            OrderItem orderItem = new OrderItem();
+            orderItem.setOrder(order);
+            orderItem.setInventoryId(inventoryId);
+            orderItem.setMedicineId(medicineId);
+            orderItem.setQuantity(quantity);
+            orderItem.setUnitPrice(itemRequest.getUnitPrice());
+            orderItems.add(orderItem);
+
+            total = total.add(itemRequest.getUnitPrice().multiply(BigDecimal.valueOf(quantity)));
+        }
+
+        order.setTotalAmount(total);
+        Order savedOrder = orderRepository.save(order);
+
+        orderItems.forEach(item -> item.setOrder(savedOrder));
+        List<OrderItem> savedItems = orderItemRepository.saveAll(orderItems.stream().toList());
+        savedOrder.getItems().addAll(savedItems);
+
+        for (OrderItem orderItem : savedItems) {
+            boolean reserved = inventoryService.reserveStock(selectedPharmacyId, orderItem.getMedicineId(), orderItem.getQuantity(), savedOrder.getId());
+            if (!reserved) {
+                throw new PharmacyValidationException("Unable to reserve stock for medicine " + orderItem.getMedicineId());
+            }
+        }
+
+        return orderMapper.toResponse(savedOrder);
+    }
+
+    private UUID resolvePharmacyForCart(List<CreateOrderFromCartRequest.Item> items) {
+        Set<UUID> candidatePharmacyIds = null;
+
+        for (CreateOrderFromCartRequest.Item item : items) {
+            List<UUID> pharmaciesForItem = inventoryService.findPharmacyIdsWithAvailableMedicine(item.getMedicineId(), item.getQuantity());
+            if (pharmaciesForItem.isEmpty()) {
+                throw new PharmacyValidationException("No pharmacy has stock for medicine " + item.getMedicineId());
+            }
+
+            if (candidatePharmacyIds == null) {
+                candidatePharmacyIds = new LinkedHashSet<>(pharmaciesForItem);
+            } else {
+                candidatePharmacyIds.retainAll(pharmaciesForItem);
+            }
+
+            if (candidatePharmacyIds == null || candidatePharmacyIds.isEmpty()) {
+                throw new PharmacyValidationException("No single pharmacy can fulfill all cart items");
+            }
+        }
+
+        return candidatePharmacyIds.iterator().next();
     }
 
     private Order fetchOrder(UUID orderId) {

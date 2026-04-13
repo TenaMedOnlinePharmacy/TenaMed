@@ -5,11 +5,14 @@ import com.TenaMed.pharmacy.enums.PharmacyStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 public interface PharmacyRepository extends JpaRepository<Pharmacy, UUID> {
 
     List<Pharmacy> findByStatus(PharmacyStatus status);
+
+    Optional<Pharmacy> findByIdAndStatus(UUID id, PharmacyStatus status);
 
     boolean existsByLicenseNumberIgnoreCase(String licenseNumber);
 

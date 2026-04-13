@@ -37,6 +37,25 @@ public class PrescriptionServiceImpl implements PrescriptionService {
         return prescriptionRepository.findById(id).orElse(null);
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public boolean isPrescriptionValid(UUID id) {
+        Prescription prescription = getPrescription(id);
+        if (prescription == null) {
+            return false;
+        }
+
+        if (Boolean.FALSE.equals(prescription.getIsVerified())) {
+            return false;
+        }
+
+        if (Boolean.TRUE.equals(prescription.getIsUsed())) {
+            return false;
+        }
+
+        return prescription.getExpiryDate() == null || !prescription.getExpiryDate().isBefore(LocalDate.now());
+    }
+
     private LocalDate parseToLocalDate(String value) {
         if (value == null || value.isBlank()) {
             return null;

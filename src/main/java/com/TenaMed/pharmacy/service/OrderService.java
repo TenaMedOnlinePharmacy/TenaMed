@@ -1,6 +1,7 @@
 package com.TenaMed.pharmacy.service;
 
 import com.TenaMed.pharmacy.dto.request.CreateOrderRequest;
+import com.TenaMed.pharmacy.dto.request.CreateOrderFromCartRequest;
 import com.TenaMed.pharmacy.dto.response.OrderResponse;
 import com.TenaMed.pharmacy.enums.PaymentStatus;
 import com.TenaMed.pharmacy.enums.StaffRole;
@@ -16,4 +17,6 @@ public interface OrderService {
     OrderResponse rejectOrder(UUID orderId, String rejectionReason);
 
     OrderResponse updatePaymentStatus(UUID orderId, PaymentStatus paymentStatus);
+
+    OrderResponse createOrderFromCart(UUID customerId, CreateOrderFromCartRequest request);
 }

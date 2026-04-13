@@ -21,6 +21,7 @@ import com.TenaMed.inventory.service.InventoryService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
@@ -100,6 +101,40 @@ public class InventoryServiceImpl implements InventoryService {
         return inventoryRepository.findByPharmacyIdAndMedicineId(pharmacyId, medicineId)
             .map(inventory -> (inventory.getTotalQuantity() - inventory.getReservedQuantity()) >= quantity)
             .orElse(false);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public boolean checkAvailability(UUID medicineId, Integer quantity) {
+        if (medicineId == null || quantity == null || quantity <= 0) {
+            return false;
+        }
+        return inventoryRepository.existsAvailableByMedicineId(medicineId, quantity);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<UUID> findPharmacyIdsWithAvailableMedicine(UUID medicineId, Integer quantity) {
+        if (medicineId == null || quantity == null || quantity <= 0) {
+            return List.of();
+        }
+        return inventoryRepository.findPharmacyIdsWithAvailableMedicine(medicineId, quantity);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public BigDecimal resolveUnitPrice(UUID medicineId) {
+        if (medicineId == null) {
+            return null;
+        }
+
+        return inventoryRepository.findByMedicineIdIn(List.of(medicineId)).stream()
+                .flatMap(inventory -> batchRepository.findByInventoryIdAndStatusOrderByExpiryDateAsc(inventory.getId(), BatchStatus.ACTIVE).stream())
+                .filter(batch -> batch.getQuantity() != null && batch.getQuantity() > 0)
+                .map(Batch::getSellingPrice)
+                .filter(price -> price != null)
+                .min(BigDecimal::compareTo)
+                .orElse(null);
     }
 
     @Override
