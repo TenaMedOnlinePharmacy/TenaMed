@@ -5,6 +5,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.Optional;
@@ -15,6 +16,7 @@ public interface PrescriptionRepository extends JpaRepository<Prescription, UUID
     Optional<Prescription> findById(UUID id);
 
     @Modifying
+    @Transactional
     @Query("""
             UPDATE Prescription p
             SET p.ocrSuccess = :ocrSuccess,
@@ -27,17 +29,19 @@ public interface PrescriptionRepository extends JpaRepository<Prescription, UUID
             @Param("confidenceScore") Double confidenceScore
     );
 
-        @Modifying
-        @Query("""
+    @Modifying
+    @Transactional
+    @Query("""
             UPDATE Prescription p
             SET p.status = 'PROCESSING',
                 p.rejectionReason = null
             WHERE p.id = :id
             """)
-        int markProcessing(@Param("id") UUID id);
+    int markProcessing(@Param("id") UUID id);
 
-        @Modifying
-        @Query("""
+    @Modifying
+    @Transactional
+    @Query("""
             UPDATE Prescription p
             SET p.status = 'FAILED',
                 p.rejectionReason = :errorMessage,
@@ -46,13 +50,14 @@ public interface PrescriptionRepository extends JpaRepository<Prescription, UUID
                 p.verifiedAt = null
             WHERE p.id = :id
             """)
-        int markFailed(
+    int markFailed(
             @Param("id") UUID id,
             @Param("errorMessage") String errorMessage
-        );
+    );
 
-        @Modifying
-        @Query("""
+    @Modifying
+    @Transactional
+    @Query("""
             UPDATE Prescription p
             SET p.status = 'VERIFIED',
             p.isVerified = true,
@@ -62,14 +67,15 @@ public interface PrescriptionRepository extends JpaRepository<Prescription, UUID
             p.rejectionReason = null
             WHERE p.id = :id
             """)
-        int markVerified(
+    int markVerified(
             @Param("id") UUID id,
             @Param("verifiedBy") UUID verifiedBy,
             @Param("verifiedAt") LocalDateTime verifiedAt
-        );
+    );
 
-        @Modifying
-        @Query("""
+    @Modifying
+    @Transactional
+    @Query("""
             UPDATE Prescription p
             SET p.status = 'PENDING_MANUAL_REVIEW',
             p.reviewReason = :reviewReason,
@@ -78,13 +84,14 @@ public interface PrescriptionRepository extends JpaRepository<Prescription, UUID
             p.verifiedAt = null
             WHERE p.id = :id
             """)
-        int markPendingManualReview(
+    int markPendingManualReview(
             @Param("id") UUID id,
             @Param("reviewReason") String reviewReason
-        );
+    );
 
-        @Modifying
-        @Query("""
+    @Modifying
+    @Transactional
+    @Query("""
             UPDATE Prescription p
             SET p.status = 'REJECTED',
             p.rejectionReason = :rejectionReason,
@@ -93,9 +100,9 @@ public interface PrescriptionRepository extends JpaRepository<Prescription, UUID
             p.verifiedAt = null
             WHERE p.id = :id
             """)
-        int markRejected(
+    int markRejected(
             @Param("id") UUID id,
             @Param("rejectionReason") String rejectionReason,
             @Param("verifiedBy") UUID verifiedBy
-        );
+    );
 }

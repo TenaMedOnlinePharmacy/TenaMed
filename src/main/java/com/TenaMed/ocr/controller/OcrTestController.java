@@ -14,6 +14,8 @@ import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
+
 @RestController
 @RequestMapping("/api/ocr")
 @RequiredArgsConstructor
@@ -24,7 +26,7 @@ public class OcrTestController {
     private final PrescriptionService prescriptionService;
 
     @PostMapping(value = "/upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public ResponseEntity<OcrUploadResponseDto> upload(@RequestPart("file") MultipartFile file) {
+    public ResponseEntity<OcrUploadResponseDto> upload(@RequestPart("file") MultipartFile file){
         String imageUrl = supabaseStorageService.uploadAndGetSignedUrl(file);
         Prescription prescription = prescriptionService.createUploadedPrescription();
         prescriptionPipelineService.startPipeline(imageUrl, prescription.getId());
