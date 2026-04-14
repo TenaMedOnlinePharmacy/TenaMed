@@ -30,6 +30,30 @@ public interface PrescriptionRepository extends JpaRepository<Prescription, UUID
         @Modifying
         @Query("""
             UPDATE Prescription p
+            SET p.status = 'PROCESSING',
+                p.rejectionReason = null
+            WHERE p.id = :id
+            """)
+        int markProcessing(@Param("id") UUID id);
+
+        @Modifying
+        @Query("""
+            UPDATE Prescription p
+            SET p.status = 'FAILED',
+                p.rejectionReason = :errorMessage,
+                p.isVerified = false,
+                p.verifiedBy = null,
+                p.verifiedAt = null
+            WHERE p.id = :id
+            """)
+        int markFailed(
+            @Param("id") UUID id,
+            @Param("errorMessage") String errorMessage
+        );
+
+        @Modifying
+        @Query("""
+            UPDATE Prescription p
             SET p.status = 'VERIFIED',
             p.isVerified = true,
             p.verifiedBy = :verifiedBy,

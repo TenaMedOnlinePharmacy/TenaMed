@@ -23,6 +23,27 @@ public class PrescriptionServiceImpl implements PrescriptionService {
     }
 
     @Override
+    public Prescription createUploadedPrescription() {
+        Prescription prescription = new Prescription();
+        prescription.setType(PrescriptionType.UPLOADED);
+        prescription.setStatus("UPLOADED");
+        prescription.setIsVerified(false);
+        return prescriptionRepository.save(prescription);
+    }
+
+    @Override
+    public Prescription attachOcrDates(UUID id, String createdDate, String expirationDate) {
+        Prescription prescription = prescriptionRepository.findById(id).orElse(null);
+        if (prescription == null) {
+            return null;
+        }
+
+        prescription.setIssueDate(parseToLocalDate(createdDate));
+        prescription.setExpiryDate(parseToLocalDate(expirationDate));
+        return prescriptionRepository.save(prescription);
+    }
+
+    @Override
     public Prescription createFromOcrDates(String createdDate, String expirationDate) {
         Prescription prescription = new Prescription();
         prescription.setIssueDate(parseToLocalDate(createdDate));

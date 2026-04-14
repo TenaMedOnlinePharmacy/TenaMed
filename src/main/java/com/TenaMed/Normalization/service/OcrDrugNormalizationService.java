@@ -13,7 +13,6 @@ import com.TenaMed.ocr.dto.MedicineOcrItem;
 import com.TenaMed.ocr.dto.OcrResultDto;
 import com.TenaMed.prescription.entity.Prescription;
 import com.TenaMed.prescription.repository.PrescriptionRepository;
-import com.TenaMed.verification.service.PrescriptionVerificationService;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.stereotype.Service;
 
@@ -28,20 +27,17 @@ public class OcrDrugNormalizationService {
     private final PrescriptionRepository prescriptionRepository;
     private final PrescriptionItemRepository prescriptionItemRepository;
     private final MedicineRepository medicineRepository;
-    private final PrescriptionVerificationService prescriptionVerificationService;
 
     public OcrDrugNormalizationService(
             DrugNormalizationService drugNormalizationService,
             PrescriptionRepository prescriptionRepository,
             PrescriptionItemRepository prescriptionItemRepository,
-            MedicineRepository medicineRepository,
-            PrescriptionVerificationService prescriptionVerificationService
+            MedicineRepository medicineRepository
     ) {
         this.drugNormalizationService = drugNormalizationService;
         this.prescriptionRepository = prescriptionRepository;
         this.prescriptionItemRepository = prescriptionItemRepository;
         this.medicineRepository = medicineRepository;
-        this.prescriptionVerificationService = prescriptionVerificationService;
     }
 
     @Transactional
@@ -66,17 +62,17 @@ public class OcrDrugNormalizationService {
             String originalName = ocrItem == null ? null : ocrItem.getName();
             String normalizedName = normalizedItem == null ? null : normalizedItem.getNormalizedName();
             MatchType matchType = normalizedItem == null ? MatchType.UNKNOWN : normalizedItem.getMatchType();
-                double confidence = normalizedItem == null ? 0.0 : normalizedItem.getConfidence();
-                double ocrConfidence = ocrResult.getConfidence();
-                boolean needsReview = normalizedItem == null
+            double confidence = normalizedItem == null ? 0.0 : normalizedItem.getConfidence();
+            double ocrConfidence = ocrResult.getConfidence();
+            boolean needsReview = normalizedItem == null
                     || normalizedItem.isNeedsReview()
                     || matchType == MatchType.UNKNOWN;
             Integer quantity = ocrItem == null ? null : ocrItem.getQuantity();
             String instruction = ocrItem == null ? null : ocrItem.getInstruction();
 
-                if (normalizedItem != null) {
+            if (normalizedItem != null) {
                 normalizedItem.setOcrConfidence(ocrConfidence);
-                }
+            }
 
             merged.add(new NormalizedOcrMedicineItem(
                     originalName,
@@ -90,23 +86,29 @@ public class OcrDrugNormalizationService {
             ));
         }
 
-        persistPrescriptionOutcome(ocrResult, ocrMedicines, normalized);
-
         return new NormalizedOcrResultDto(ocrResult.isSuccess(), ocrResult.getConfidence(), merged);
     }
 
-    private void persistPrescriptionOutcome(
+    @Transactional
+    public void persistPrescriptionOutcome(
             OcrResultDto ocrResult,
-            List<MedicineOcrItem> ocrMedicines,
-            List<NormalizedMedicine> normalized
+            NormalizedOcrResultDto normalizedResult
     ) {
+        if (ocrResult == null || normalizedResult == null) {
+            return;
+        }
+
         Prescription prescription = ocrResult.getPrescription();
         if (prescription == null || prescription.getId() == null) {
             return;
         }
 
+        List<NormalizedOcrMedicineItem> normalizedMedicines = normalizedResult.getMedicines() == null
+                ? List.of()
+                : normalizedResult.getMedicines();
+
         UUID prescriptionId = prescription.getId();
-        double avgNormalizedConfidence = averageNormalizedConfidence(normalized);
+        double avgNormalizedConfidence = averageNormalizedConfidence(normalizedMedicines);
         double prescriptionConfidenceScore = (avgNormalizedConfidence + ocrResult.getConfidence()) / 2.0;
 
         prescriptionRepository.updateOcrOutcomeById(
@@ -116,11 +118,8 @@ public class OcrDrugNormalizationService {
         );
 
         prescriptionItemRepository.deleteByPrescriptionId(prescriptionId);
-        for (int i = 0; i < ocrMedicines.size(); i++) {
-            MedicineOcrItem ocrItem = ocrMedicines.get(i);
-            NormalizedMedicine normalizedItem = i < normalized.size() ? normalized.get(i) : null;
-
-            String originalName = ocrItem == null ? null : ocrItem.getName();
+        for (NormalizedOcrMedicineItem normalizedItem : normalizedMedicines) {
+            String originalName = normalizedItem == null ? null : normalizedItem.getOriginalName();
             String normalizedName = normalizedItem == null ? null : normalizedItem.getNormalizedName();
             if ((originalName == null || originalName.isBlank())
                     && (normalizedName == null || normalizedName.isBlank())) {
@@ -138,12 +137,10 @@ public class OcrDrugNormalizationService {
             PrescriptionItem item = new PrescriptionItem();
             item.setPrescription(prescription);
             item.setMedicine(medicine);
-            item.setQuantity(ocrItem == null ? null : ocrItem.getQuantity());
-            item.setInstructions(ocrItem == null ? null : ocrItem.getInstruction());
+            item.setQuantity(normalizedItem == null ? null : normalizedItem.getQuantity());
+            item.setInstructions(normalizedItem == null ? null : normalizedItem.getInstruction());
             prescriptionItemRepository.save(item);
         }
-
-        prescriptionVerificationService.verify(prescriptionId);
     }
 
     private Medicine findMedicineByName(String name) {
@@ -155,14 +152,14 @@ public class OcrDrugNormalizationService {
         return found == null ? null : found.orElse(null);
     }
 
-    private double averageNormalizedConfidence(List<NormalizedMedicine> normalized) {
+    private double averageNormalizedConfidence(List<NormalizedOcrMedicineItem> normalized) {
         if (normalized == null || normalized.isEmpty()) {
             return 0.0;
         }
 
         double total = 0.0;
         int count = 0;
-        for (NormalizedMedicine item : normalized) {
+        for (NormalizedOcrMedicineItem item : normalized) {
             if (item == null) {
                 continue;
             }

@@ -18,7 +18,7 @@ public class VerificationEngine {
 	}
 
 	@Value("${ocr.confidence-threshold}")
-	private int ocrConfidenceThreshold;
+	private double ocrConfidenceThreshold;
 
 	public boolean isLowConfidence(double confidence) {
 		return confidence < ocrConfidenceThreshold;

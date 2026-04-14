@@ -32,7 +32,7 @@ public class VerificationController {
 	@PostMapping("/{id}/process")
 	public VerificationResponseDto process(@PathVariable("id") UUID id,
 										 @AuthenticationPrincipal AuthenticatedUserPrincipal principal) {
-		return prescriptionVerificationService.verify(id, principal.getUserId());
+		return prescriptionVerificationService.verify(id);
 	}
 
 	@PostMapping("/{id}/approve")

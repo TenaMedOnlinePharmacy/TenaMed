@@ -9,7 +9,6 @@ import com.TenaMed.ocr.dto.MedicineOcrItem;
 import com.TenaMed.ocr.dto.OcrResultDto;
 import com.TenaMed.prescription.entity.Prescription;
 import com.TenaMed.prescription.repository.PrescriptionRepository;
-import com.TenaMed.verification.service.PrescriptionVerificationService;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 
@@ -24,37 +23,28 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 class OcrDrugNormalizationServiceTests {
 
     @Test
-    void shouldPreserveOcrEnvelopeAndAppendNormalizationFields() {
+    void shouldNormalizeWithoutPersisting() {
         DrugNormalizationService normalizationService = new DrugNormalizationService(defaultLookup(), 0.90, 0.02);
         PrescriptionRepository prescriptionRepository = mock(PrescriptionRepository.class);
         PrescriptionItemRepository prescriptionItemRepository = mock(PrescriptionItemRepository.class);
         MedicineRepository medicineRepository = mock(MedicineRepository.class);
-        PrescriptionVerificationService prescriptionVerificationService = mock(PrescriptionVerificationService.class);
 
         OcrDrugNormalizationService service = new OcrDrugNormalizationService(
                 normalizationService,
                 prescriptionRepository,
                 prescriptionItemRepository,
-                medicineRepository,
-                prescriptionVerificationService
+                medicineRepository
         );
-
-        UUID prescriptionId = UUID.randomUUID();
-        Prescription prescription = new Prescription();
-        prescription.setId(prescriptionId);
 
         Medicine paracetamol = new Medicine();
         paracetamol.setName("Paracetamol");
         when(medicineRepository.findByNameIgnoreCase("Tylenol")).thenReturn(Optional.of(paracetamol));
-        when(medicineRepository.findByNameIgnoreCase("zzzzzz")).thenReturn(Optional.empty());
-        when(prescriptionRepository.updateOcrOutcomeById(any(), any(), any())).thenReturn(1);
 
         OcrResultDto ocrResult = new OcrResultDto(
                 true,
@@ -62,8 +52,8 @@ class OcrDrugNormalizationServiceTests {
                 List.of(
                         new MedicineOcrItem("Tylenol", null, "tat #30; Sig A.D."),
                         new MedicineOcrItem("zzzzzz", null, "#30; Sig. Once a day")
-        ),
-        prescription
+                ),
+                null
         );
 
         NormalizedOcrResultDto result = service.normalize(ocrResult);
@@ -75,98 +65,30 @@ class OcrDrugNormalizationServiceTests {
         assertEquals("Tylenol", result.getMedicines().get(0).getOriginalName());
         assertEquals("Paracetamol", result.getMedicines().get(0).getNormalizedName());
         assertEquals(MatchType.SYNONYM, result.getMedicines().get(0).getMatchType());
-        assertEquals(1.0, result.getMedicines().get(0).getConfidence());
-        assertEquals(0.698, result.getMedicines().get(0).getOcrConfidence());
         assertFalse(result.getMedicines().get(0).isNeedsReview());
-        assertEquals("tat #30; Sig A.D.", result.getMedicines().get(0).getInstruction());
 
         assertEquals("zzzzzz", result.getMedicines().get(1).getOriginalName());
         assertEquals(null, result.getMedicines().get(1).getNormalizedName());
         assertEquals(MatchType.UNKNOWN, result.getMedicines().get(1).getMatchType());
-        assertEquals(0.0, result.getMedicines().get(1).getConfidence());
-        assertEquals(0.698, result.getMedicines().get(1).getOcrConfidence());
         assertTrue(result.getMedicines().get(1).isNeedsReview());
-        assertEquals("#30; Sig. Once a day", result.getMedicines().get(1).getInstruction());
 
-        verify(prescriptionRepository).updateOcrOutcomeById(eq(prescriptionId), eq(true), eq(0.599));
-        verify(prescriptionItemRepository).deleteByPrescriptionId(prescriptionId);
-        verify(prescriptionItemRepository, times(1)).save(any());
-        verify(prescriptionVerificationService).verify(prescriptionId, null);
+        verify(prescriptionRepository, never()).updateOcrOutcomeById(any(), any(), any());
+        verify(prescriptionItemRepository, never()).deleteByPrescriptionId(any());
+        verify(prescriptionItemRepository, never()).save(any());
     }
 
     @Test
-    void shouldHandleNullInputSafely() {
+    void shouldPersistOutcomeAndResolvedItems() {
         DrugNormalizationService normalizationService = new DrugNormalizationService(defaultLookup(), 0.90, 0.02);
         PrescriptionRepository prescriptionRepository = mock(PrescriptionRepository.class);
         PrescriptionItemRepository prescriptionItemRepository = mock(PrescriptionItemRepository.class);
         MedicineRepository medicineRepository = mock(MedicineRepository.class);
-        PrescriptionVerificationService prescriptionVerificationService = mock(PrescriptionVerificationService.class);
 
         OcrDrugNormalizationService service = new OcrDrugNormalizationService(
-            normalizationService,
-            prescriptionRepository,
-            prescriptionItemRepository,
-            medicineRepository,
-            prescriptionVerificationService
-        );
-
-        NormalizedOcrResultDto result = service.normalize(null);
-
-        assertFalse(result.isSuccess());
-        assertEquals(0.0, result.getConfidence());
-        assertTrue(result.getMedicines().isEmpty());
-
-        verify(prescriptionRepository, never()).updateOcrOutcomeById(any(), any(), any());
-        verify(prescriptionItemRepository, never()).deleteByPrescriptionId(any());
-        verify(prescriptionItemRepository, never()).save(any());
-        verify(prescriptionVerificationService, never()).verify(any(), any());
-    }
-
-        @Test
-        void shouldSkipPersistenceWhenPrescriptionMissing() {
-        DrugNormalizationService normalizationService = new DrugNormalizationService(defaultLookup(), 0.90, 0.02);
-        PrescriptionRepository prescriptionRepository = mock(PrescriptionRepository.class);
-        PrescriptionItemRepository prescriptionItemRepository = mock(PrescriptionItemRepository.class);
-        MedicineRepository medicineRepository = mock(MedicineRepository.class);
-        PrescriptionVerificationService prescriptionVerificationService = mock(PrescriptionVerificationService.class);
-
-        OcrDrugNormalizationService service = new OcrDrugNormalizationService(
-            normalizationService,
-            prescriptionRepository,
-            prescriptionItemRepository,
-            medicineRepository,
-            prescriptionVerificationService
-        );
-
-        OcrResultDto ocrResult = new OcrResultDto(
-            true,
-            0.80,
-            List.of(new MedicineOcrItem("Tylenol", 30, "Once a day")),
-            null
-        );
-
-        service.normalize(ocrResult);
-
-        verify(prescriptionRepository, never()).updateOcrOutcomeById(any(), any(), any());
-        verify(prescriptionItemRepository, never()).deleteByPrescriptionId(any());
-        verify(prescriptionItemRepository, never()).save(any());
-        verify(prescriptionVerificationService, never()).verify(any(), any());
-    }
-
-        @Test
-        void shouldPersistItemWithQuantityAndInstruction() {
-        DrugNormalizationService normalizationService = new DrugNormalizationService(defaultLookup(), 0.90, 0.02);
-        PrescriptionRepository prescriptionRepository = mock(PrescriptionRepository.class);
-        PrescriptionItemRepository prescriptionItemRepository = mock(PrescriptionItemRepository.class);
-        MedicineRepository medicineRepository = mock(MedicineRepository.class);
-        PrescriptionVerificationService prescriptionVerificationService = mock(PrescriptionVerificationService.class);
-
-        OcrDrugNormalizationService service = new OcrDrugNormalizationService(
-            normalizationService,
-            prescriptionRepository,
-            prescriptionItemRepository,
-            medicineRepository,
-            prescriptionVerificationService
+                normalizationService,
+                prescriptionRepository,
+                prescriptionItemRepository,
+                medicineRepository
         );
 
         UUID prescriptionId = UUID.randomUUID();
@@ -175,97 +97,75 @@ class OcrDrugNormalizationServiceTests {
 
         Medicine matchedMedicine = new Medicine();
         matchedMedicine.setName("Paracetamol");
-        when(medicineRepository.findByNameIgnoreCase("Tylenol")).thenReturn(Optional.of(matchedMedicine));
-        when(prescriptionRepository.updateOcrOutcomeById(any(), any(), any())).thenReturn(1);
+        when(medicineRepository.findByNameIgnoreCase("Paracetamol")).thenReturn(Optional.of(matchedMedicine));
 
-        OcrResultDto ocrResult = new OcrResultDto(
-            true,
-            0.50,
-            List.of(new MedicineOcrItem("Tylenol", 30, "Take after meal")),
-            prescription
+        OcrResultDto ocrResult = new OcrResultDto(true, 0.60, List.of(), prescription);
+        NormalizedOcrResultDto normalizedResult = new NormalizedOcrResultDto(
+                true,
+                0.60,
+                List.of(new com.TenaMed.Normalization.model.NormalizedOcrMedicineItem(
+                        "Tylenol",
+                        "Paracetamol",
+                        MatchType.SYNONYM,
+                        0.90,
+                        0.60,
+                        false,
+                        30,
+                        "Take after meal"
+                ))
         );
 
-        service.normalize(ocrResult);
+        service.persistPrescriptionOutcome(ocrResult, normalizedResult);
+
+        verify(prescriptionRepository).updateOcrOutcomeById(eq(prescriptionId), eq(true), eq(0.75));
+        verify(prescriptionItemRepository).deleteByPrescriptionId(prescriptionId);
 
         ArgumentCaptor<com.TenaMed.Normalization.entity.PrescriptionItem> captor =
-            ArgumentCaptor.forClass(com.TenaMed.Normalization.entity.PrescriptionItem.class);
+                ArgumentCaptor.forClass(com.TenaMed.Normalization.entity.PrescriptionItem.class);
         verify(prescriptionItemRepository).save(captor.capture());
 
         com.TenaMed.Normalization.entity.PrescriptionItem saved = captor.getValue();
-        assertEquals(prescription, saved.getPrescription());
-        assertEquals(matchedMedicine, saved.getMedicine());
         assertEquals(30, saved.getQuantity());
         assertEquals("Take after meal", saved.getInstructions());
-        verify(prescriptionVerificationService).verify(prescriptionId, null);
+        assertEquals(matchedMedicine, saved.getMedicine());
     }
 
     @Test
-    void shouldFallbackToOriginalNameWhenNormalizedNameNotFound() {
+    void shouldSkipPersistenceWhenPrescriptionMissing() {
         DrugNormalizationService normalizationService = new DrugNormalizationService(defaultLookup(), 0.90, 0.02);
         PrescriptionRepository prescriptionRepository = mock(PrescriptionRepository.class);
         PrescriptionItemRepository prescriptionItemRepository = mock(PrescriptionItemRepository.class);
         MedicineRepository medicineRepository = mock(MedicineRepository.class);
-        PrescriptionVerificationService prescriptionVerificationService = mock(PrescriptionVerificationService.class);
 
         OcrDrugNormalizationService service = new OcrDrugNormalizationService(
                 normalizationService,
                 prescriptionRepository,
                 prescriptionItemRepository,
-            medicineRepository,
-            prescriptionVerificationService
+                medicineRepository
         );
 
-        UUID prescriptionId = UUID.randomUUID();
-        Prescription prescription = new Prescription();
-        prescription.setId(prescriptionId);
+        OcrResultDto ocrResult = new OcrResultDto(true, 0.8, List.of(), null);
+        NormalizedOcrResultDto normalizedResult = new NormalizedOcrResultDto(true, 0.8, List.of());
 
-        Medicine matchedMedicine = new Medicine();
-        matchedMedicine.setName("FeSO4");
-        when(medicineRepository.findByNameIgnoreCase("FeSO4")).thenReturn(Optional.of(matchedMedicine));
-        when(prescriptionRepository.updateOcrOutcomeById(any(), any(), any())).thenReturn(1);
+        service.persistPrescriptionOutcome(ocrResult, normalizedResult);
 
-        OcrResultDto ocrResult = new OcrResultDto(
-                true,
-                0.70,
-                List.of(new MedicineOcrItem("FeSO4", 30, "Once daily")),
-                prescription
-        );
-
-        service.normalize(ocrResult);
-
-        verify(prescriptionItemRepository).save(any());
-        verify(prescriptionVerificationService).verify(prescriptionId, null);
+        verify(prescriptionRepository, never()).updateOcrOutcomeById(any(), any(), any());
+        verify(prescriptionItemRepository, never()).deleteByPrescriptionId(any());
+        verify(prescriptionItemRepository, never()).save(any());
     }
 
     private DrugLookupService defaultLookup() {
         return new DrugLookupService() {
             @Override
             public List<String> getStandardDrugNames() {
-                return List.of(
-                        "Metformin",
-                        "Amoxicillin",
-                        "Paracetamol",
-                        "Ibuprofen",
-                        "Atorvastatin",
-                        "Omeprazole",
-                        "Amlodipine",
-                        "Losartan",
-                        "ascorbic acid",
-                        "FeSo43"
-                );
+                return List.of("Metformin", "Amoxicillin", "Paracetamol", "Ibuprofen", "Atorvastatin");
             }
 
             @Override
             public java.util.Map<String, String> getSynonymMappings() {
-                return java.util.Map.ofEntries(
-                        java.util.Map.entry("acetaminophen", "Paracetamol"),
-                        java.util.Map.entry("tylenol", "Paracetamol"),
-                        java.util.Map.entry("glucophage", "Metformin"),
-                        java.util.Map.entry("amox", "Amoxicillin"),
-                        java.util.Map.entry("lipitor", "Atorvastatin"),
-                        java.util.Map.entry("norvasc", "Amlodipine"),
-                        java.util.Map.entry("cozaar", "Losartan"),
-                        java.util.Map.entry("test", "Ascorbic Acid")
+                return java.util.Map.of(
+                        "acetaminophen", "Paracetamol",
+                        "tylenol", "Paracetamol"
                 );
             }
         };

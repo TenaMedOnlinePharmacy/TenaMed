@@ -7,6 +7,8 @@ import com.TenaMed.ocr.integration.OcrClient;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
+import java.util.UUID;
+
 @Service
 public class OcrService {
 
@@ -23,8 +25,8 @@ public class OcrService {
         this.ocrDrugNormalizationService = ocrDrugNormalizationService;
     }
 
-    public OcrResultDto process(String imageUrl) {
-        OcrResultDto result = ocrClient.processPrescription(imageUrl);
+    public OcrResultDto process(String imageUrl, UUID prescriptionId) {
+        OcrResultDto result = ocrClient.processPrescription(imageUrl, prescriptionId);
 
         if (result == null) {
             return new OcrResultDto(false, 0.0, java.util.List.of(), null);

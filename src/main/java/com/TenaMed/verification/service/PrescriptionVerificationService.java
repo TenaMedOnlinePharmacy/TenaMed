@@ -1,5 +1,7 @@
 package com.TenaMed.verification.service;
 
+import com.TenaMed.Normalization.model.NormalizedOcrMedicineItem;
+import com.TenaMed.Normalization.model.NormalizedOcrResultDto;
 import com.TenaMed.Normalization.entity.PrescriptionItem;
 import com.TenaMed.Normalization.repository.PrescriptionItemRepository;
 import com.TenaMed.medicine.entity.Medicine;
@@ -14,6 +16,7 @@ import com.TenaMed.verification.exception.VerificationException;
 import com.TenaMed.verification.event.PrescriptionVerifiedEvent;
 import com.TenaMed.verification.workflow.VerificationEngine;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -31,6 +34,11 @@ public class PrescriptionVerificationService {
 	private final MedicineRepository medicineRepository;
 	private final VerificationEngine verificationEngine;
 	private final ApplicationEventPublisher publisher;
+
+	@Value("${pipeline.normalized-confidence-threshold}")
+	private double normalizedConfidenceThreshold;
+
+	public record NormalizedResultCheck(boolean valid, String reason) {}
 
 	public PrescriptionVerificationService(PrescriptionRepository prescriptionRepository,
 									   PrescriptionItemRepository prescriptionItemRepository,
@@ -112,5 +120,27 @@ public class PrescriptionVerificationService {
 		prescriptionItemRepository.deleteByPrescriptionId(prescriptionId);
 		prescriptionItemRepository.saveAll(toSave);
 		log.info("Prescription items validated and saved: prescriptionId={} itemCount={}", prescriptionId, toSave.size());
+	}
+
+	public NormalizedResultCheck checkNormalizedResult(NormalizedOcrResultDto normalizedResult) {
+		if (normalizedResult == null || normalizedResult.getMedicines() == null || normalizedResult.getMedicines().isEmpty()) {
+			return new NormalizedResultCheck(false, "LOW_CONFIDENCE");
+		}
+
+		for (NormalizedOcrMedicineItem item : normalizedResult.getMedicines()) {
+			if (item == null) {
+				return new NormalizedResultCheck(false, "UNKNOWN_MEDICINE");
+			}
+
+			if (item.getConfidence() <= normalizedConfidenceThreshold) {
+				return new NormalizedResultCheck(false, "LOW_CONFIDENCE");
+			}
+
+			if (item.isNeedsReview()) {
+				return new NormalizedResultCheck(false, "UNKNOWN_MEDICINE");
+			}
+		}
+
+		return new NormalizedResultCheck(true, null);
 	}
 }
