@@ -1,4 +1,4 @@
-package com.TenaMed.prescription.verification.enums;
+package com.TenaMed.verification.enums;
 
 // Represents the lifecycle status of a prescription verification request.
 public enum VerificationStatus {

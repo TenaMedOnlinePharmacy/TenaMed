@@ -9,7 +9,7 @@ import com.TenaMed.ocr.dto.MedicineOcrItem;
 import com.TenaMed.ocr.dto.OcrResultDto;
 import com.TenaMed.prescription.entity.Prescription;
 import com.TenaMed.prescription.repository.PrescriptionRepository;
-import com.TenaMed.prescription.verification.service.PrescriptionVerificationService;
+import com.TenaMed.verification.service.PrescriptionVerificationService;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 

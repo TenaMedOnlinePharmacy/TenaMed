@@ -1,7 +1,7 @@
 package com.TenaMed.pharmacy.service.impl;
 
 import com.TenaMed.pharmacy.service.PrescriptionInventoryMatchService;
-import com.TenaMed.prescription.verification.event.PrescriptionVerifiedEvent;
+import com.TenaMed.verification.event.PrescriptionVerifiedEvent;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
 

@@ -1,4 +1,4 @@
-package com.TenaMed.prescription.verification.exception;
+package com.TenaMed.verification.exception;
 
 import java.util.UUID;
 

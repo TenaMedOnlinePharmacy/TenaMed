@@ -1,8 +1,8 @@
-package com.TenaMed.prescription.verification.controller;
+package com.TenaMed.verification.controller;
 
-import com.TenaMed.prescription.verification.dto.VerificationErrorResponse;
-import com.TenaMed.prescription.verification.exception.InvalidVerificationStateException;
-import com.TenaMed.prescription.verification.exception.PrescriptionNotFoundException;
+import com.TenaMed.verification.dto.VerificationErrorResponse;
+import com.TenaMed.verification.exception.InvalidVerificationStateException;
+import com.TenaMed.verification.exception.PrescriptionNotFoundException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -10,7 +10,7 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 import java.time.LocalDateTime;
 
-@RestControllerAdvice(basePackages = "com.TenaMed.prescription.verification")
+@RestControllerAdvice(basePackages = "com.TenaMed.verification")
 public class VerificationExceptionHandler {
 
     @ExceptionHandler(PrescriptionNotFoundException.class)

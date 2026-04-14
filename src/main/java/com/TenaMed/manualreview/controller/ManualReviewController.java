@@ -5,7 +5,7 @@ import com.TenaMed.manualreview.entity.ManualReviewTask;
 import com.TenaMed.manualreview.entity.TaskStatus;
 import com.TenaMed.manualreview.exception.ManualReviewException;
 import com.TenaMed.manualreview.service.ManualReviewService;
-import com.TenaMed.prescription.verification.dto.PrescriptionItemRequestDto;
+import com.TenaMed.verification.dto.PrescriptionItemRequestDto;
 import com.TenaMed.user.security.AuthenticatedUserPrincipal;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;

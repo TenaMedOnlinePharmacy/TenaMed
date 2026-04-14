@@ -1,4 +1,4 @@
-package com.TenaMed.prescription.verification.dto;
+package com.TenaMed.verification.dto;
 
 import java.time.LocalDateTime;
 

@@ -1,4 +1,4 @@
-package com.TenaMed.prescription.verification.service;
+package com.TenaMed.verification.service;
 
 import com.TenaMed.Normalization.entity.PrescriptionItem;
 import com.TenaMed.Normalization.repository.PrescriptionItemRepository;
@@ -6,13 +6,13 @@ import com.TenaMed.medicine.entity.Medicine;
 import com.TenaMed.medicine.repository.MedicineRepository;
 import com.TenaMed.prescription.entity.Prescription;
 import com.TenaMed.prescription.repository.PrescriptionRepository;
-import com.TenaMed.prescription.verification.dto.PrescriptionItemRequestDto;
-import com.TenaMed.prescription.verification.dto.VerificationDecision;
-import com.TenaMed.prescription.verification.dto.VerificationResponseDto;
-import com.TenaMed.prescription.verification.exception.PrescriptionNotFoundException;
-import com.TenaMed.prescription.verification.exception.VerificationException;
-import com.TenaMed.prescription.verification.event.PrescriptionVerifiedEvent;
-import com.TenaMed.prescription.verification.workflow.VerificationEngine;
+import com.TenaMed.verification.dto.PrescriptionItemRequestDto;
+import com.TenaMed.verification.dto.VerificationDecision;
+import com.TenaMed.verification.dto.VerificationResponseDto;
+import com.TenaMed.verification.exception.PrescriptionNotFoundException;
+import com.TenaMed.verification.exception.VerificationException;
+import com.TenaMed.verification.event.PrescriptionVerifiedEvent;
+import com.TenaMed.verification.workflow.VerificationEngine;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
@@ -45,7 +45,7 @@ public class PrescriptionVerificationService {
 	}
 
 	@Transactional
-	public VerificationResponseDto verify(UUID prescriptionId, UUID requesterUserId) {
+	public VerificationResponseDto verify(UUID prescriptionId) {
 		Prescription prescription = prescriptionRepository.findById(prescriptionId)
 				.orElseThrow(() -> new PrescriptionNotFoundException(prescriptionId));
 

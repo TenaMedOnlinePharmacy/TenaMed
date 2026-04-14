@@ -1,8 +1,8 @@
-package com.TenaMed.prescription.verification.controller;
+package com.TenaMed.verification.controller;
 
-import com.TenaMed.prescription.verification.dto.VerificationResponseDto;
-import com.TenaMed.prescription.verification.service.ManualReviewService;
-import com.TenaMed.prescription.verification.service.PrescriptionVerificationService;
+import com.TenaMed.verification.dto.VerificationResponseDto;
+import com.TenaMed.verification.service.ManualReviewService;
+import com.TenaMed.verification.service.PrescriptionVerificationService;
 import com.TenaMed.user.security.AuthenticatedUserPrincipal;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;

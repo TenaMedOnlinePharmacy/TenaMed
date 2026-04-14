@@ -1,6 +1,6 @@
-package com.TenaMed.prescription.verification.dto;
+package com.TenaMed.verification.dto;
 
-import com.TenaMed.prescription.verification.enums.ReviewReason;
+import com.TenaMed.verification.enums.ReviewReason;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;

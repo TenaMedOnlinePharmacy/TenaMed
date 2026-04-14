@@ -1,8 +1,9 @@
-package com.TenaMed.prescription.verification.workflow;
+package com.TenaMed.verification.workflow;
 
-import com.TenaMed.prescription.verification.dto.VerificationDecision;
+import com.TenaMed.verification.dto.VerificationDecision;
 import com.TenaMed.prescription.entity.PrescriptionType;
-import com.TenaMed.prescription.verification.enums.ReviewReason;
+import com.TenaMed.verification.enums.ReviewReason;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 @Component
@@ -16,8 +17,11 @@ public class VerificationEngine {
 		return !ocrSuccess;
 	}
 
+	@Value("${ocr.confidence-threshold}")
+	private int ocrConfidenceThreshold;
+
 	public boolean isLowConfidence(double confidence) {
-		return confidence < 0.8;
+		return confidence < ocrConfidenceThreshold;
 	}
 
 	public boolean isHighRisk(boolean highRisk) {

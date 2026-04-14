@@ -7,7 +7,7 @@ import com.TenaMed.ocr.service.OcrService;
 import com.TenaMed.ocr.service.SupabaseStorageService;
 import com.TenaMed.pharmacy.dto.response.PrescriptionInventoryMatchDto;
 import com.TenaMed.pharmacy.service.PrescriptionInventoryMatchService;
-import com.TenaMed.prescription.verification.service.PrescriptionVerificationService;
+import com.TenaMed.verification.service.PrescriptionVerificationService;
 import com.TenaMed.user.security.AuthenticatedUserPrincipal;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
@@ -36,7 +36,7 @@ public class OcrTestController {
         String imageUrl = supabaseStorageService.uploadAndGetSignedUrl(file);
         OcrResultDto result = ocrClient.processPrescription(imageUrl);
         NormalizedOcrResultDto normalizedResult = ocrService.processOcrResult(result);
-        prescriptionVerificationService.verify(result.getPrescription().getId(),principal.getUserId());
+        prescriptionVerificationService.verify(result.getPrescription().getId());
         List<PrescriptionInventoryMatchDto> dto = prescriptionInventoryMatchService.findInventoryMatchesByPrescription(result.getPrescription().getId());
         return ResponseEntity.ok(dto);
     }

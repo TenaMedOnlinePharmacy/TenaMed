@@ -1,4 +1,4 @@
-package com.TenaMed.prescription.verification.exception;
+package com.TenaMed.verification.exception;
 
 public class InvalidVerificationStateException extends VerificationException {
 

@@ -1,4 +1,4 @@
-package com.TenaMed.prescription.verification.event;
+package com.TenaMed.verification.event;
 
 import java.util.UUID;
 

@@ -1,7 +1,7 @@
 package com.TenaMed.pharmacy.service;
 
 import com.TenaMed.pharmacy.service.impl.PrescriptionVerifiedEventListener;
-import com.TenaMed.prescription.verification.event.PrescriptionVerifiedEvent;
+import com.TenaMed.verification.event.PrescriptionVerifiedEvent;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;

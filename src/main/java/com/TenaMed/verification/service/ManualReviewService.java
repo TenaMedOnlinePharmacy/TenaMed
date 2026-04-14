@@ -1,11 +1,11 @@
-package com.TenaMed.prescription.verification.service;
+package com.TenaMed.verification.service;
 
 import com.TenaMed.prescription.entity.Prescription;
 import com.TenaMed.prescription.repository.PrescriptionRepository;
-import com.TenaMed.prescription.verification.exception.InvalidVerificationStateException;
-import com.TenaMed.prescription.verification.exception.PrescriptionNotFoundException;
-import com.TenaMed.prescription.verification.event.PrescriptionRejectedEvent;
-import com.TenaMed.prescription.verification.event.PrescriptionVerifiedEvent;
+import com.TenaMed.verification.exception.InvalidVerificationStateException;
+import com.TenaMed.verification.exception.PrescriptionNotFoundException;
+import com.TenaMed.verification.event.PrescriptionRejectedEvent;
+import com.TenaMed.verification.event.PrescriptionVerifiedEvent;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;

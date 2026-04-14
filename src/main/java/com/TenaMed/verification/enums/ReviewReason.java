@@ -1,4 +1,4 @@
-package com.TenaMed.prescription.verification.enums;
+package com.TenaMed.verification.enums;
 
 // Captures why a prescription requires manual review or rejection.
 public enum ReviewReason {

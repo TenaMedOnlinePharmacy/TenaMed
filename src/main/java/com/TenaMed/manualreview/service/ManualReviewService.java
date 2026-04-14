@@ -3,7 +3,7 @@ package com.TenaMed.manualreview.service;
 import com.TenaMed.manualreview.entity.ManualReviewTask;
 import com.TenaMed.manualreview.entity.TaskPriority;
 import com.TenaMed.manualreview.entity.TaskReason;
-import com.TenaMed.prescription.verification.dto.PrescriptionItemRequestDto;
+import com.TenaMed.verification.dto.PrescriptionItemRequestDto;
 
 import java.util.List;
 import java.util.UUID;
