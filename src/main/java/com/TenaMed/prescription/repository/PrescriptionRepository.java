@@ -122,4 +122,17 @@ public interface PrescriptionRepository extends JpaRepository<Prescription, UUID
             @Param("rejectionReason") String rejectionReason,
             @Param("verifiedBy") UUID verifiedBy
     );
+
+    @Modifying
+    @Transactional
+    @Query("""
+            UPDATE Prescription p
+            SET p.profileId = :profileId,
+                p.patientId = NULL
+            WHERE p.patientId = :patientId
+            """)
+    void migratePatientToProfile(
+            @Param("patientId") UUID patientId,
+            @Param("profileId") UUID profileId
+    );
 }
