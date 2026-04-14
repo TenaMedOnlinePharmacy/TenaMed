@@ -15,4 +15,6 @@ public interface MedicineRepository extends JpaRepository<Medicine, UUID>,
     boolean existsByNameIgnoreCase(String name);
 
     Optional<Medicine> findByNameIgnoreCase(String name);
+
+    Optional<Medicine> findFirstByNameIgnoreCaseOrGenericNameIgnoreCase(String name, String genericName);
 }

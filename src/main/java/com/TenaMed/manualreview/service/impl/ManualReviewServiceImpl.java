@@ -10,10 +10,13 @@ import com.TenaMed.manualreview.exception.ManualReviewTaskNotFoundException;
 import com.TenaMed.manualreview.repository.ManualReviewTaskRepository;
 import com.TenaMed.manualreview.service.ManualReviewService;
 import com.TenaMed.manualreview.websocket.ManualReviewEventPublisher;
+import com.TenaMed.user.security.AuthenticatedUserPrincipal;
 import com.TenaMed.verification.dto.PrescriptionItemRequestDto;
 import com.TenaMed.verification.service.PrescriptionVerificationService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -85,9 +88,9 @@ public class ManualReviewServiceImpl implements ManualReviewService {
 
     @Override
     @Transactional
-    public void completeTask(UUID taskId, UUID pharmacistId, List<PrescriptionItemRequestDto> items) {
+    public void completeTask(UUID taskId, List<PrescriptionItemRequestDto> items) {
         requireNotNull(taskId, "taskId is required");
-        requireNotNull(pharmacistId, "pharmacistId is required");
+        UUID pharmacistId = resolveAuthenticatedPharmacistId();
         if (items == null || items.isEmpty()) {
             throw new ManualReviewException("At least one prescription item is required");
         }
@@ -102,7 +105,7 @@ public class ManualReviewServiceImpl implements ManualReviewService {
             throw new ManualReviewException("Only assigned pharmacist can complete this task");
         }
 
-        prescriptionVerificationService.validateAndSaveItems(task.getPrescriptionId(), items);
+        prescriptionVerificationService.validateAndSaveItems(task.getPrescriptionId(), pharmacistId, items);
 
         task.setStatus(TaskStatus.COMPLETED);
         task.setCompletedAt(LocalDateTime.now());
@@ -134,5 +137,18 @@ public class ManualReviewServiceImpl implements ManualReviewService {
         if (value == null) {
             throw new ManualReviewException(message);
         }
+    }
+
+    private UUID resolveAuthenticatedPharmacistId() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null || !(authentication.getPrincipal() instanceof AuthenticatedUserPrincipal principal)) {
+            throw new ManualReviewException("Authentication required");
+        }
+
+        UUID userId = principal.getUserId();
+        if (userId == null) {
+            throw new ManualReviewException("Authentication required");
+        }
+        return userId;
     }
 }

@@ -1,16 +1,15 @@
 package com.TenaMed.verification.dto;
 
 import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import lombok.Data;
-
-import java.util.UUID;
 
 @Data
 public class PrescriptionItemRequestDto {
 
-    @NotNull
-    private UUID medicineId;
+    @NotBlank
+    private String medicineName;
 
     @NotNull
     @Min(1)

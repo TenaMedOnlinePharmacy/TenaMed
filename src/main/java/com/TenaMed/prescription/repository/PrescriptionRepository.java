@@ -77,6 +77,23 @@ public interface PrescriptionRepository extends JpaRepository<Prescription, UUID
     @Transactional
     @Query("""
             UPDATE Prescription p
+            SET p.status = 'VERIFIED',
+            p.isVerified = true,
+            p.verifiedBy = :verifiedBy,
+            p.verifiedAt = :verifiedAt,
+            p.rejectionReason = null
+            WHERE p.id = :id
+            """)
+    int markVerifiedPreserveReviewReason(
+            @Param("id") UUID id,
+            @Param("verifiedBy") UUID verifiedBy,
+            @Param("verifiedAt") LocalDateTime verifiedAt
+    );
+
+    @Modifying
+    @Transactional
+    @Query("""
+            UPDATE Prescription p
             SET p.status = 'PENDING_MANUAL_REVIEW',
             p.reviewReason = :reviewReason,
             p.isVerified = false,

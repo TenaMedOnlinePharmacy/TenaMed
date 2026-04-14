@@ -14,7 +14,7 @@ public interface ManualReviewService {
 
     boolean claimTask(UUID taskId, UUID pharmacistId);
 
-    void completeTask(UUID taskId, UUID pharmacistId, List<PrescriptionItemRequestDto> items);
+    void completeTask(UUID taskId, List<PrescriptionItemRequestDto> items);
 
     List<ManualReviewTask> getPendingTasks();
 

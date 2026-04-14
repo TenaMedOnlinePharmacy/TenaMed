@@ -85,9 +85,12 @@ public class PrescriptionVerificationService {
 	}
 
 	@Transactional
-	public void validateAndSaveItems(UUID prescriptionId, List<PrescriptionItemRequestDto> items) {
+	public void validateAndSaveItems(UUID prescriptionId, UUID verifiedBy, List<PrescriptionItemRequestDto> items) {
 		if (prescriptionId == null) {
 			throw new VerificationException("prescriptionId is required");
+		}
+		if (verifiedBy == null) {
+			throw new VerificationException("verifiedBy is required");
 		}
 		if (items == null || items.isEmpty()) {
 			throw new VerificationException("At least one prescription item is required");
@@ -97,15 +100,18 @@ public class PrescriptionVerificationService {
 				.orElseThrow(() -> new PrescriptionNotFoundException(prescriptionId));
 
 		List<PrescriptionItem> toSave = items.stream().map(item -> {
-			if (item.getMedicineId() == null) {
-				throw new VerificationException("medicineId is required for each item");
+			if (item.getMedicineName() == null || item.getMedicineName().isBlank()) {
+				throw new VerificationException("medicineName is required for each item");
 			}
 			if (item.getQuantity() == null || item.getQuantity() <= 0) {
 				throw new VerificationException("quantity must be greater than zero for each item");
 			}
 
-			Medicine medicine = medicineRepository.findById(item.getMedicineId())
-					.orElseThrow(() -> new VerificationException("Medicine not found: " + item.getMedicineId()));
+			String medicineName = item.getMedicineName().trim();
+
+			Medicine medicine = medicineRepository
+					.findFirstByNameIgnoreCaseOrGenericNameIgnoreCase(medicineName, medicineName)
+					.orElseThrow(() -> new VerificationException("Medicine not found by name or generic name: " + medicineName));
 
 			PrescriptionItem prescriptionItem = new PrescriptionItem();
 			prescriptionItem.setPrescription(prescription);
@@ -119,6 +125,12 @@ public class PrescriptionVerificationService {
 
 		prescriptionItemRepository.deleteByPrescriptionId(prescriptionId);
 		prescriptionItemRepository.saveAll(toSave);
+
+		int updatedRows = prescriptionRepository.markVerifiedPreserveReviewReason(prescriptionId, verifiedBy, LocalDateTime.now());
+		if (updatedRows != 1) {
+			throw new VerificationException("Failed to update prescription verification status: " + prescriptionId);
+		}
+
 		log.info("Prescription items validated and saved: prescriptionId={} itemCount={}", prescriptionId, toSave.size());
 	}
 

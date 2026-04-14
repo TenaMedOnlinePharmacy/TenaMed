@@ -6,6 +6,7 @@ import com.TenaMed.manualreview.entity.TaskStatus;
 import com.TenaMed.manualreview.exception.ManualReviewException;
 import com.TenaMed.manualreview.service.ManualReviewService;
 import com.TenaMed.verification.dto.PrescriptionItemRequestDto;
+import com.TenaMed.verification.exception.VerificationException;
 import com.TenaMed.user.security.AuthenticatedUserPrincipal;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -74,17 +75,16 @@ public class ManualReviewController {
 
     @PostMapping("/{id}/complete")
     public ResponseEntity<?> completeTask(@PathVariable("id") UUID taskId,
-                                          @AuthenticationPrincipal AuthenticatedUserPrincipal principal,
                                           @Valid @RequestBody List<PrescriptionItemRequestDto> items) {
-        UUID pharmacistId = resolveUserId(principal);
-        if (pharmacistId == null) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("error", "Authentication required"));
-        }
-
         try {
-            manualReviewService.completeTask(taskId, pharmacistId, items);
+            manualReviewService.completeTask(taskId, items);
             return ResponseEntity.ok(Map.of("message", "Task completed"));
         } catch (ManualReviewException ex) {
+            HttpStatus status = "Authentication required".equals(ex.getMessage())
+                    ? HttpStatus.UNAUTHORIZED
+                    : HttpStatus.BAD_REQUEST;
+            return ResponseEntity.status(status).body(Map.of("error", ex.getMessage()));
+        } catch (VerificationException ex) {
             return ResponseEntity.badRequest().body(Map.of("error", ex.getMessage()));
         }
     }
