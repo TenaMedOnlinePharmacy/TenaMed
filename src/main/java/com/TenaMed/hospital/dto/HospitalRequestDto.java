@@ -11,4 +11,6 @@ public class HospitalRequestDto {
 
     @NotBlank
     private String licenseNumber;
+
+    private String licenseImageUrl;
 }

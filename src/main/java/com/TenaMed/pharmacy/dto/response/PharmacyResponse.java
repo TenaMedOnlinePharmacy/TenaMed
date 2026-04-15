@@ -15,6 +15,7 @@ public class PharmacyResponse {
     private String name;
     private String legalName;
     private String licenseNumber;
+    private String licenseImageUrl;
     private String email;
     private String phone;
     private String website;

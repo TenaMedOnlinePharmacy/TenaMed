@@ -4,11 +4,17 @@ import com.TenaMed.user.config.AuthCookieProperties;
 import com.TenaMed.user.dto.AuthTokenResponseDto;
 import com.TenaMed.user.dto.LoginRequestDto;
 import com.TenaMed.user.dto.RegisterRequestDto;
+import com.TenaMed.user.dto.RegisterHospitalOwnerRequestDto;
+import com.TenaMed.user.dto.RegisterHospitalOwnerResponseDto;
+import com.TenaMed.user.dto.RegisterPharmacistRequestDto;
+import com.TenaMed.user.dto.RegisterPharmacistResponseDto;
 import com.TenaMed.user.dto.RegisterResponseDto;
 import com.TenaMed.user.model.AuthTokenPair;
 import com.TenaMed.user.security.AuthenticatedUserPrincipal;
 import com.TenaMed.user.service.AuthService;
+import com.TenaMed.user.service.HospitalOwnerOnboardingService;
 import com.TenaMed.user.service.IdentityService;
+import com.TenaMed.user.service.PharmacistOnboardingService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
@@ -16,6 +22,7 @@ import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.CookieValue;
+import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -29,16 +36,37 @@ public class AuthController {
 
     private final IdentityService identityService;
     private final AuthService authService;
+    private final HospitalOwnerOnboardingService hospitalOwnerOnboardingService;
+    private final PharmacistOnboardingService pharmacistOnboardingService;
 
-    public AuthController(IdentityService identityService, AuthService authService) {
+    public AuthController(IdentityService identityService,
+                          AuthService authService,
+                          HospitalOwnerOnboardingService hospitalOwnerOnboardingService,
+                          PharmacistOnboardingService pharmacistOnboardingService) {
         this.identityService = identityService;
         this.authService = authService;
+        this.hospitalOwnerOnboardingService = hospitalOwnerOnboardingService;
+        this.pharmacistOnboardingService = pharmacistOnboardingService;
     }
 
     @PostMapping("/register")
     public ResponseEntity<RegisterResponseDto> register(@Valid @RequestBody RegisterRequestDto requestDto) {
         return ResponseEntity.status(HttpStatus.CREATED).body(identityService.register(requestDto));
     }
+
+    @PostMapping(value = "/register-hospital-owner", consumes = "multipart/form-data")
+    public ResponseEntity<RegisterHospitalOwnerResponseDto> registerHospitalOwner(
+            @Valid @ModelAttribute RegisterHospitalOwnerRequestDto requestDto) {
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(hospitalOwnerOnboardingService.registerHospitalOwner(requestDto));
+    }
+
+        @PostMapping(value = "/register-pharmacist", consumes = "multipart/form-data")
+        public ResponseEntity<RegisterPharmacistResponseDto> registerPharmacist(
+            @Valid @ModelAttribute RegisterPharmacistRequestDto requestDto) {
+        return ResponseEntity.status(HttpStatus.CREATED)
+            .body(pharmacistOnboardingService.registerPharmacist(requestDto));
+        }
 
     @PostMapping("/login")
     public ResponseEntity<AuthTokenResponseDto> login(@Valid @RequestBody LoginRequestDto requestDto,

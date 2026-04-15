@@ -20,6 +20,8 @@ public class CreatePharmacyRequest {
     @NotBlank
     private String licenseNumber;
 
+    private String licenseImageUrl;
+
     @Email
     @NotBlank
     private String email;

@@ -19,6 +19,7 @@ public class HospitalMapper {
         dto.setId(entity.getId());
         dto.setName(entity.getName());
         dto.setLicenseNumber(entity.getLicenseNumber());
+        dto.setLicenseImageUrl(entity.getLicenseImageUrl());
         dto.setOwnerId(entity.getOwnerId());
         dto.setStatus(entity.getStatus());
         dto.setCreatedAt(entity.getCreatedAt());
@@ -28,5 +29,6 @@ public class HospitalMapper {
     public void updateEntity(HospitalRequestDto dto, Hospital entity) {
         entity.setName(dto.getName());
         entity.setLicenseNumber(dto.getLicenseNumber());
+        entity.setLicenseImageUrl(dto.getLicenseImageUrl());
     }
 }

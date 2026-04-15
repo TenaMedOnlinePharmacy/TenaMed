@@ -45,7 +45,16 @@ public class HospitalServiceImpl implements HospitalService {
     @Override
     @Transactional
     public HospitalResponseDto createHospital(HospitalRequestDto dto) {
+        return createHospitalForOwner(dto, currentUserProvider.getCurrentUserId());
+    }
+
+    @Override
+    @Transactional
+    public HospitalResponseDto createHospitalForOwner(HospitalRequestDto dto, UUID ownerId) {
         validateHospitalRequest(dto);
+        if (ownerId == null) {
+            throw new BadRequestException("ownerId is required");
+        }
 
         String normalizedLicense = normalize(dto.getLicenseNumber());
         if (hospitalRepository.existsByLicenseNumberIgnoreCase(normalizedLicense)) {
@@ -55,7 +64,8 @@ public class HospitalServiceImpl implements HospitalService {
         Hospital hospital = hospitalMapper.toEntity(dto);
         hospital.setName(normalize(dto.getName()));
         hospital.setLicenseNumber(normalizedLicense);
-        hospital.setOwnerId(currentUserProvider.getCurrentUserId());
+        hospital.setLicenseImageUrl(normalizeNullable(dto.getLicenseImageUrl()));
+        hospital.setOwnerId(ownerId);
         hospital.setStatus(HospitalStatus.PENDING);
 
         Hospital saved = hospitalRepository.save(hospital);
@@ -163,5 +173,13 @@ public class HospitalServiceImpl implements HospitalService {
 
     private String normalize(String value) {
         return value == null ? null : value.trim();
+    }
+
+    private String normalizeNullable(String value) {
+        if (value == null) {
+            return null;
+        }
+        String normalized = value.trim();
+        return normalized.isEmpty() ? null : normalized;
     }
 }

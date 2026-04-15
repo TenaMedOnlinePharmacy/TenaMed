@@ -14,6 +14,7 @@ public class PharmacyMapper {
         pharmacy.setName(request.getName());
         pharmacy.setLegalName(request.getLegalName());
         pharmacy.setLicenseNumber(request.getLicenseNumber());
+        pharmacy.setLicenseImageUrl(request.getLicenseImageUrl());
         pharmacy.setEmail(request.getEmail());
         pharmacy.setPhone(request.getPhone());
         pharmacy.setWebsite(request.getWebsite());
@@ -35,6 +36,7 @@ public class PharmacyMapper {
             .name(pharmacy.getName())
             .legalName(pharmacy.getLegalName())
             .licenseNumber(pharmacy.getLicenseNumber())
+            .licenseImageUrl(pharmacy.getLicenseImageUrl())
             .email(pharmacy.getEmail())
             .phone(pharmacy.getPhone())
             .website(pharmacy.getWebsite())

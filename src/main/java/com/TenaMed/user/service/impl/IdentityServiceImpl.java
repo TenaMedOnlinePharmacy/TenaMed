@@ -47,7 +47,7 @@ import java.util.stream.Collectors;
 public class IdentityServiceImpl implements IdentityService {
 
     private static final String ACCOUNT_STATUS_ACTIVE = "ACTIVE";
-    private static final String DEFAULT_ROLES_FALLBACK = "ADMIN,PATIENT,DOCTOR,PHARMACIST";
+    private static final String DEFAULT_ROLES_FALLBACK = "ADMIN,PATIENT,DOCTOR,PHARMACIST,HOSPITAL_OWNER";
 
     private final AccountRepository accountRepository;
     private final UserRepository userRepository;

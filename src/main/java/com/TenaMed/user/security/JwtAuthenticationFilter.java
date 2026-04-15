@@ -26,6 +26,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(JwtAuthenticationFilter.class);
     private static final Set<String> ALLOWED_PATHS = Set.of(
+            "/api/auth/register-hospital-owner",
+            "/api/auth/register-pharmacist",
             "/api/auth/register",
             "/api/auth/login",
             "/api/auth/refresh",

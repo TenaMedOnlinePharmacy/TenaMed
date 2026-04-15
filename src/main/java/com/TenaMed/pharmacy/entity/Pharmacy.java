@@ -11,6 +11,7 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.Id;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
+import jakarta.validation.constraints.Size;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -40,6 +41,10 @@ public class Pharmacy extends BaseEntity {
 
     @Column(name = "license_number", nullable = false, unique = true)
     private String licenseNumber;
+
+    @Column(name = "license_image-url",nullable = false)
+    @Size(max = 2550)
+    private String licenseImageUrl;
 
     @Column(name = "email", nullable = false)
     private String email;

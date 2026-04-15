@@ -12,6 +12,8 @@ public interface HospitalService {
 
     HospitalResponseDto createHospital(HospitalRequestDto dto);
 
+    HospitalResponseDto createHospitalForOwner(HospitalRequestDto dto, UUID ownerId);
+
     HospitalResponseDto getHospitalById(UUID hospitalId);
 
     HospitalResponseDto updateHospital(UUID hospitalId, HospitalRequestDto dto);

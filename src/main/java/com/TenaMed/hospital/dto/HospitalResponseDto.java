@@ -11,6 +11,7 @@ public class HospitalResponseDto {
     private UUID id;
     private String name;
     private String licenseNumber;
+    private String licenseImageUrl;
     private UUID ownerId;
     private HospitalStatus status;
     private LocalDateTime createdAt;

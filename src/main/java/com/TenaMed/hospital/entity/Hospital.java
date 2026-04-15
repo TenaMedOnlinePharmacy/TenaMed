@@ -7,6 +7,7 @@ import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import jakarta.validation.constraints.Size;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -33,6 +34,10 @@ public class Hospital {
 
     @Column(name = "license_number", nullable = false, unique = true)
     private String licenseNumber;
+
+    @Column(name = "license_image_url")
+    @Size(max = 2550)
+    private String licenseImageUrl;
 
     @Column(name = "owner_id", nullable = false)
     private UUID ownerId;
