@@ -11,8 +11,8 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
 
-import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
@@ -59,26 +59,25 @@ class SmtpEmailServiceTests {
     }
 
     @Test
-    void shouldNotCallMailSenderWhenRequestIsNull() {
-        smtpEmailService.sendEmail(null);
-
+    void shouldThrowWhenRequestIsNull() {
+        assertThrows(IllegalArgumentException.class, () -> smtpEmailService.sendEmail(null));
         verifyNoInteractions(javaMailSender);
     }
 
     @Test
-    void shouldNotThrowWhenPlainTextSendFails() {
+    void shouldThrowWhenPlainTextSendFails() {
         EmailRequest request = new EmailRequest("doctor@example.com", "Subject", "Body", false);
         doThrow(new RuntimeException("smtp error")).when(javaMailSender).send(any(SimpleMailMessage.class));
 
-        assertDoesNotThrow(() -> smtpEmailService.sendEmail(request));
+        assertThrows(IllegalStateException.class, () -> smtpEmailService.sendEmail(request));
     }
 
     @Test
-    void shouldNotThrowWhenHtmlMessageCreationFails() {
+    void shouldThrowWhenHtmlMessageCreationFails() {
         EmailRequest request = new EmailRequest("doctor@example.com", "Subject", "<html>Body</html>", true);
         when(javaMailSender.createMimeMessage()).thenThrow(new RuntimeException("mime error"));
 
-        assertDoesNotThrow(() -> smtpEmailService.sendEmail(request));
+        assertThrows(IllegalStateException.class, () -> smtpEmailService.sendEmail(request));
         verify(javaMailSender, never()).send(any(MimeMessage.class));
     }
 }

@@ -6,7 +6,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
-import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
 import java.nio.charset.StandardCharsets;
@@ -22,11 +21,9 @@ public class SmtpEmailService implements EmailService {
     }
 
     @Override
-    @Async
     public void sendEmail(EmailRequest request) {
         if (request == null) {
-            log.error("Email request is required");
-            return;
+            throw new IllegalArgumentException("Email request is required");
         }
 
         try {
@@ -37,6 +34,7 @@ public class SmtpEmailService implements EmailService {
             }
         } catch (Exception ex) {
             log.error("Failed to send email to {}", request.getTo(), ex);
+            throw new IllegalStateException("Failed to send email", ex);
         }
     }
 

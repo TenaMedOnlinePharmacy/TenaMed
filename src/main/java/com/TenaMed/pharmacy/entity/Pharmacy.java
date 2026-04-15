@@ -42,7 +42,7 @@ public class Pharmacy extends BaseEntity {
     @Column(name = "license_number", nullable = false, unique = true)
     private String licenseNumber;
 
-    @Column(name = "license_image-url",nullable = false)
+    @Column(name = "license_image_url")
     @Size(max = 2550)
     private String licenseImageUrl;
 

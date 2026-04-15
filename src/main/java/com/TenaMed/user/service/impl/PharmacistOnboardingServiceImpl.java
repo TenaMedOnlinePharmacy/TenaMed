@@ -19,7 +19,7 @@ import java.util.Set;
 @Service
 public class PharmacistOnboardingServiceImpl implements PharmacistOnboardingService {
 
-    private static final String PHARMACIST_ROLE = "PHARMACIST";
+    private static final String PHARMACY_OWNER_ROLE = "PHARMACYOWNER";
 
     private final IdentityService identityService;
     private final PharmacyService pharmacyService;
@@ -46,7 +46,7 @@ public class PharmacistOnboardingServiceImpl implements PharmacistOnboardingServ
         pharmacistRequest.setFirstName(requestDto.getPharmacist().getFirstName());
         pharmacistRequest.setLastName(requestDto.getPharmacist().getLastName());
         pharmacistRequest.setPhone(requestDto.getPharmacist().getPhone());
-        pharmacistRequest.setRoleNames(Set.of(PHARMACIST_ROLE));
+        pharmacistRequest.setRoleNames(Set.of(PHARMACY_OWNER_ROLE));
 
         RegisterResponseDto pharmacistResponse = identityService.register(pharmacistRequest);
 

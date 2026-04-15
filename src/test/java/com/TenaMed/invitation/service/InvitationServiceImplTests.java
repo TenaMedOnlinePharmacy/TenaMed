@@ -30,6 +30,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.contains;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -153,4 +154,36 @@ class InvitationServiceImplTests {
 
         assertTrue(ex.getMessage().contains("pending state"));
     }
+
+        @Test
+        void shouldThrowWhenEmailDeliveryFailsDuringInvitationCreation() {
+        UUID hospitalId = UUID.randomUUID();
+        String email = "doctor@example.com";
+
+        Hospital hospital = new Hospital();
+        hospital.setId(hospitalId);
+        hospital.setName("Saint Gabriel");
+
+        Invitation saved = new Invitation();
+        saved.setId(UUID.randomUUID());
+        saved.setEmail(email);
+        saved.setHospitalId(hospitalId);
+        saved.setRole(InvitationRole.DOCTOR);
+        saved.setStatus(InvitationStatus.PENDING);
+        saved.setToken(UUID.randomUUID().toString());
+        saved.setExpiresAt(LocalDateTime.now().plusHours(24));
+
+        when(hospitalRepository.findById(hospitalId)).thenReturn(Optional.of(hospital));
+        when(invitationRepository.save(any(Invitation.class))).thenReturn(saved);
+        when(emailTemplateBuilder.buildDoctorInvitationEmail(eq("Saint Gabriel"), contains(saved.getToken())))
+            .thenReturn("<html>Invite</html>");
+        org.mockito.Mockito.doThrow(new IllegalStateException("smtp down"))
+            .when(emailService)
+            .sendEmail(any());
+
+        assertThrows(IllegalStateException.class,
+            () -> invitationService.createDoctorInvitation(hospitalId, email));
+
+        verify(invitationMapper, never()).toResponse(any(Invitation.class));
+        }
 }

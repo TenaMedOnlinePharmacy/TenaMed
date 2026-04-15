@@ -4,7 +4,6 @@ target/
 !**/src/main/**/target/
 !**/src/main/resources/
 !**/src/test/**/target/
-src/main/resources/
 
 ### STS ###
 .apt_generated
@@ -32,3 +31,9 @@ build/
 !**/src/test/**/build/
 ### VS Code ###
 .vscode/
+
+# Local secret-bearing config
+src/main/resources/application.properties
+
+# Keep profile-specific committed config
+!src/main/resources/application-prod.properties

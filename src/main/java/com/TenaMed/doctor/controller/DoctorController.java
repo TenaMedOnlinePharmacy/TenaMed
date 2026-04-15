@@ -2,12 +2,11 @@ package com.TenaMed.doctor.controller;
 
 import com.TenaMed.common.exception.BadRequestException;
 import com.TenaMed.common.security.CurrentUserProvider;
+import com.TenaMed.doctor.dto.DoctorInviteRegistrationRequestDto;
 import com.TenaMed.doctor.dto.DoctorRequestDto;
 import com.TenaMed.doctor.dto.DoctorResponseDto;
+import com.TenaMed.doctor.service.DoctorOnboardingService;
 import com.TenaMed.doctor.service.DoctorService;
-import com.TenaMed.invitation.entity.Invitation;
-import com.TenaMed.invitation.entity.InvitationRole;
-import com.TenaMed.invitation.service.InvitationService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -27,28 +26,25 @@ import java.util.UUID;
 public class DoctorController {
 
     private final DoctorService doctorService;
-    private final InvitationService invitationService;
+    private final DoctorOnboardingService doctorOnboardingService;
     private final CurrentUserProvider currentUserProvider;
 
     public DoctorController(DoctorService doctorService,
-                            InvitationService invitationService,
+                            DoctorOnboardingService doctorOnboardingService,
                             CurrentUserProvider currentUserProvider) {
         this.doctorService = doctorService;
-        this.invitationService = invitationService;
+        this.doctorOnboardingService = doctorOnboardingService;
         this.currentUserProvider = currentUserProvider;
     }
 
-    @PostMapping("/")
+    @PostMapping("/create")
     public ResponseEntity<DoctorResponseDto> createDoctorFromInvite(@RequestParam("token") String token,
-                                                                     @Valid @RequestBody DoctorRequestDto dto) {
-        Invitation invitation = invitationService.validateToken(token);
-        if (invitation.getRole() != InvitationRole.DOCTOR) {
-            throw new BadRequestException("Invitation role does not allow doctor onboarding");
+                                                                     @Valid @RequestBody DoctorInviteRegistrationRequestDto dto) {
+        if (token == null || token.trim().isEmpty()) {
+            throw new BadRequestException("token is required");
         }
 
-        UUID currentUserId = currentUserProvider.getCurrentUserId();
-        DoctorResponseDto response = doctorService.createDoctorFromInvite(currentUserId, invitation.getHospitalId(), dto);
-        invitationService.markAsAccepted(token);
+        DoctorResponseDto response = doctorOnboardingService.registerAndCreateDoctorFromInvite(token, dto);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 

@@ -138,7 +138,7 @@ class AuthControllerTests {
                     .userId(pharmacistUserId)
                     .email("pharmacist@tenamed.com")
                     .accountStatus("ACTIVE")
-                    .roles(List.of("PHARMACIST"))
+                    .roles(List.of("PHARMACYOWNER"))
                     .build();
 
                 PharmacyResponse pharmacyResponse = PharmacyResponse.builder()

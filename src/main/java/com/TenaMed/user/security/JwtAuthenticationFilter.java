@@ -28,6 +28,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private static final Set<String> ALLOWED_PATHS = Set.of(
             "/api/auth/register-hospital-owner",
             "/api/auth/register-pharmacist",
+            "/api/doctors/create",
             "/api/auth/register",
             "/api/auth/login",
             "/api/auth/refresh",
@@ -110,7 +111,10 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
-        return ALLOWED_PATHS.contains(request.getRequestURI());
+        String path = request.getRequestURI();
+        return ALLOWED_PATHS.contains(path)
+                || path.startsWith("/api/invitations/")
+                || path.startsWith("/api/doctors/create");
     }
 
     private void unauthorized(HttpServletResponse response, String message) throws IOException {

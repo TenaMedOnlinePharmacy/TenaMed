@@ -69,7 +69,7 @@ class PharmacistOnboardingServiceImplTests {
         RegisterResponseDto pharmacistResponse = RegisterResponseDto.builder()
                 .userId(pharmacistUserId)
                 .email("pharmacist@tenamed.com")
-                .roles(List.of("PHARMACIST"))
+            .roles(List.of("PHARMACYOWNER"))
                 .build();
 
         PharmacyResponse pharmacyResponse = PharmacyResponse.builder()
@@ -77,7 +77,7 @@ class PharmacistOnboardingServiceImplTests {
                 .name("City Pharmacy")
                 .build();
 
-        when(identityService.populateRoles()).thenReturn(List.of("PHARMACIST"));
+        when(identityService.populateRoles()).thenReturn(List.of("PHARMACYOWNER"));
         when(identityService.register(any(RegisterRequestDto.class))).thenReturn(pharmacistResponse);
         when(supabaseStorageService.uploadAndGetSignedUrl(any())).thenReturn("https://supabase.example/license.png");
         when(pharmacyService.createPharmacy(any(CreatePharmacyRequest.class))).thenReturn(pharmacyResponse);
@@ -87,7 +87,7 @@ class PharmacistOnboardingServiceImplTests {
         ArgumentCaptor<RegisterRequestDto> pharmacistCaptor = ArgumentCaptor.forClass(RegisterRequestDto.class);
         verify(identityService).register(pharmacistCaptor.capture());
         assertEquals("pharmacist@tenamed.com", pharmacistCaptor.getValue().getEmail());
-        assertEquals(Set.of("PHARMACIST"), pharmacistCaptor.getValue().getRoleNames());
+        assertEquals(Set.of("PHARMACYOWNER"), pharmacistCaptor.getValue().getRoleNames());
 
         ArgumentCaptor<CreatePharmacyRequest> pharmacyCaptor = ArgumentCaptor.forClass(CreatePharmacyRequest.class);
         verify(pharmacyService).createPharmacy(pharmacyCaptor.capture());

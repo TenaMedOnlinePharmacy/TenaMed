@@ -1,0 +1,193 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Manual Review STOMP Test</title>
+  <style>
+    body {
+      font-family: Segoe UI, Tahoma, sans-serif;
+      margin: 24px;
+      background: #f8fafc;
+      color: #111827;
+    }
+
+    h1 {
+      margin: 0 0 16px;
+      font-size: 22px;
+    }
+
+    .panel {
+      background: #ffffff;
+      border: 1px solid #e5e7eb;
+      border-radius: 12px;
+      padding: 16px;
+      margin-bottom: 16px;
+      max-width: 920px;
+    }
+
+    .row {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+
+    label {
+      font-size: 13px;
+      color: #374151;
+      min-width: 120px;
+    }
+
+    input {
+      border: 1px solid #d1d5db;
+      border-radius: 8px;
+      padding: 8px 10px;
+      min-width: 360px;
+      font-size: 14px;
+    }
+
+    button {
+      border: 0;
+      border-radius: 8px;
+      padding: 8px 12px;
+      cursor: pointer;
+      font-size: 14px;
+      background: #111827;
+      color: white;
+    }
+
+    button.secondary {
+      background: #4b5563;
+    }
+
+    #status {
+      font-weight: 600;
+      margin-top: 4px;
+    }
+
+    #messages {
+      background: #0b1020;
+      color: #d1fae5;
+      border-radius: 10px;
+      padding: 10px;
+      min-height: 300px;
+      max-height: 500px;
+      overflow: auto;
+      white-space: pre-wrap;
+      font-family: Consolas, monospace;
+      font-size: 13px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Manual Review WebSocket STOMP Test Client</h1>
+
+  <div class="panel">
+    <div class="row">
+      <label for="brokerUrl">Broker URL</label>
+      <input id="brokerUrl" value="ws://localhost:8080/ws" />
+    </div>
+    <div class="row">
+      <label for="topic">Topic</label>
+      <input id="topic" value="/topic/tasks" />
+    </div>
+    <div class="row">
+      <button id="connectBtn">Connect</button>
+      <button id="disconnectBtn" class="secondary">Disconnect</button>
+      <button id="clearBtn" class="secondary">Clear Logs</button>
+    </div>
+    <div id="status">Status: DISCONNECTED</div>
+  </div>
+
+  <div class="panel">
+    <div id="messages"></div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@stomp/stompjs@7.0.0/bundles/stomp.umd.min.js"></script>
+  <script>
+    const statusEl = document.getElementById('status');
+    const messagesEl = document.getElementById('messages');
+    const brokerUrlEl = document.getElementById('brokerUrl');
+    const topicEl = document.getElementById('topic');
+
+    let client = null;
+    let subscription = null;
+
+    function now() {
+      return new Date().toISOString();
+    }
+
+    function log(message) {
+      messagesEl.textContent += '[' + now() + '] ' + message + '\n';
+      messagesEl.scrollTop = messagesEl.scrollHeight;
+    }
+
+    function setStatus(text) {
+      statusEl.textContent = 'Status: ' + text;
+    }
+
+    document.getElementById('connectBtn').addEventListener('click', () => {
+      if (client && client.active) {
+        log('Already connected/connecting.');
+        return;
+      }
+
+      const brokerUrl = brokerUrlEl.value.trim();
+      const topic = topicEl.value.trim();
+      if (!brokerUrl || !topic) {
+        log('Broker URL and topic are required.');
+        return;
+      }
+
+      client = new StompJs.Client({
+        brokerURL: brokerUrl,
+        reconnectDelay: 3000,
+        heartbeatIncoming: 10000,
+        heartbeatOutgoing: 10000,
+        onConnect: () => {
+          setStatus('CONNECTED');
+          log('Connected to ' + brokerUrl);
+          subscription = client.subscribe(topic, (frame) => {
+            log('Message received on ' + topic + ': ' + frame.body);
+          });
+          log('Subscribed to ' + topic);
+        },
+        onStompError: (frame) => {
+          log('STOMP error: ' + (frame.headers['message'] || 'unknown'));
+          if (frame.body) {
+            log('Details: ' + frame.body);
+          }
+        },
+        onWebSocketError: (event) => {
+          log('WebSocket error: ' + (event && event.message ? event.message : 'unknown'));
+        },
+        onWebSocketClose: () => {
+          setStatus('DISCONNECTED');
+          log('WebSocket closed.');
+        }
+      });
+
+      setStatus('CONNECTING');
+      client.activate();
+    });
+
+    document.getElementById('disconnectBtn').addEventListener('click', async () => {
+      if (subscription) {
+        subscription.unsubscribe();
+        subscription = null;
+      }
+      if (client) {
+        await client.deactivate();
+      }
+      setStatus('DISCONNECTED');
+      log('Disconnected.');
+    });
+
+    document.getElementById('clearBtn').addEventListener('click', () => {
+      messagesEl.textContent = '';
+    });
+  </script>
+</body>
+</html>
