@@ -2,6 +2,11 @@ package com.TenaMed.invitation.service.impl;
 
 import com.TenaMed.common.exception.BadRequestException;
 import com.TenaMed.common.exception.ResourceNotFoundException;
+import com.TenaMed.email.dto.EmailRequest;
+import com.TenaMed.email.service.EmailService;
+import com.TenaMed.email.service.EmailTemplateBuilder;
+import com.TenaMed.hospital.entity.Hospital;
+import com.TenaMed.hospital.repository.HospitalRepository;
 import com.TenaMed.invitation.dto.InvitationResponseDto;
 import com.TenaMed.invitation.entity.Invitation;
 import com.TenaMed.invitation.entity.InvitationRole;
@@ -9,6 +14,7 @@ import com.TenaMed.invitation.entity.InvitationStatus;
 import com.TenaMed.invitation.mapper.InvitationMapper;
 import com.TenaMed.invitation.repository.InvitationRepository;
 import com.TenaMed.invitation.service.InvitationService;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -19,14 +25,27 @@ import java.util.UUID;
 public class InvitationServiceImpl implements InvitationService {
 
     private static final long INVITATION_TTL_HOURS = 24L;
+    private static final String DOCTOR_INVITE_SUBJECT = "You're invited to join a hospital";
 
     private final InvitationRepository invitationRepository;
     private final InvitationMapper invitationMapper;
+    private final HospitalRepository hospitalRepository;
+    private final EmailService emailService;
+    private final EmailTemplateBuilder emailTemplateBuilder;
+
+    @Value("${app.invitation.base-url:http://localhost:8080/api/invitations}")
+    private String invitationBaseUrl;
 
     public InvitationServiceImpl(InvitationRepository invitationRepository,
-                                 InvitationMapper invitationMapper) {
+                                 InvitationMapper invitationMapper,
+                                 HospitalRepository hospitalRepository,
+                                 EmailService emailService,
+                                 EmailTemplateBuilder emailTemplateBuilder) {
         this.invitationRepository = invitationRepository;
         this.invitationMapper = invitationMapper;
+        this.hospitalRepository = hospitalRepository;
+        this.emailService = emailService;
+        this.emailTemplateBuilder = emailTemplateBuilder;
     }
 
     @Override
@@ -39,6 +58,9 @@ public class InvitationServiceImpl implements InvitationService {
             throw new BadRequestException("email is required");
         }
 
+        Hospital hospital = hospitalRepository.findById(hospitalId)
+                .orElseThrow(() -> new ResourceNotFoundException("Hospital not found: " + hospitalId));
+
         Invitation invitation = new Invitation();
         invitation.setEmail(email.trim().toLowerCase());
         invitation.setRole(InvitationRole.DOCTOR);
@@ -48,6 +70,11 @@ public class InvitationServiceImpl implements InvitationService {
         invitation.setExpiresAt(LocalDateTime.now().plusHours(INVITATION_TTL_HOURS));
 
         Invitation saved = invitationRepository.save(invitation);
+
+        String invitationLink = buildInvitationLink(saved.getToken());
+        String body = emailTemplateBuilder.buildDoctorInvitationEmail(hospital.getName(), invitationLink);
+        emailService.sendEmail(new EmailRequest(saved.getEmail(), DOCTOR_INVITE_SUBJECT, body, true));
+
         return invitationMapper.toResponse(saved);
     }
 
@@ -91,5 +118,13 @@ public class InvitationServiceImpl implements InvitationService {
 
         return invitationRepository.findByToken(token.trim())
                 .orElseThrow(() -> new ResourceNotFoundException("Invitation not found for token"));
+    }
+
+    private String buildInvitationLink(String token) {
+        String baseUrl = invitationBaseUrl == null ? "http://localhost:8080/api/invitations" : invitationBaseUrl.trim();
+        if (baseUrl.endsWith("/")) {
+            return baseUrl + token;
+        }
+        return baseUrl + "/" + token;
     }
 }

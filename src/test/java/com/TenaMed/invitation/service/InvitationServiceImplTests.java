@@ -1,6 +1,10 @@
 package com.TenaMed.invitation.service;
 
 import com.TenaMed.common.exception.BadRequestException;
+import com.TenaMed.email.service.EmailService;
+import com.TenaMed.email.service.EmailTemplateBuilder;
+import com.TenaMed.hospital.entity.Hospital;
+import com.TenaMed.hospital.repository.HospitalRepository;
 import com.TenaMed.invitation.dto.InvitationResponseDto;
 import com.TenaMed.invitation.entity.Invitation;
 import com.TenaMed.invitation.entity.InvitationRole;
@@ -24,6 +28,8 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.contains;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -36,6 +42,15 @@ class InvitationServiceImplTests {
     @Mock
     private InvitationMapper invitationMapper;
 
+    @Mock
+    private HospitalRepository hospitalRepository;
+
+    @Mock
+    private EmailService emailService;
+
+    @Mock
+    private EmailTemplateBuilder emailTemplateBuilder;
+
     @InjectMocks
     private InvitationServiceImpl invitationService;
 
@@ -43,6 +58,10 @@ class InvitationServiceImplTests {
     void shouldCreateDoctorInvitationWithNormalizedEmailAndDefaults() {
         UUID hospitalId = UUID.randomUUID();
         String email = "  DOCTOR@Example.com  ";
+
+        Hospital hospital = new Hospital();
+        hospital.setId(hospitalId);
+        hospital.setName("Saint Gabriel");
 
         Invitation saved = new Invitation();
         saved.setId(UUID.randomUUID());
@@ -60,7 +79,10 @@ class InvitationServiceImplTests {
         response.setRole(InvitationRole.DOCTOR);
         response.setStatus(InvitationStatus.PENDING);
 
+        when(hospitalRepository.findById(hospitalId)).thenReturn(Optional.of(hospital));
         when(invitationRepository.save(any(Invitation.class))).thenReturn(saved);
+        when(emailTemplateBuilder.buildDoctorInvitationEmail(eq("Saint Gabriel"), contains(saved.getToken())))
+            .thenReturn("<html>Invite</html>");
         when(invitationMapper.toResponse(saved)).thenReturn(response);
 
         InvitationResponseDto actual = invitationService.createDoctorInvitation(hospitalId, email);
@@ -74,6 +96,7 @@ class InvitationServiceImplTests {
         assertEquals(InvitationStatus.PENDING, persisted.getStatus());
         assertNotNull(persisted.getToken());
         assertEquals(hospitalId, actual.getHospitalId());
+        verify(emailService).sendEmail(any());
     }
 
     @Test
