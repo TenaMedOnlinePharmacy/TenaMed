@@ -1,0 +1,66 @@
+package com.TenaMed.hospital.controller;
+
+import com.TenaMed.doctor.dto.DoctorResponseDto;
+import com.TenaMed.hospital.dto.HospitalRequestDto;
+import com.TenaMed.hospital.dto.HospitalResponseDto;
+import com.TenaMed.hospital.service.HospitalService;
+import com.TenaMed.invitation.dto.DoctorInvitationRequestDto;
+import com.TenaMed.invitation.dto.InvitationResponseDto;
+import jakarta.validation.Valid;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+import java.util.List;
+import java.util.UUID;
+
+@RestController
+@RequestMapping("/api/hospitals")
+public class HospitalController {
+
+    private final HospitalService hospitalService;
+
+    public HospitalController(HospitalService hospitalService) {
+        this.hospitalService = hospitalService;
+    }
+
+    @PostMapping("/")
+    public ResponseEntity<HospitalResponseDto> createHospital(@Valid @RequestBody HospitalRequestDto dto) {
+        HospitalResponseDto response = hospitalService.createHospital(dto);
+        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<HospitalResponseDto> getHospitalById(@PathVariable UUID id) {
+        return ResponseEntity.ok(hospitalService.getHospitalById(id));
+    }
+
+    @PutMapping("/{id}")
+    public ResponseEntity<HospitalResponseDto> updateHospital(@PathVariable UUID id,
+                                                              @Valid @RequestBody HospitalRequestDto dto) {
+        return ResponseEntity.ok(hospitalService.updateHospital(id, dto));
+    }
+
+    @PatchMapping("/{id}/verify")
+    public ResponseEntity<HospitalResponseDto> verifyHospital(@PathVariable UUID id) {
+        return ResponseEntity.ok(hospitalService.verifyHospital(id));
+    }
+
+    @GetMapping("/{id}/doctors")
+    public ResponseEntity<List<DoctorResponseDto>> getHospitalDoctors(@PathVariable UUID id) {
+        return ResponseEntity.ok(hospitalService.getHospitalDoctors(id));
+    }
+
+    @PostMapping("/{id}/invite-doctor")
+    public ResponseEntity<InvitationResponseDto> inviteDoctor(@PathVariable UUID id,
+                                                              @Valid @RequestBody DoctorInvitationRequestDto request) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(hospitalService.inviteDoctor(id, request.getEmail()));
+    }
+}

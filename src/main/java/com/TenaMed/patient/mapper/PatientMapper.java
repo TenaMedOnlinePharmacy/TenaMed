@@ -25,6 +25,7 @@ public class PatientMapper {
                 .height(profile.getHeight())
                 .isPregnant(profile.getIsPregnant())
                 .bloodType(profile.getBloodType())
+                .uniqueCode(profile.getUniqueCode())
                 .createdAt(profile.getCreatedAt())
                 .updatedAt(profile.getUpdatedAt())
                 .allergies(allergyItems)

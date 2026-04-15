@@ -20,6 +20,7 @@ public class PatientProfileResponse {
     private Integer height;
     private Boolean isPregnant;
     private String bloodType;
+    private String uniqueCode;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
     private List<AllergyItem> allergies;

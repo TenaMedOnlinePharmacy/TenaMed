@@ -10,4 +10,8 @@ public interface PatientProfileRepository extends JpaRepository<PatientProfile, 
     Optional<PatientProfile> findByUserId(UUID userId);
 
     boolean existsByUserId(UUID userId);
+
+    boolean existsByUniqueCode(String uniqueCode);
+
+    boolean existsByUniqueCodeAndUserIdNot(String uniqueCode, UUID userId);
 }

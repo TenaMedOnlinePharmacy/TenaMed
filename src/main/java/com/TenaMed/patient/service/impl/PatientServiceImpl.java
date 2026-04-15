@@ -1,21 +1,26 @@
 package com.TenaMed.patient.service.impl;
 
 import com.TenaMed.patient.dto.AddAllergyDto;
+import com.TenaMed.patient.dto.CreatePatientDto;
+import com.TenaMed.patient.dto.CreateProfileDto;
+import com.TenaMed.patient.dto.PatientDto;
 import com.TenaMed.patient.dto.PatientProfileResponse;
+import com.TenaMed.patient.dto.UpdateAllergyDto;
 import com.TenaMed.patient.dto.UpdateProfileDto;
-import com.TenaMed.patient.entity.Allergen;
+import com.TenaMed.medicine.entity.Allergen;
+import com.TenaMed.medicine.repository.AllergenRepository;
 import com.TenaMed.patient.entity.CustomerAllergy;
 import com.TenaMed.patient.entity.Patient;
 import com.TenaMed.patient.entity.PatientProfile;
 import com.TenaMed.patient.exception.AllergenNotFoundException;
 import com.TenaMed.patient.exception.CustomerAllergyNotFoundException;
 import com.TenaMed.patient.exception.DuplicateAllergyException;
+import com.TenaMed.patient.exception.DuplicateUniqueCodeException;
 import com.TenaMed.patient.exception.PatientException;
 import com.TenaMed.patient.exception.PatientProfileAlreadyExistsException;
 import com.TenaMed.patient.exception.PatientProfileNotFoundException;
 import com.TenaMed.patient.exception.TemporaryPatientNotFoundException;
 import com.TenaMed.patient.mapper.PatientMapper;
-import com.TenaMed.patient.repository.AllergenRepository;
 import com.TenaMed.patient.repository.CustomerAllergyRepository;
 import com.TenaMed.patient.repository.PatientProfileRepository;
 import com.TenaMed.patient.repository.PatientRepository;
@@ -53,8 +58,12 @@ public class PatientServiceImpl implements PatientService {
 
     @Override
     @Transactional
-    public PatientProfileResponse createProfile(UUID userId) {
+    public PatientProfileResponse createProfile(UUID userId, CreateProfileDto dto) {
         validateUserId(userId);
+        if (dto == null) {
+            throw new PatientException("Profile creation payload is required");
+        }
+        validateUniqueCodeForCreate(dto.getUniqueCode());
 
         if (patientProfileRepository.existsByUserId(userId)) {
             throw new PatientProfileAlreadyExistsException(userId);
@@ -62,6 +71,8 @@ public class PatientServiceImpl implements PatientService {
 
         PatientProfile profile = new PatientProfile();
         profile.setUserId(userId);
+        applyProfileFields(profile, dto.getDateOfBirth(), dto.getGender(), dto.getWeight(), dto.getHeight(),
+            dto.getIsPregnant(), dto.getBloodType(), dto.getUniqueCode());
 
         PatientProfile saved = patientProfileRepository.save(profile);
         return patientMapper.toProfileResponse(saved, List.of());
@@ -81,15 +92,12 @@ public class PatientServiceImpl implements PatientService {
         if (dto == null) {
             throw new PatientException("Profile update payload is required");
         }
+        validateUniqueCodeForUpdate(dto.getUniqueCode(), userId);
 
         PatientProfile profile = getProfileEntityByUserId(userId);
 
-        profile.setDateOfBirth(dto.getDateOfBirth());
-        profile.setGender(dto.getGender());
-        profile.setWeight(dto.getWeight());
-        profile.setHeight(dto.getHeight());
-        profile.setIsPregnant(dto.getIsPregnant());
-        profile.setBloodType(dto.getBloodType());
+        applyProfileFields(profile, dto.getDateOfBirth(), dto.getGender(), dto.getWeight(), dto.getHeight(),
+            dto.getIsPregnant(), dto.getBloodType(), dto.getUniqueCode());
 
         PatientProfile saved = patientProfileRepository.save(profile);
         List<CustomerAllergy> allergies = customerAllergyRepository.findByProfile_Id(saved.getId());
@@ -117,6 +125,38 @@ public class PatientServiceImpl implements PatientService {
         customerAllergy.setAllergen(allergen);
         customerAllergy.setSeverity(dto.getSeverity());
         customerAllergyRepository.save(customerAllergy);
+
+        List<CustomerAllergy> allergies = customerAllergyRepository.findByProfile_Id(profile.getId());
+        return patientMapper.toProfileResponse(profile, allergies);
+    }
+
+    @Override
+    @Transactional
+    public PatientProfileResponse updateAllergy(UUID userId, UUID allergyId, UpdateAllergyDto dto) {
+        if (allergyId == null) {
+            throw new PatientException("allergyId is required");
+        }
+        if (dto == null) {
+            throw new PatientException("Allergy update payload is required");
+        }
+
+        PatientProfile profile = getProfileEntityByUserId(userId);
+        CustomerAllergy allergy = customerAllergyRepository.findByIdAndProfile_UserId(allergyId, userId)
+                .orElseThrow(() -> new CustomerAllergyNotFoundException(allergyId));
+
+        if (dto.allergenId() != null && !dto.allergenId().equals(allergy.getAllergen().getId())) {
+            Allergen allergen = allergenRepository.findById(dto.allergenId())
+                    .orElseThrow(() -> new AllergenNotFoundException(dto.allergenId()));
+
+            boolean exists = customerAllergyRepository.existsByProfile_IdAndAllergen_Id(profile.getId(), allergen.getId());
+            if (exists) {
+                throw new DuplicateAllergyException();
+            }
+            allergy.setAllergen(allergen);
+        }
+
+        allergy.setSeverity(dto.severity());
+        customerAllergyRepository.save(allergy);
 
         List<CustomerAllergy> allergies = customerAllergyRepository.findByProfile_Id(profile.getId());
         return patientMapper.toProfileResponse(profile, allergies);
@@ -159,6 +199,42 @@ public class PatientServiceImpl implements PatientService {
     }
 
     @Override
+    @Transactional
+    public PatientDto createTemporaryPatient(CreatePatientDto dto) {
+        if (dto == null) {
+            throw new PatientException("Temporary patient payload is required");
+        }
+
+        String fullName = requireText(dto.fullName(), "fullName");
+        String phone = requireText(dto.phone(), "phone");
+        String uniqueCode = normalizeUniqueCode(dto.uniqueCode());
+
+        if (uniqueCode != null && patientRepository.existsByUniqueCode(uniqueCode)) {
+            throw new DuplicateUniqueCodeException(uniqueCode);
+        }
+
+        Patient patient = new Patient();
+        patient.setFullName(fullName);
+        patient.setPhone(phone);
+        patient.setUniqueCode(uniqueCode);
+
+        Patient saved = patientRepository.save(patient);
+        return new PatientDto(saved.getId(), saved.getFullName(), saved.getPhone(), saved.getUniqueCode(), saved.getCreatedAt());
+    }
+
+    @Override
+    @Transactional
+    public void deleteTemporaryPatient(UUID patientId) {
+        if (patientId == null) {
+            throw new PatientException("patientId is required");
+        }
+
+        Patient patient = patientRepository.findById(patientId)
+                .orElseThrow(() -> new TemporaryPatientNotFoundException(patientId));
+        patientRepository.delete(patient);
+    }
+
+    @Override
     @Transactional(readOnly = true)
     public List<PatientProfileResponse.AllergyItem> getAllergies(UUID userId) {
         PatientProfileResponse response = getProfileByUserId(userId);
@@ -175,5 +251,57 @@ public class PatientServiceImpl implements PatientService {
         if (userId == null) {
             throw new PatientException("userId is required");
         }
+    }
+
+    private void applyProfileFields(PatientProfile profile,
+                                    java.time.LocalDate dateOfBirth,
+                                    String gender,
+                                    Float weight,
+                                    Integer height,
+                                    Boolean isPregnant,
+                                    String bloodType,
+                                    String uniqueCode) {
+        profile.setDateOfBirth(dateOfBirth);
+        profile.setGender(gender);
+        profile.setWeight(weight);
+        profile.setHeight(height);
+        profile.setIsPregnant(isPregnant);
+        profile.setBloodType(bloodType);
+        profile.setUniqueCode(normalizeUniqueCode(uniqueCode));
+    }
+
+    private void validateUniqueCodeForCreate(String uniqueCode) {
+        String normalized = normalizeUniqueCode(uniqueCode);
+        if (normalized == null) {
+            return;
+        }
+        if (patientProfileRepository.existsByUniqueCode(normalized)) {
+            throw new DuplicateUniqueCodeException(uniqueCode);
+        }
+    }
+
+    private void validateUniqueCodeForUpdate(String uniqueCode, UUID userId) {
+        String normalized = normalizeUniqueCode(uniqueCode);
+        if (normalized == null) {
+            return;
+        }
+        if (patientProfileRepository.existsByUniqueCodeAndUserIdNot(normalized, userId)) {
+            throw new DuplicateUniqueCodeException(uniqueCode);
+        }
+    }
+
+    private String normalizeUniqueCode(String value) {
+        if (value == null) {
+            return null;
+        }
+        String normalized = value.trim();
+        return normalized.isEmpty() ? null : normalized;
+    }
+
+    private String requireText(String value, String fieldName) {
+        if (value == null || value.trim().isEmpty()) {
+            throw new PatientException(fieldName + " is required");
+        }
+        return value.trim();
     }
 }

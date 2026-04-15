@@ -1,5 +1,6 @@
 package com.TenaMed.patient.entity;
 
+import com.TenaMed.medicine.entity.Allergen;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;

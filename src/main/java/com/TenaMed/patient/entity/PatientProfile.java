@@ -31,7 +31,7 @@ public class PatientProfile {
     @Column(name = "id", nullable = false, updatable = false)
     private UUID id;
 
-    @Column(name = "user_id", nullable = false, unique = true)
+    @Column(name = "user_id", nullable = false)
     private UUID userId;
 
     @Column(name = "date_of_birth")
@@ -51,6 +51,9 @@ public class PatientProfile {
 
     @Column(name = "blood_type")
     private String bloodType;
+
+    @Column(name = "unique_code", unique = true)
+    private String uniqueCode;
 
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)

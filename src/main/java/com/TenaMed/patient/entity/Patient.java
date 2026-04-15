@@ -34,6 +34,9 @@ public class Patient {
     @Column(name = "phone", nullable = false)
     private String phone;
 
+    @Column(name = "unique_code", unique = true)
+    private String uniqueCode;
+
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;

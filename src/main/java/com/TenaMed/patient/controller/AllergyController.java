@@ -1,6 +1,7 @@
 package com.TenaMed.patient.controller;
 
 import com.TenaMed.patient.dto.AddAllergyDto;
+import com.TenaMed.patient.dto.UpdateAllergyDto;
 import com.TenaMed.patient.service.PatientService;
 import com.TenaMed.user.security.AuthenticatedUserPrincipal;
 import jakarta.validation.Valid;
@@ -12,6 +13,7 @@ import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -61,6 +63,18 @@ public class AllergyController {
 
         patientService.removeAllergy(userId, id);
         return ResponseEntity.noContent().build();
+    }
+
+    @PutMapping("/{id}")
+    public ResponseEntity<?> updateAllergy(@PathVariable("id") UUID id,
+                                           Principal principal,
+                                           @RequestBody UpdateAllergyDto dto) {
+        UUID userId = resolveUserId(principal);
+        if (userId == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("error", "Authentication required"));
+        }
+
+        return ResponseEntity.ok(patientService.updateAllergy(userId, id, dto));
     }
 
     private UUID resolveUserId(Principal principal) {

@@ -5,7 +5,7 @@ import lombok.Data;
 import java.time.LocalDate;
 
 @Data
-public class UpdateProfileDto {
+public class CreateProfileDto {
     private LocalDate dateOfBirth;
     private String gender;
     private Float weight;
