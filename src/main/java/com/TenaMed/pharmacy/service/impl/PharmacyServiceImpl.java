@@ -6,6 +6,8 @@ import com.TenaMed.pharmacy.entity.Pharmacy;
 import com.TenaMed.pharmacy.enums.PharmacyStatus;
 import com.TenaMed.pharmacy.exception.PharmacyNotFoundException;
 import com.TenaMed.pharmacy.exception.PharmacyValidationException;
+import com.TenaMed.invitation.dto.InvitationResponseDto;
+import com.TenaMed.invitation.service.InvitationService;
 import com.TenaMed.pharmacy.mapper.PharmacyMapper;
 import com.TenaMed.pharmacy.repository.PharmacyRepository;
 import com.TenaMed.pharmacy.service.PharmacyService;
@@ -25,11 +27,14 @@ public class PharmacyServiceImpl implements PharmacyService {
 
     private final PharmacyRepository pharmacyRepository;
     private final PharmacyMapper pharmacyMapper;
+    private final InvitationService invitationService;
 
     public PharmacyServiceImpl(PharmacyRepository pharmacyRepository,
-                               PharmacyMapper pharmacyMapper) {
+                               PharmacyMapper pharmacyMapper,
+                               InvitationService invitationService) {
         this.pharmacyRepository = pharmacyRepository;
         this.pharmacyMapper = pharmacyMapper;
+        this.invitationService = invitationService;
     }
 
     @Override
@@ -84,6 +89,31 @@ public class PharmacyServiceImpl implements PharmacyService {
         Pharmacy pharmacy = pharmacyRepository.findById(pharmacyId)
             .orElseThrow(() -> new PharmacyNotFoundException(pharmacyId));
         return pharmacyMapper.toResponse(pharmacy);
+    }
+
+    @Override
+    public InvitationResponseDto invitePharmacist(UUID pharmacyId, String email) {
+        if (pharmacyId == null) {
+            throw new PharmacyValidationException("pharmacyId is required");
+        }
+        if (email == null || email.isBlank()) {
+            throw new PharmacyValidationException("email is required");
+        }
+
+        AuthenticatedUserPrincipal principal = authenticatedPrincipal();
+        Pharmacy pharmacy = pharmacyRepository.findById(pharmacyId)
+                .orElseThrow(() -> new PharmacyNotFoundException(pharmacyId));
+
+        boolean isOwner = principal.getUserId().equals(pharmacy.getOwnerId());
+        boolean isAdmin = principal.getAuthorities().stream().anyMatch(a -> "ROLE_ADMIN".equals(a.getAuthority()));
+        if (!isOwner && !isAdmin) {
+            throw new PharmacyValidationException("Only pharmacy owner or admin can invite pharmacists");
+        }
+        if (pharmacy.getStatus() != PharmacyStatus.VERIFIED) {
+            throw new PharmacyValidationException("Pharmacy must be VERIFIED before inviting pharmacists");
+        }
+
+        return invitationService.createPharmacistInvitation(pharmacyId, email.trim());
     }
 
     private void validateCreateRequest(CreatePharmacyRequest request) {

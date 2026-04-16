@@ -11,7 +11,7 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 import java.util.Map;
 
-@RestControllerAdvice(basePackages = {"com.TenaMed.hospital", "com.TenaMed.doctor", "com.TenaMed.invitation"})
+@RestControllerAdvice(basePackages = {"com.TenaMed.hospital", "com.TenaMed.doctor", "com.TenaMed.invitation", "com.TenaMed.pharmacy"})
 public class HospitalDoctorInvitationExceptionHandler {
 
     @ExceptionHandler(MethodArgumentNotValidException.class)

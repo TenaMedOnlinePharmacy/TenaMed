@@ -34,8 +34,18 @@ public class Invitation {
     @Column(name = "role", nullable = false)
     private InvitationRole role;
 
-    @Column(name = "hospital_id", nullable = false)
+    @Column(name = "institute_id")
+    private UUID instituteId;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "institute_type")
+    private InvitationInstituteType instituteType;
+
+    @Column(name = "hospital_id")
     private UUID hospitalId;
+
+    @Column(name = "pharmacy_id")
+    private UUID pharmacyId;
 
     @Column(name = "token", nullable = false, unique = true)
     private String token;

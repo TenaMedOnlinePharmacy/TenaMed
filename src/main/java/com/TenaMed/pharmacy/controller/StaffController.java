@@ -1,5 +1,6 @@
 package com.TenaMed.pharmacy.controller;
 
+import com.TenaMed.common.security.CurrentUserProvider;
 import com.TenaMed.pharmacy.dto.request.AddStaffRequest;
 import com.TenaMed.pharmacy.dto.response.StaffResponse;
 import com.TenaMed.pharmacy.exception.PharmacyException;
@@ -23,9 +24,12 @@ import java.util.UUID;
 public class StaffController {
 
     private final StaffService staffService;
+    private final CurrentUserProvider currentUserProvider;
 
-    public StaffController(StaffService staffService) {
+    public StaffController(StaffService staffService,
+                           CurrentUserProvider currentUserProvider) {
         this.staffService = staffService;
+        this.currentUserProvider = currentUserProvider;
     }
 
     @PostMapping("/{id}/staff")
@@ -43,5 +47,17 @@ public class StaffController {
     @GetMapping("/{id}/staff")
     public ResponseEntity<List<StaffResponse>> listStaff(@PathVariable UUID id) {
         return ResponseEntity.ok(staffService.listStaff(id));
+    }
+
+    @PostMapping("/{id}/staff/{userId}/verify")
+    public ResponseEntity<?> verifyPharmacist(@PathVariable UUID id,
+                                              @PathVariable UUID userId) {
+        try {
+            UUID verifierId = currentUserProvider.getCurrentUserId();
+            StaffResponse response = staffService.verifyStaff(id, userId, verifierId);
+            return ResponseEntity.ok(response);
+        } catch (PharmacyException ex) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("error", ex.getMessage()));
+        }
     }
 }

@@ -21,4 +21,21 @@ public class EmailTemplateBuilder {
                 </html>
                 """, hospitalName, link);
     }
+
+    public String buildPharmacistInvitationEmail(String pharmacyName, String link) {
+        return String.format("""
+                <html>
+                  <body style=\"font-family: Arial, sans-serif; line-height: 1.5; color: #1f2937;\">
+                    <h2 style=\"margin-bottom: 8px;\">You're invited to join a pharmacy</h2>
+                    <p>You have been invited to join <strong>%s</strong> as a pharmacist.</p>
+                    <p>
+                      Click the link below to continue your onboarding:
+                      <a href=\"%s\">Accept Invitation</a>
+                    </p>
+                    <p>This invitation expires in 24 hours.</p>
+                    <p>If you did not expect this email, you can ignore it.</p>
+                  </body>
+                </html>
+                """, pharmacyName, link);
+    }
 }

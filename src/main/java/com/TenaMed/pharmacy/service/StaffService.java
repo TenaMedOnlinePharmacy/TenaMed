@@ -10,7 +10,7 @@ public interface StaffService {
 
     StaffResponse addStaff(AddStaffRequest request);
 
-    StaffResponse verifyStaff(UUID userPharmacyId, UUID verifiedBy);
+    StaffResponse verifyStaff(UUID pharmacyId, UUID userId, UUID verifiedBy);
 
     List<StaffResponse> listStaff(UUID pharmacyId);
 }

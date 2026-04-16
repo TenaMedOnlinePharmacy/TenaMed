@@ -48,9 +48,9 @@ public class StaffServiceImpl implements StaffService {
     }
 
     @Override
-    public StaffResponse verifyStaff(UUID userPharmacyId, UUID verifiedBy) {
-        UserPharmacy staff = userPharmacyRepository.findById(userPharmacyId)
-            .orElseThrow(() -> new UserPharmacyNotFoundException(userPharmacyId));
+    public StaffResponse verifyStaff(UUID pharmacyId, UUID userId, UUID verifiedBy) {
+        UserPharmacy staff = userPharmacyRepository.findByUserIdAndPharmacy_Id(userId, pharmacyId)
+            .orElseThrow(() -> new UserPharmacyNotFoundException(userId));
         staff.setVerifiedBy(verifiedBy);
         staff.setVerifiedAt(LocalDateTime.now());
         return userPharmacyMapper.toResponse(userPharmacyRepository.save(staff));

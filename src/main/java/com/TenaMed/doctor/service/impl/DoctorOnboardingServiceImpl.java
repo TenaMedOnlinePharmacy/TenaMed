@@ -6,6 +6,7 @@ import com.TenaMed.doctor.dto.DoctorResponseDto;
 import com.TenaMed.doctor.service.DoctorOnboardingService;
 import com.TenaMed.doctor.service.DoctorService;
 import com.TenaMed.invitation.entity.Invitation;
+import com.TenaMed.invitation.entity.InvitationInstituteType;
 import com.TenaMed.invitation.entity.InvitationRole;
 import com.TenaMed.invitation.service.InvitationService;
 import com.TenaMed.user.dto.RegisterRequestDto;
@@ -44,6 +45,9 @@ public class DoctorOnboardingServiceImpl implements DoctorOnboardingService {
         if (invitation.getRole() != InvitationRole.DOCTOR) {
             throw new BadRequestException("Invitation role does not allow doctor onboarding");
         }
+        if (invitation.getInstituteType() != InvitationInstituteType.HOSPITAL || invitation.getInstituteId() == null) {
+            throw new BadRequestException("Invitation is not linked to a hospital");
+        }
 
         String invitationEmail = invitation.getEmail() == null ? "" : invitation.getEmail().trim();
         String requestEmail = requestDto.getUser().getEmail() == null ? "" : requestDto.getUser().getEmail().trim();
@@ -66,7 +70,7 @@ public class DoctorOnboardingServiceImpl implements DoctorOnboardingService {
 
         DoctorResponseDto doctorResponse = doctorService.createDoctorFromInvite(
                 registerResponse.getUserId(),
-                invitation.getHospitalId(),
+            invitation.getInstituteId(),
                 requestDto.getDoctor());
 
         invitationService.markAsAccepted(token);

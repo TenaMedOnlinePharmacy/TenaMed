@@ -1,5 +1,6 @@
 package com.TenaMed.pharmacy.controller;
 
+import com.TenaMed.common.security.CurrentUserProvider;
 import com.TenaMed.pharmacy.dto.request.AddStaffRequest;
 import com.TenaMed.pharmacy.dto.response.StaffResponse;
 import com.TenaMed.pharmacy.enums.EmploymentStatus;
@@ -37,6 +38,9 @@ class StaffControllerTests {
     @MockitoBean
     private StaffService staffService;
 
+    @MockitoBean
+    private CurrentUserProvider currentUserProvider;
+
     @Test
     void shouldAddStaff() throws Exception {
         UUID pharmacyId = UUID.randomUUID();
@@ -69,5 +73,25 @@ class StaffControllerTests {
         mockMvc.perform(get("/api/pharmacies/{id}/staff", pharmacyId))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$[0].pharmacyId").value(pharmacyId.toString()));
+    }
+
+    @Test
+    void shouldVerifyPharmacist() throws Exception {
+        UUID pharmacyId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
+        UUID verifierId = UUID.randomUUID();
+
+        StaffResponse response = StaffResponse.builder()
+            .userId(userId)
+                .pharmacyId(pharmacyId)
+                .verifiedBy(verifierId)
+                .build();
+
+        when(currentUserProvider.getCurrentUserId()).thenReturn(verifierId);
+        when(staffService.verifyStaff(pharmacyId, userId, verifierId)).thenReturn(response);
+
+        mockMvc.perform(post("/api/pharmacies/{id}/staff/{userId}/verify", pharmacyId, userId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.verifiedBy").value(verifierId.toString()));
     }
 }

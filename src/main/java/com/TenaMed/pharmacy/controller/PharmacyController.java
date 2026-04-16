@@ -2,6 +2,8 @@ package com.TenaMed.pharmacy.controller;
 
 import com.TenaMed.pharmacy.dto.request.CreatePharmacyRequest;
 import com.TenaMed.pharmacy.dto.response.PharmacyResponse;
+import com.TenaMed.invitation.dto.InvitationResponseDto;
+import com.TenaMed.invitation.dto.PharmacistInvitationRequestDto;
 import com.TenaMed.pharmacy.exception.PharmacyException;
 import com.TenaMed.pharmacy.service.PharmacyService;
 import jakarta.validation.Valid;
@@ -50,6 +52,17 @@ public class PharmacyController {
     public ResponseEntity<?> verifyPharmacy(@PathVariable UUID id) {
         try {
             return ResponseEntity.ok(pharmacyService.verifyPharmacy(id));
+        } catch (PharmacyException ex) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("error", ex.getMessage()));
+        }
+    }
+
+    @PostMapping("/{id}/invite-pharmacist")
+    public ResponseEntity<?> invitePharmacist(@PathVariable UUID id,
+                                              @Valid @RequestBody PharmacistInvitationRequestDto request) {
+        try {
+            InvitationResponseDto response = pharmacyService.invitePharmacist(id, request.getEmail());
+            return ResponseEntity.status(HttpStatus.CREATED).body(response);
         } catch (PharmacyException ex) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("error", ex.getMessage()));
         }

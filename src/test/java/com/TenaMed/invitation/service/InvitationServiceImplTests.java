@@ -7,9 +7,12 @@ import com.TenaMed.hospital.entity.Hospital;
 import com.TenaMed.hospital.repository.HospitalRepository;
 import com.TenaMed.invitation.dto.InvitationResponseDto;
 import com.TenaMed.invitation.entity.Invitation;
+import com.TenaMed.invitation.entity.InvitationInstituteType;
 import com.TenaMed.invitation.entity.InvitationRole;
 import com.TenaMed.invitation.entity.InvitationStatus;
 import com.TenaMed.invitation.mapper.InvitationMapper;
+import com.TenaMed.pharmacy.entity.Pharmacy;
+import com.TenaMed.pharmacy.repository.PharmacyRepository;
 import com.TenaMed.invitation.repository.InvitationRepository;
 import com.TenaMed.invitation.service.impl.InvitationServiceImpl;
 import org.junit.jupiter.api.Test;
@@ -25,6 +28,7 @@ import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
@@ -45,6 +49,9 @@ class InvitationServiceImplTests {
 
     @Mock
     private HospitalRepository hospitalRepository;
+
+    @Mock
+    private PharmacyRepository pharmacyRepository;
 
     @Mock
     private EmailService emailService;
@@ -68,6 +75,8 @@ class InvitationServiceImplTests {
         saved.setId(UUID.randomUUID());
         saved.setEmail("doctor@example.com");
         saved.setHospitalId(hospitalId);
+        saved.setInstituteId(hospitalId);
+        saved.setInstituteType(InvitationInstituteType.HOSPITAL);
         saved.setRole(InvitationRole.DOCTOR);
         saved.setStatus(InvitationStatus.PENDING);
         saved.setToken(UUID.randomUUID().toString());
@@ -77,11 +86,13 @@ class InvitationServiceImplTests {
         response.setId(saved.getId());
         response.setEmail(saved.getEmail());
         response.setHospitalId(hospitalId);
+        response.setInstituteId(hospitalId);
+        response.setInstituteType(InvitationInstituteType.HOSPITAL);
         response.setRole(InvitationRole.DOCTOR);
         response.setStatus(InvitationStatus.PENDING);
 
         when(hospitalRepository.findById(hospitalId)).thenReturn(Optional.of(hospital));
-        when(invitationRepository.save(any(Invitation.class))).thenReturn(saved);
+        when(invitationRepository.saveAndFlush(any(Invitation.class))).thenReturn(saved);
         when(emailTemplateBuilder.buildDoctorInvitationEmail(eq("Saint Gabriel"), contains(saved.getToken())))
             .thenReturn("<html>Invite</html>");
         when(invitationMapper.toResponse(saved)).thenReturn(response);
@@ -89,12 +100,16 @@ class InvitationServiceImplTests {
         InvitationResponseDto actual = invitationService.createDoctorInvitation(hospitalId, email);
 
         ArgumentCaptor<Invitation> captor = ArgumentCaptor.forClass(Invitation.class);
-        verify(invitationRepository).save(captor.capture());
+        verify(invitationRepository).saveAndFlush(captor.capture());
         Invitation persisted = captor.getValue();
 
         assertEquals("doctor@example.com", persisted.getEmail());
         assertEquals(InvitationRole.DOCTOR, persisted.getRole());
         assertEquals(InvitationStatus.PENDING, persisted.getStatus());
+        assertEquals(hospitalId, persisted.getInstituteId());
+        assertEquals(InvitationInstituteType.HOSPITAL, persisted.getInstituteType());
+        assertEquals(hospitalId, persisted.getHospitalId());
+        assertNull(persisted.getPharmacyId());
         assertNotNull(persisted.getToken());
         assertEquals(hospitalId, actual.getHospitalId());
         verify(emailService).sendEmail(any());
@@ -155,8 +170,58 @@ class InvitationServiceImplTests {
         assertTrue(ex.getMessage().contains("pending state"));
     }
 
-        @Test
-        void shouldThrowWhenEmailDeliveryFailsDuringInvitationCreation() {
+    @Test
+    void shouldCreatePharmacistInvitationWithPharmacyId() {
+        UUID pharmacyId = UUID.randomUUID();
+
+        Pharmacy pharmacy = new Pharmacy();
+        pharmacy.setId(pharmacyId);
+        pharmacy.setName("City Pharmacy");
+
+        Invitation saved = new Invitation();
+        saved.setId(UUID.randomUUID());
+        saved.setEmail("pharmacist@example.com");
+        saved.setPharmacyId(pharmacyId);
+        saved.setInstituteId(pharmacyId);
+        saved.setInstituteType(InvitationInstituteType.PHARMACY);
+        saved.setRole(InvitationRole.PHARMACIST);
+        saved.setStatus(InvitationStatus.PENDING);
+        saved.setToken(UUID.randomUUID().toString());
+        saved.setExpiresAt(LocalDateTime.now().plusHours(24));
+
+        InvitationResponseDto response = new InvitationResponseDto();
+        response.setId(saved.getId());
+        response.setEmail(saved.getEmail());
+        response.setPharmacyId(pharmacyId);
+        response.setInstituteId(pharmacyId);
+        response.setInstituteType(InvitationInstituteType.PHARMACY);
+        response.setRole(InvitationRole.PHARMACIST);
+        response.setStatus(InvitationStatus.PENDING);
+
+        when(pharmacyRepository.findById(pharmacyId)).thenReturn(Optional.of(pharmacy));
+        when(invitationRepository.saveAndFlush(any(Invitation.class))).thenReturn(saved);
+        when(emailTemplateBuilder.buildPharmacistInvitationEmail(eq("City Pharmacy"), contains(saved.getToken())))
+                .thenReturn("<html>Invite</html>");
+        when(invitationMapper.toResponse(saved)).thenReturn(response);
+
+        InvitationResponseDto actual = invitationService.createPharmacistInvitation(pharmacyId, "  PHARMACIST@example.com ");
+
+        ArgumentCaptor<Invitation> captor = ArgumentCaptor.forClass(Invitation.class);
+        verify(invitationRepository).saveAndFlush(captor.capture());
+        Invitation persisted = captor.getValue();
+
+        assertEquals("pharmacist@example.com", persisted.getEmail());
+        assertEquals(InvitationRole.PHARMACIST, persisted.getRole());
+        assertNull(persisted.getHospitalId());
+        assertEquals(pharmacyId, persisted.getPharmacyId());
+        assertEquals(pharmacyId, persisted.getInstituteId());
+        assertEquals(InvitationInstituteType.PHARMACY, persisted.getInstituteType());
+        assertEquals(pharmacyId, actual.getPharmacyId());
+        verify(emailService).sendEmail(any());
+    }
+
+    @Test
+    void shouldThrowWhenEmailDeliveryFailsDuringInvitationCreation() {
         UUID hospitalId = UUID.randomUUID();
         String email = "doctor@example.com";
 
@@ -174,7 +239,7 @@ class InvitationServiceImplTests {
         saved.setExpiresAt(LocalDateTime.now().plusHours(24));
 
         when(hospitalRepository.findById(hospitalId)).thenReturn(Optional.of(hospital));
-        when(invitationRepository.save(any(Invitation.class))).thenReturn(saved);
+        when(invitationRepository.saveAndFlush(any(Invitation.class))).thenReturn(saved);
         when(emailTemplateBuilder.buildDoctorInvitationEmail(eq("Saint Gabriel"), contains(saved.getToken())))
             .thenReturn("<html>Invite</html>");
         org.mockito.Mockito.doThrow(new IllegalStateException("smtp down"))
@@ -184,6 +249,6 @@ class InvitationServiceImplTests {
         assertThrows(IllegalStateException.class,
             () -> invitationService.createDoctorInvitation(hospitalId, email));
 
-        verify(invitationMapper, never()).toResponse(any(Invitation.class));
-        }
+        verify(invitationMapper).toResponse(any(Invitation.class));
+    }
 }

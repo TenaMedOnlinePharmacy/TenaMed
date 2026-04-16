@@ -82,16 +82,17 @@ class StaffServiceImplTests {
 
     @Test
     void shouldVerifyStaff() {
-        UUID membershipId = UUID.randomUUID();
+        UUID pharmacyId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
         UUID verifier = UUID.randomUUID();
         UserPharmacy membership = new UserPharmacy();
         StaffResponse response = StaffResponse.builder().verifiedBy(verifier).build();
 
-        when(userPharmacyRepository.findById(membershipId)).thenReturn(Optional.of(membership));
+        when(userPharmacyRepository.findByUserIdAndPharmacy_Id(userId, pharmacyId)).thenReturn(Optional.of(membership));
         when(userPharmacyRepository.save(any(UserPharmacy.class))).thenAnswer(invocation -> invocation.getArgument(0));
         when(userPharmacyMapper.toResponse(any(UserPharmacy.class))).thenReturn(response);
 
-        StaffResponse actual = staffService.verifyStaff(membershipId, verifier);
+        StaffResponse actual = staffService.verifyStaff(pharmacyId, userId, verifier);
 
         assertEquals(verifier, actual.getVerifiedBy());
     }

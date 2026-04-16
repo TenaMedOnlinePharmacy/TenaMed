@@ -40,6 +40,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .requestMatchers("/ws/**").permitAll()
                         .requestMatchers("/api/doctors/create/**").permitAll()
+                        .requestMatchers("/api/pharmacists/create/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/invitations/**").permitAll()
                     .requestMatchers(HttpMethod.POST, "/api/auth/register", "/api/auth/register-hospital-owner", "/api/auth/register-pharmacist", "/api/auth/login", "/api/auth/refresh").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/identity/register", "/api/identity/login").permitAll()

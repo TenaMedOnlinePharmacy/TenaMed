@@ -6,6 +6,8 @@ import com.TenaMed.pharmacy.entity.Pharmacy;
 import com.TenaMed.pharmacy.enums.PharmacyStatus;
 import com.TenaMed.pharmacy.exception.PharmacyNotFoundException;
 import com.TenaMed.pharmacy.exception.PharmacyValidationException;
+import com.TenaMed.invitation.dto.InvitationResponseDto;
+import com.TenaMed.invitation.service.InvitationService;
 import com.TenaMed.pharmacy.mapper.PharmacyMapper;
 import com.TenaMed.pharmacy.repository.PharmacyRepository;
 import com.TenaMed.pharmacy.service.impl.PharmacyServiceImpl;
@@ -35,6 +37,9 @@ class PharmacyServiceImplTests {
 
     @Mock
     private PharmacyMapper pharmacyMapper;
+
+    @Mock
+    private InvitationService invitationService;
 
     @InjectMocks
     private PharmacyServiceImpl pharmacyService;
@@ -102,10 +107,7 @@ class PharmacyServiceImplTests {
     @Test
     void shouldRejectVerifyWhenUserIsNotAdmin() {
         UUID pharmacyId = UUID.randomUUID();
-        Pharmacy pharmacy = new Pharmacy();
         setPrincipal(UUID.randomUUID(), "ROLE_PHARMACIST");
-
-        when(pharmacyRepository.findById(pharmacyId)).thenReturn(Optional.of(pharmacy));
 
         assertThrows(PharmacyValidationException.class, () -> pharmacyService.verifyPharmacy(pharmacyId));
         SecurityContextHolder.clearContext();
@@ -117,6 +119,47 @@ class PharmacyServiceImplTests {
         when(pharmacyRepository.findById(pharmacyId)).thenReturn(Optional.empty());
 
         assertThrows(PharmacyNotFoundException.class, () -> pharmacyService.getPharmacy(pharmacyId));
+    }
+
+    @Test
+    void shouldInvitePharmacistWhenOwnerAndPharmacyVerified() {
+        UUID pharmacyId = UUID.randomUUID();
+        UUID ownerId = UUID.randomUUID();
+
+        Pharmacy pharmacy = new Pharmacy();
+        pharmacy.setId(pharmacyId);
+        pharmacy.setOwnerId(ownerId);
+        pharmacy.setStatus(PharmacyStatus.VERIFIED);
+
+        InvitationResponseDto invitation = new InvitationResponseDto();
+        invitation.setPharmacyId(pharmacyId);
+
+        setPrincipal(ownerId, "ROLE_PHARMACYOWNER");
+        when(pharmacyRepository.findById(pharmacyId)).thenReturn(Optional.of(pharmacy));
+        when(invitationService.createPharmacistInvitation(pharmacyId, "pharmacist@example.com"))
+                .thenReturn(invitation);
+
+        InvitationResponseDto actual = pharmacyService.invitePharmacist(pharmacyId, "pharmacist@example.com");
+
+        assertEquals(pharmacyId, actual.getPharmacyId());
+        SecurityContextHolder.clearContext();
+    }
+
+    @Test
+    void shouldRejectInviteWhenUserIsNotOwnerOrAdmin() {
+        UUID pharmacyId = UUID.randomUUID();
+
+        Pharmacy pharmacy = new Pharmacy();
+        pharmacy.setId(pharmacyId);
+        pharmacy.setOwnerId(UUID.randomUUID());
+        pharmacy.setStatus(PharmacyStatus.VERIFIED);
+
+        setPrincipal(UUID.randomUUID(), "ROLE_PHARMACIST");
+        when(pharmacyRepository.findById(pharmacyId)).thenReturn(Optional.of(pharmacy));
+
+        assertThrows(PharmacyValidationException.class,
+                () -> pharmacyService.invitePharmacist(pharmacyId, "pharmacist@example.com"));
+        SecurityContextHolder.clearContext();
     }
 
     private void setPrincipal(UUID userId, String authority) {

@@ -16,7 +16,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Set;
 
-@Service
+@Service("userPharmacistOnboardingService")
 public class PharmacistOnboardingServiceImpl implements PharmacistOnboardingService {
 
     private static final String PHARMACY_OWNER_ROLE = "PHARMACYOWNER";

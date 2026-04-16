@@ -29,6 +29,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             "/api/auth/register-hospital-owner",
             "/api/auth/register-pharmacist",
             "/api/doctors/create",
+            "/api/pharmacists/create",
             "/api/auth/register",
             "/api/auth/login",
             "/api/auth/refresh",
@@ -114,7 +115,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         String path = request.getRequestURI();
         return ALLOWED_PATHS.contains(path)
                 || path.startsWith("/api/invitations/")
-                || path.startsWith("/api/doctors/create");
+            || path.startsWith("/api/doctors/create")
+            || path.startsWith("/api/pharmacists/create");
     }
 
     private void unauthorized(HttpServletResponse response, String message) throws IOException {

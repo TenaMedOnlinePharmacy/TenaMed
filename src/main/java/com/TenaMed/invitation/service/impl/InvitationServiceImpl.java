@@ -9,9 +9,12 @@ import com.TenaMed.hospital.entity.Hospital;
 import com.TenaMed.hospital.repository.HospitalRepository;
 import com.TenaMed.invitation.dto.InvitationResponseDto;
 import com.TenaMed.invitation.entity.Invitation;
+import com.TenaMed.invitation.entity.InvitationInstituteType;
 import com.TenaMed.invitation.entity.InvitationRole;
 import com.TenaMed.invitation.entity.InvitationStatus;
 import com.TenaMed.invitation.mapper.InvitationMapper;
+import com.TenaMed.pharmacy.entity.Pharmacy;
+import com.TenaMed.pharmacy.repository.PharmacyRepository;
 import com.TenaMed.invitation.repository.InvitationRepository;
 import com.TenaMed.invitation.service.InvitationService;
 import org.springframework.beans.factory.annotation.Value;
@@ -26,10 +29,12 @@ public class InvitationServiceImpl implements InvitationService {
 
     private static final long INVITATION_TTL_HOURS = 24L;
     private static final String DOCTOR_INVITE_SUBJECT = "You're invited to join a hospital";
+    private static final String PHARMACIST_INVITE_SUBJECT = "You're invited to join a pharmacy";
 
     private final InvitationRepository invitationRepository;
     private final InvitationMapper invitationMapper;
     private final HospitalRepository hospitalRepository;
+    private final PharmacyRepository pharmacyRepository;
     private final EmailService emailService;
     private final EmailTemplateBuilder emailTemplateBuilder;
 
@@ -39,11 +44,13 @@ public class InvitationServiceImpl implements InvitationService {
     public InvitationServiceImpl(InvitationRepository invitationRepository,
                                  InvitationMapper invitationMapper,
                                  HospitalRepository hospitalRepository,
+                                 PharmacyRepository pharmacyRepository,
                                  EmailService emailService,
                                  EmailTemplateBuilder emailTemplateBuilder) {
         this.invitationRepository = invitationRepository;
         this.invitationMapper = invitationMapper;
         this.hospitalRepository = hospitalRepository;
+        this.pharmacyRepository = pharmacyRepository;
         this.emailService = emailService;
         this.emailTemplateBuilder = emailTemplateBuilder;
     }
@@ -64,18 +71,56 @@ public class InvitationServiceImpl implements InvitationService {
         Invitation invitation = new Invitation();
         invitation.setEmail(email.trim().toLowerCase());
         invitation.setRole(InvitationRole.DOCTOR);
+        invitation.setInstituteId(hospitalId);
+        invitation.setInstituteType(InvitationInstituteType.HOSPITAL);
         invitation.setHospitalId(hospitalId);
+        invitation.setPharmacyId(null);
         invitation.setToken(UUID.randomUUID().toString());
         invitation.setStatus(InvitationStatus.PENDING);
         invitation.setExpiresAt(LocalDateTime.now().plusHours(INVITATION_TTL_HOURS));
 
-        Invitation saved = invitationRepository.save(invitation);
+        Invitation saved = invitationRepository.saveAndFlush(invitation);
+        InvitationResponseDto response = invitationMapper.toResponse(saved);
 
         String invitationLink = buildInvitationLink(saved.getToken());
         String body = emailTemplateBuilder.buildDoctorInvitationEmail(hospital.getName(), invitationLink);
         emailService.sendEmail(new EmailRequest(saved.getEmail(), DOCTOR_INVITE_SUBJECT, body, true));
 
-        return invitationMapper.toResponse(saved);
+        return response;
+    }
+
+    @Override
+    @Transactional
+    public InvitationResponseDto createPharmacistInvitation(UUID pharmacyId, String email) {
+        if (pharmacyId == null) {
+            throw new BadRequestException("pharmacyId is required");
+        }
+        if (email == null || email.trim().isEmpty()) {
+            throw new BadRequestException("email is required");
+        }
+
+        Pharmacy pharmacy = pharmacyRepository.findById(pharmacyId)
+                .orElseThrow(() -> new ResourceNotFoundException("Pharmacy not found: " + pharmacyId));
+
+        Invitation invitation = new Invitation();
+        invitation.setEmail(email.trim().toLowerCase());
+        invitation.setRole(InvitationRole.PHARMACIST);
+        invitation.setInstituteId(pharmacyId);
+        invitation.setInstituteType(InvitationInstituteType.PHARMACY);
+        invitation.setHospitalId(null);
+        invitation.setPharmacyId(pharmacyId);
+        invitation.setToken(UUID.randomUUID().toString());
+        invitation.setStatus(InvitationStatus.PENDING);
+        invitation.setExpiresAt(LocalDateTime.now().plusHours(INVITATION_TTL_HOURS));
+
+        Invitation saved = invitationRepository.saveAndFlush(invitation);
+        InvitationResponseDto response = invitationMapper.toResponse(saved);
+
+        String invitationLink = buildInvitationLink(saved.getToken());
+        String body = emailTemplateBuilder.buildPharmacistInvitationEmail(pharmacy.getName(), invitationLink);
+        emailService.sendEmail(new EmailRequest(saved.getEmail(), PHARMACIST_INVITE_SUBJECT, body, true));
+
+        return response;
     }
 
     @Override
