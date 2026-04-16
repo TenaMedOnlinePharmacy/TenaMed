@@ -3,7 +3,6 @@ package com.TenaMed.doctor.controller;
 import com.TenaMed.common.exception.BadRequestException;
 import com.TenaMed.common.security.CurrentUserProvider;
 import com.TenaMed.doctor.dto.DoctorInviteRegistrationRequestDto;
-import com.TenaMed.doctor.dto.DoctorRequestDto;
 import com.TenaMed.doctor.dto.DoctorResponseDto;
 import com.TenaMed.doctor.service.DoctorOnboardingService;
 import com.TenaMed.doctor.service.DoctorService;
