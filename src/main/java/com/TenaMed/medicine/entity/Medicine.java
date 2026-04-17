@@ -71,7 +71,4 @@ public class Medicine extends BaseAuditableEntity {
 
     @OneToMany(mappedBy = "medicine", cascade = CascadeType.ALL, orphanRemoval = true)
     private Set<MedicineAllergen> medicineAllergens = new LinkedHashSet<>();
-
-    @OneToMany(mappedBy = "medicine", cascade = CascadeType.ALL, orphanRemoval = true)
-    private Set<MedicineDopingRule> medicineDopingRules = new LinkedHashSet<>();
 }

@@ -3,8 +3,9 @@ package com.TenaMed.medicine.mapper;
 import com.TenaMed.medicine.dto.MedicineRequestDto;
 import com.TenaMed.medicine.dto.MedicineResponseDto;
 import com.TenaMed.medicine.entity.Medicine;
-import com.TenaMed.medicine.entity.MedicineDopingRule;
 import org.springframework.stereotype.Component;
+
+import java.util.List;
 
 @Component
 public class MedicineMapper {
@@ -37,9 +38,7 @@ public class MedicineMapper {
                 .allergenIds(medicine.getMedicineAllergens().stream()
                     .map(link -> link.getAllergen().getId())
                     .toList())
-                .dopingRuleIds(medicine.getMedicineDopingRules().stream()
-                    .map(MedicineDopingRule::getId)
-                    .toList())
+                .dopingRuleIds(List.of())
                 .build();
     }
 

@@ -1,5 +1,8 @@
 package com.TenaMed.medicine.service.impl;
 
+import com.TenaMed.antidoping.entity.MedicineDopingRule;
+import com.TenaMed.antidoping.entity.MedicineDopingRuleStatus;
+import com.TenaMed.antidoping.repository.MedicineDopingRuleRepository;
 import com.TenaMed.medicine.dto.MedicineRequestDto;
 import com.TenaMed.medicine.dto.MedicineResponseDto;
 import com.TenaMed.medicine.dto.MedicineSearchDto;
@@ -10,7 +13,6 @@ import com.TenaMed.medicine.entity.Category;
 import com.TenaMed.medicine.entity.DosageForm;
 import com.TenaMed.medicine.entity.Medicine;
 import com.TenaMed.medicine.entity.MedicineAllergen;
-import com.TenaMed.medicine.entity.MedicineDopingRule;
 import com.TenaMed.medicine.exception.MedicineAlreadyExistsException;
 import com.TenaMed.medicine.exception.MedicineNotFoundException;
 import com.TenaMed.medicine.exception.MedicineValidationException;
@@ -19,7 +21,6 @@ import com.TenaMed.medicine.repository.AllergenRepository;
 import com.TenaMed.medicine.repository.CategoryRepository;
 import com.TenaMed.medicine.repository.DosageFormRepository;
 import com.TenaMed.medicine.repository.MedicineAllergenRepository;
-import com.TenaMed.medicine.repository.MedicineDopingRuleRepository;
 import com.TenaMed.medicine.repository.MedicineRepository;
 import com.TenaMed.medicine.service.MedicineService;
 import com.TenaMed.medicine.specification.MedicineSpecification;
@@ -29,6 +30,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Locale;
 import java.util.UUID;
 
 @Service
@@ -72,7 +74,7 @@ public class MedicineServiceImpl implements MedicineService {
         medicine.setCategory(resolveOrCreateCategory(requestDto.getCategory()));
         medicine.setDosageForm(resolveOrCreateDosageForm(requestDto.getDosageForm()));
         Medicine saved = medicineRepository.save(medicine);
-        return medicineMapper.toResponseDto(saved);
+        return toResponseDtoWithDopingRuleIds(saved);
     }
 
     @Override
@@ -80,7 +82,7 @@ public class MedicineServiceImpl implements MedicineService {
     public MedicineResponseDto getMedicineById(UUID id) {
         Medicine medicine = medicineRepository.findById(id)
                 .orElseThrow(() -> new MedicineNotFoundException(id));
-        return medicineMapper.toResponseDto(medicine);
+        return toResponseDtoWithDopingRuleIds(medicine);
     }
 
     @Override
@@ -88,7 +90,7 @@ public class MedicineServiceImpl implements MedicineService {
     public List<MedicineResponseDto> getAllMedicines() {
         return medicineRepository.findAll()
                 .stream()
-                .map(medicineMapper::toResponseDto)
+                .map(this::toResponseDtoWithDopingRuleIds)
                 .toList();
     }
 
@@ -103,7 +105,7 @@ public class MedicineServiceImpl implements MedicineService {
 
         return medicineRepository.findAll(spec)
                 .stream()
-                .map(medicineMapper::toResponseDto)
+            .map(this::toResponseDtoWithDopingRuleIds)
                 .toList();
     }
 
@@ -116,7 +118,7 @@ public class MedicineServiceImpl implements MedicineService {
         medicine.setCategory(resolveOrCreateCategory(requestDto.getCategory()));
         medicine.setDosageForm(resolveOrCreateDosageForm(requestDto.getDosageForm()));
         Medicine updated = medicineRepository.save(medicine);
-        return medicineMapper.toResponseDto(updated);
+        return toResponseDtoWithDopingRuleIds(updated);
     }
 
         @Override
@@ -135,7 +137,7 @@ public class MedicineServiceImpl implements MedicineService {
         link.setAllergen(allergen);
         medicineAllergenRepository.save(link);
 
-        return medicineMapper.toResponseDto(medicineRepository.findById(medicineId)
+        return toResponseDtoWithDopingRuleIds(medicineRepository.findById(medicineId)
             .orElseThrow(() -> new MedicineNotFoundException(medicineId)));
         }
 
@@ -150,7 +152,7 @@ public class MedicineServiceImpl implements MedicineService {
 
         medicineAllergenRepository.delete(link);
 
-        return medicineMapper.toResponseDto(medicineRepository.findById(medicineId)
+        return toResponseDtoWithDopingRuleIds(medicineRepository.findById(medicineId)
             .orElseThrow(() -> new MedicineNotFoundException(medicineId)));
         }
 
@@ -160,10 +162,10 @@ public class MedicineServiceImpl implements MedicineService {
             .orElseThrow(() -> new MedicineNotFoundException(medicineId));
 
         MedicineDopingRule rule = new MedicineDopingRule();
-        rule.setMedicine(medicine);
+        rule.setMedicineId(medicine.getId());
         rule.setRuleset(requestDto.getRuleset().trim());
         rule.setRulesetYear(requestDto.getRulesetYear());
-        rule.setStatus(requestDto.getStatus().trim());
+        rule.setStatus(parseDopingRuleStatus(requestDto.getStatus()));
         rule.setNotes(requestDto.getNotes());
 
         MedicineDopingRule saved = medicineDopingRuleRepository.save(rule);
@@ -172,7 +174,7 @@ public class MedicineServiceImpl implements MedicineService {
             .medicineId(medicineId)
             .ruleset(saved.getRuleset())
             .rulesetYear(saved.getRulesetYear())
-            .status(saved.getStatus())
+            .status(saved.getStatus().name())
             .notes(saved.getNotes())
             .build();
         }
@@ -182,7 +184,7 @@ public class MedicineServiceImpl implements MedicineService {
         medicineRepository.findById(medicineId)
             .orElseThrow(() -> new MedicineNotFoundException(medicineId));
 
-        MedicineDopingRule rule = medicineDopingRuleRepository.findByIdAndMedicine_Id(ruleId, medicineId)
+        MedicineDopingRule rule = medicineDopingRuleRepository.findByIdAndMedicineId(ruleId, medicineId)
             .orElseThrow(() -> new MedicineNotFoundException(
                 "Doping rule not found with id " + ruleId + " for medicine id " + medicineId));
 
@@ -215,5 +217,28 @@ public class MedicineServiceImpl implements MedicineService {
                     dosageForm.setName(normalized);
                     return dosageFormRepository.save(dosageForm);
                 });
+    }
+
+    private MedicineResponseDto toResponseDtoWithDopingRuleIds(Medicine medicine) {
+        MedicineResponseDto response = medicineMapper.toResponseDto(medicine);
+        response.setDopingRuleIds(
+                medicineDopingRuleRepository.findAllByMedicineId(medicine.getId())
+                        .stream()
+                        .map(MedicineDopingRule::getId)
+                        .toList()
+        );
+        return response;
+    }
+
+    private MedicineDopingRuleStatus parseDopingRuleStatus(String status) {
+        if (status == null || status.isBlank()) {
+            throw new MedicineValidationException(List.of("Status is required"));
+        }
+
+        try {
+            return MedicineDopingRuleStatus.valueOf(status.trim().toUpperCase(Locale.ROOT));
+        } catch (IllegalArgumentException ex) {
+            throw new MedicineValidationException(List.of("Invalid status. Allowed values: SAFE, BANNED, RESTRICTED, UNKNOWN"));
+        }
     }
 }
