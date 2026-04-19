@@ -72,9 +72,19 @@ public class OrderController {
 
     @PostMapping("/{id}/reject")
     public ResponseEntity<?> rejectOrder(@PathVariable UUID id,
-                                         @Valid @RequestBody RejectOrderRequest request) {
+                                         @Valid @RequestBody RejectOrderRequest request,
+                                         Principal principal) {
+        UUID actorUserId = resolveCustomerId(principal);
+        StaffRole actorRole = resolveStaffRole(principal);
+        if (actorUserId == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("error", "Authentication required"));
+        }
+        if (actorRole == null) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                .body(Map.of("error", "Only pharmacy owner or pharmacist can reject orders"));
+        }
         try {
-            return ResponseEntity.ok(orderService.rejectOrder(id, request.getRejectionReason()));
+            return ResponseEntity.ok(orderService.rejectOrder(id, request.getRejectionReason(), actorUserId, actorRole));
         } catch (PharmacyException ex) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("error", ex.getMessage()));
         }

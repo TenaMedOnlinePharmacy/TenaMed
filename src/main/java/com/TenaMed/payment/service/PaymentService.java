@@ -13,10 +13,13 @@ import com.TenaMed.pharmacy.repository.OrderRepository;
 import com.TenaMed.pharmacy.service.OrderService;
 import com.TenaMed.user.entity.User;
 import com.TenaMed.user.repository.UserRepository;
+import com.TenaMed.user.security.AuthenticatedUserPrincipal;
 import com.TenaMed.events.DomainEventService;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.stereotype.Service;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.io.IOException;
@@ -119,12 +122,13 @@ public class PaymentService {
 
     public String verifyPayment(String txRef) throws IOException {
         String response = chapaHttpClient.verifyTransaction(txRef);
+        ActorResolution actor = resolveActor();
         domainEventService.publish(
                 "PAYMENT_VERIFIED",
                 "PAYMENT",
                 parseUuid(txRef),
-                "SYSTEM",
-                null,
+            actor.actorType(),
+            actor.actorId(),
                 "PLATFORM",
                 null,
                 Map.of("verificationRawPresent", response != null && !response.isBlank())
@@ -139,12 +143,13 @@ public class PaymentService {
 
         try {
             String rawResponse = chapaHttpClient.cancelTransaction(txRef);
+            ActorResolution actor = resolveActor();
             domainEventService.publish(
                     "PAYMENT_CANCELLED",
                     "PAYMENT",
                     parseUuid(txRef),
-                    "SYSTEM",
-                    null,
+                actor.actorType(),
+                actor.actorId(),
                     "PLATFORM",
                     null,
                     Map.of("status", "REQUESTED")
@@ -331,5 +336,22 @@ public class PaymentService {
         return value
                 .replace("\\", "\\\\")
                 .replace("\"", "\\\"");
+    }
+
+    private ActorResolution resolveActor() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null) {
+            return new ActorResolution("SYSTEM", null);
+        }
+
+        Object principal = authentication.getPrincipal();
+        if (principal instanceof AuthenticatedUserPrincipal userPrincipal) {
+            return new ActorResolution("USER", userPrincipal.getUserId());
+        }
+
+        return new ActorResolution("SYSTEM", null);
+    }
+
+    private record ActorResolution(String actorType, UUID actorId) {
     }
 }

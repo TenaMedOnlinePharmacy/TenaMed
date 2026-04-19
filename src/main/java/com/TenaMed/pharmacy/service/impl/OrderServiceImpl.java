@@ -148,9 +148,12 @@ public class OrderServiceImpl implements OrderService {
     }
 
     @Override
-    public OrderResponse rejectOrder(UUID orderId, String rejectionReason) {
+    public OrderResponse rejectOrder(UUID orderId, String rejectionReason, UUID actorUserId, StaffRole actorRole) {
         Order order = fetchOrder(orderId);
         String oldStatus = String.valueOf(order.getStatus());
+        if (actorRole != StaffRole.OWNER && actorRole != StaffRole.PHARMACIST) {
+            throw new OrderAuthorizationException();
+        }
         order.setStatus(OrderStatus.REJECTED);
         order.setRejectionReason(rejectionReason);
         Order saved = orderRepository.save(order);
@@ -158,8 +161,8 @@ public class OrderServiceImpl implements OrderService {
             "ORDER_REJECTED",
             "ORDER",
             saved.getId(),
-            "SYSTEM",
-            null,
+            actorRole == StaffRole.OWNER ? "PHARMACY_OWNER" : "PHARMACIST",
+            actorUserId,
             "PHARMACY",
             saved.getPharmacy().getId(),
                 Map.of("changes", Map.of("status", Map.of("old", oldStatus, "new", saved.getStatus().name())))

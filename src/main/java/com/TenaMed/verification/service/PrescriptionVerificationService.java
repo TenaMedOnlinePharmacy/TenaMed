@@ -15,6 +15,7 @@ import com.TenaMed.verification.exception.PrescriptionNotFoundException;
 import com.TenaMed.verification.exception.VerificationException;
 import com.TenaMed.verification.event.PrescriptionVerifiedEvent;
 import com.TenaMed.verification.workflow.VerificationEngine;
+import com.TenaMed.events.DomainEventService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.ApplicationEventPublisher;
@@ -22,7 +23,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @Slf4j
@@ -34,6 +37,7 @@ public class PrescriptionVerificationService {
 	private final MedicineRepository medicineRepository;
 	private final VerificationEngine verificationEngine;
 	private final ApplicationEventPublisher publisher;
+	private final DomainEventService domainEventService;
 
 	@Value("${pipeline.normalized-confidence-threshold}")
 	private double normalizedConfidenceThreshold;
@@ -44,12 +48,14 @@ public class PrescriptionVerificationService {
 									   PrescriptionItemRepository prescriptionItemRepository,
 									   MedicineRepository medicineRepository,
 										   VerificationEngine verificationEngine,
-										   ApplicationEventPublisher publisher) {
+										   ApplicationEventPublisher publisher,
+										   DomainEventService domainEventService) {
 		this.prescriptionRepository = prescriptionRepository;
 		this.prescriptionItemRepository = prescriptionItemRepository;
 		this.medicineRepository = medicineRepository;
 		this.verificationEngine = verificationEngine;
 		this.publisher = publisher;
+		this.domainEventService = domainEventService;
 	}
 
 	@Transactional
@@ -73,6 +79,7 @@ public class PrescriptionVerificationService {
 		if (decision.isRequiresManualReview()) {
 			String reason = decision.getReviewReason() == null ? null : decision.getReviewReason().name();
 			prescriptionRepository.markPendingManualReview(prescriptionId, reason);
+			publishPendingManualReviewEvent(prescriptionId, oldStatus, reason);
 			return new VerificationResponseDto("PENDING_MANUAL_REVIEW", reason, "WAIT_FOR_PHARMACIST");
 		}
 
@@ -81,6 +88,8 @@ public class PrescriptionVerificationService {
 			publisher.publishEvent(new PrescriptionVerifiedEvent(prescriptionId, oldStatus, "VERIFIED", "SYSTEM", null));
 			return new VerificationResponseDto("VERIFIED", null, "ORDER_ALLOWED");
 		}
+
+		publishPendingManualReviewEvent(prescriptionId, oldStatus, null);
 
 		return new VerificationResponseDto("PENDING_MANUAL_REVIEW", null, "WAIT_FOR_PHARMACIST");
 	}
@@ -158,5 +167,24 @@ public class PrescriptionVerificationService {
 		}
 
 		return new NormalizedResultCheck(true, null);
+	}
+
+	private void publishPendingManualReviewEvent(UUID prescriptionId, String oldStatus, String reason) {
+		Map<String, Object> metadata = new LinkedHashMap<>();
+		if (reason != null && !reason.isBlank()) {
+			metadata.put("reason", reason);
+		}
+		metadata.put("changes", Map.of("status", Map.of("old", oldStatus, "new", "PENDING_MANUAL_REVIEW")));
+
+		domainEventService.publish(
+				"PRESCRIPTION_PENDING_MANUAL_REVIEW",
+				"PRESCRIPTION",
+				prescriptionId,
+				"SYSTEM",
+				null,
+				"PLATFORM",
+				null,
+				metadata
+		);
 	}
 }

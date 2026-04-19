@@ -14,7 +14,7 @@ public interface OrderService {
 
     OrderResponse acceptOrder(UUID orderId, UUID actorUserId, StaffRole actorRole);
 
-    OrderResponse rejectOrder(UUID orderId, String rejectionReason);
+    OrderResponse rejectOrder(UUID orderId, String rejectionReason, UUID actorUserId, StaffRole actorRole);
 
     OrderResponse updatePaymentStatus(UUID orderId, PaymentStatus paymentStatus);
 

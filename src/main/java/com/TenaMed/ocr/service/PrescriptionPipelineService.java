@@ -18,6 +18,7 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.UUID;
 
@@ -90,7 +91,23 @@ public class PrescriptionPipelineService {
         PrescriptionVerificationService.NormalizedResultCheck normalizedCheck =
                 prescriptionVerificationService.checkNormalizedResult(normalizedResult);
         if (!normalizedCheck.valid()) {
+            String oldStatus = prescriptionRepository.findById(prescriptionId)
+                .map(prescription -> prescription.getStatus())
+                .orElse(null);
             prescriptionRepository.markPendingManualReview(prescriptionId, normalizedCheck.reason());
+            Map<String, Object> metadata = new LinkedHashMap<>();
+            metadata.put("reason", normalizedCheck.reason());
+            metadata.put("changes", Map.of("status", Map.of("old", oldStatus, "new", "PENDING_MANUAL_REVIEW")));
+            domainEventService.publish(
+                "PRESCRIPTION_PENDING_MANUAL_REVIEW",
+                "PRESCRIPTION",
+                prescriptionId,
+                "SYSTEM",
+                null,
+                "PLATFORM",
+                null,
+                metadata
+            );
             createHighPriorityTask(prescriptionId, mapTaskReasonFromNormalizedCheck(normalizedCheck.reason()));
             return;
         }

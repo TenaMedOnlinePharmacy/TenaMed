@@ -3,7 +3,6 @@ package com.TenaMed.audit.listener;
 import com.TenaMed.audit.service.AuditLogService;
 import com.TenaMed.audit.service.AuditLogWriteRequest;
 import com.TenaMed.manualreview.event.DomainEvent;
-import com.TenaMed.ocr.event.PrescriptionPipelinePersistedEvent;
 import com.TenaMed.user.security.AuthenticatedUserPrincipal;
 import com.TenaMed.verification.event.PrescriptionRejectedEvent;
 import com.TenaMed.verification.event.PrescriptionVerifiedEvent;
@@ -95,29 +94,6 @@ public class AuditEventListener {
                 .changes(Map.of("status", Map.of("old", event.getOldStatus(), "new", event.getNewStatus())))
                 .actorType(event.getActorType() == null ? resolveActorType() : event.getActorType())
                 .actorId(event.getActorId() == null ? resolveActorId() : event.getActorId())
-                .contextType(CONTEXT_PLATFORM)
-                .contextId(null)
-                .correlationId(null)
-                .build());
-    }
-
-    @EventListener
-    public void onPipelinePersisted(PrescriptionPipelinePersistedEvent event) {
-        if (event == null) {
-            return;
-        }
-
-        auditLogService.write(AuditLogWriteRequest.builder()
-                .entityType("PRESCRIPTION")
-                .entityId(event.prescriptionId())
-                .action("OCR_PROCESSED")
-                .actionDetails(Map.of(
-                        "eventClass", PrescriptionPipelinePersistedEvent.class.getSimpleName(),
-                        "medicinesCount", event.medicinesCount()
-                ))
-                .changes(Map.of())
-                .actorType("SYSTEM")
-                .actorId(null)
                 .contextType(CONTEXT_PLATFORM)
                 .contextId(null)
                 .correlationId(null)

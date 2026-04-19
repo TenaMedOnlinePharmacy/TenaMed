@@ -20,6 +20,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.LinkedHashMap;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
@@ -31,6 +32,8 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class ManualReviewServiceImpl implements ManualReviewService {
 
+    private static final String MANUAL_REVIEW_TASK_CREATED = "MANUAL_REVIEW_TASK_CREATED";
+    private static final String MANUAL_REVIEW_TASK_CLAIMED = "MANUAL_REVIEW_TASK_CLAIMED";
     private static final String PRESCRIPTION_READY_FOR_MATCHING = "PRESCRIPTION_READY_FOR_MATCHING";
 
     private final ManualReviewTaskRepository manualReviewTaskRepository;
@@ -62,6 +65,12 @@ public class ManualReviewServiceImpl implements ManualReviewService {
         task.setStatus(TaskStatus.PENDING);
 
         ManualReviewTask saved = manualReviewTaskRepository.save(task);
+        Map<String, Object> createMetadata = new LinkedHashMap<>();
+        createMetadata.put("status", saved.getStatus().name());
+        createMetadata.put("reason", saved.getReason().name());
+        createMetadata.put("priority", saved.getPriority().name());
+        publishTaskDomainEvent(MANUAL_REVIEW_TASK_CREATED, saved, "SYSTEM", null, createMetadata);
+
         log.info("Manual review task created: taskId={} prescriptionId={} reason={} priority={}",
                 saved.getId(), saved.getPrescriptionId(), saved.getReason(), saved.getPriority());
         manualReviewEventPublisher.sendTaskCreated(saved.getId());
@@ -76,6 +85,11 @@ public class ManualReviewServiceImpl implements ManualReviewService {
 
         int updatedRows = manualReviewTaskRepository.claimPendingTask(taskId, pharmacistId);
         if (updatedRows == 1) {
+            ManualReviewTask task = manualReviewTaskRepository.findById(taskId).orElse(null);
+            Map<String, Object> claimMetadata = new LinkedHashMap<>();
+            claimMetadata.put("status", task != null && task.getStatus() != null ? task.getStatus().name() : TaskStatus.IN_PROGRESS.name());
+            publishTaskDomainEvent(MANUAL_REVIEW_TASK_CLAIMED, task, "PHARMACIST", pharmacistId, claimMetadata);
+
             log.info("Manual review task claimed: taskId={} pharmacistId={}", taskId, pharmacistId);
             manualReviewEventPublisher.sendTaskClaimed(taskId, pharmacistId);
             return true;
@@ -112,8 +126,21 @@ public class ManualReviewServiceImpl implements ManualReviewService {
         task.setUpdatedAt(LocalDateTime.now());
         ManualReviewTask saved = manualReviewTaskRepository.save(task);
 
-        domainEventPublisher.publish(PRESCRIPTION_READY_FOR_MATCHING,
-                Map.of("prescriptionId", saved.getPrescriptionId()));
+        Map<String, Object> metadata = new LinkedHashMap<>();
+        metadata.put("taskId", saved.getId());
+        metadata.put("status", saved.getStatus().name());
+        metadata.put("itemCount", items.size());
+
+        Map<String, Object> payload = new LinkedHashMap<>();
+        payload.put("entityType", "PRESCRIPTION");
+        payload.put("entityId", saved.getPrescriptionId());
+        payload.put("actorType", "PHARMACIST");
+        payload.put("actorId", pharmacistId);
+        payload.put("contextType", "MANUAL_REVIEW_TASK");
+        payload.put("contextId", saved.getId());
+        payload.put("metadata", metadata);
+
+        domainEventPublisher.publish(PRESCRIPTION_READY_FOR_MATCHING, payload);
         manualReviewEventPublisher.sendTaskCompleted(saved.getId());
 
         log.info("Manual review task completed: taskId={} prescriptionId={} pharmacistId={}",
@@ -150,5 +177,25 @@ public class ManualReviewServiceImpl implements ManualReviewService {
             throw new ManualReviewException("Authentication required");
         }
         return userId;
+    }
+
+    private void publishTaskDomainEvent(String eventType,
+                                        ManualReviewTask task,
+                                        String actorType,
+                                        UUID actorId,
+                                        Map<String, Object> metadata) {
+        UUID entityId = task == null ? null : task.getId();
+        UUID contextId = task == null ? null : task.getPrescriptionId();
+
+        Map<String, Object> payload = new LinkedHashMap<>();
+        payload.put("entityType", "MANUAL_REVIEW_TASK");
+        payload.put("entityId", entityId);
+        payload.put("actorType", actorType);
+        payload.put("actorId", actorId);
+        payload.put("contextType", "PRESCRIPTION");
+        payload.put("contextId", contextId);
+        payload.put("metadata", metadata == null ? Map.of() : metadata);
+
+        domainEventPublisher.publish(eventType, payload);
     }
 }
