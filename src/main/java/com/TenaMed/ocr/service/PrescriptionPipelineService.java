@@ -11,12 +11,14 @@ import com.TenaMed.ocr.integration.OcrClient;
 import com.TenaMed.prescription.repository.PrescriptionRepository;
 import com.TenaMed.verification.dto.VerificationResponseDto;
 import com.TenaMed.verification.service.PrescriptionVerificationService;
+import com.TenaMed.events.DomainEventService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
+import java.util.Map;
 import java.util.UUID;
 
 @Slf4j
@@ -30,6 +32,7 @@ public class PrescriptionPipelineService {
     private final ManualReviewService manualReviewService;
     private final ApplicationEventPublisher eventPublisher;
     private final PrescriptionRepository prescriptionRepository;
+    private final DomainEventService domainEventService;
 
     @Async
     public void startPipeline(String imageUrl, UUID prescriptionId) {
@@ -44,6 +47,16 @@ public class PrescriptionPipelineService {
     // Separate method makes synchronous unit testing straightforward.
     void processPipeline(String imageUrl, UUID prescriptionId) {
         prescriptionRepository.markProcessing(prescriptionId);
+        domainEventService.publish(
+            "PRESCRIPTION_PIPELINE_STARTED",
+            "PRESCRIPTION",
+            prescriptionId,
+            "SYSTEM",
+            null,
+            "PLATFORM",
+            null,
+            Map.of()
+        );
 
         OcrResultDto ocrResult = ocrClient.processPrescription(imageUrl, prescriptionId);
         if (ocrResult == null) {
@@ -85,6 +98,16 @@ public class PrescriptionPipelineService {
         ocrDrugNormalizationService.persistPrescriptionOutcome(ocrResult, normalizedResult);
 
         int medicinesCount = normalizedResult.getMedicines() == null ? 0 : normalizedResult.getMedicines().size();
+        domainEventService.publish(
+            "OCR_PROCESSED",
+            "PRESCRIPTION",
+            prescriptionId,
+            "SYSTEM",
+            null,
+            "PLATFORM",
+            null,
+            Map.of("medicinesCount", medicinesCount)
+        );
         eventPublisher.publishEvent(new PrescriptionPipelinePersistedEvent(prescriptionId, medicinesCount));
         log.info("Prescription pipeline completed successfully: prescriptionId={} medicinesCount={}",
                 prescriptionId, medicinesCount);
@@ -125,5 +148,15 @@ public class PrescriptionPipelineService {
             errorMessage = errorMessage.substring(0, 500);
         }
         prescriptionRepository.markFailed(prescriptionId, errorMessage);
+        domainEventService.publish(
+                "PRESCRIPTION_PIPELINE_FAILED",
+                "PRESCRIPTION",
+                prescriptionId,
+                "SYSTEM",
+                null,
+                "PLATFORM",
+                null,
+                Map.of("reason", errorMessage)
+        );
     }
 }

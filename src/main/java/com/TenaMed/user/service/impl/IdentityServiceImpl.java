@@ -24,6 +24,7 @@ import com.TenaMed.user.repository.RoleRepository;
 import com.TenaMed.user.repository.UserRepository;
 import com.TenaMed.user.repository.UserRoleRepository;
 import com.TenaMed.user.service.IdentityService;
+import com.TenaMed.events.DomainEventService;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -55,6 +56,7 @@ public class IdentityServiceImpl implements IdentityService {
     private final UserRoleRepository userRoleRepository;
     private final PasswordEncoder passwordEncoder;
     private final IdentityMapper identityMapper;
+    private final DomainEventService domainEventService;
 
     @Value("${user.default-roles:" + DEFAULT_ROLES_FALLBACK + "}")
     private String defaultRolesCsv;
@@ -64,13 +66,15 @@ public class IdentityServiceImpl implements IdentityService {
                                RoleRepository roleRepository,
                                UserRoleRepository userRoleRepository,
                                PasswordEncoder passwordEncoder,
-                               IdentityMapper identityMapper) {
+                               IdentityMapper identityMapper,
+                               DomainEventService domainEventService) {
         this.accountRepository = accountRepository;
         this.userRepository = userRepository;
         this.roleRepository = roleRepository;
         this.userRoleRepository = userRoleRepository;
         this.passwordEncoder = passwordEncoder;
         this.identityMapper = identityMapper;
+        this.domainEventService = domainEventService;
     }
 
     @Override
@@ -110,6 +114,14 @@ public class IdentityServiceImpl implements IdentityService {
         }
 
         User savedUser = userRepository.save(user);
+        domainEventService.publish(
+            "USER_REGISTERED",
+            "USER",
+            savedUser.getId(),
+            "PLATFORM",
+            null,
+            Map.of("accountId", savedAccount.getId(), "email", normalizedEmail)
+        );
         return identityMapper.toRegisterResponse(savedUser);
     }
 
@@ -127,6 +139,16 @@ public class IdentityServiceImpl implements IdentityService {
             int attempts = account.getFailedLoginAttempts() == null ? 0 : account.getFailedLoginAttempts();
             account.setFailedLoginAttempts(attempts + 1);
             accountRepository.save(account);
+            domainEventService.publish(
+                    "USER_LOGIN_FAILED",
+                    "ACCOUNT",
+                    account.getId(),
+                    "USER",
+                    null,
+                    "PLATFORM",
+                    null,
+                    Map.of("failedLoginAttempts", account.getFailedLoginAttempts())
+            );
             throw new InvalidCredentialsException();
         }
 
@@ -136,6 +158,17 @@ public class IdentityServiceImpl implements IdentityService {
 
         User user = userRepository.findByAccount_Id(account.getId())
                 .orElseThrow(() -> new InvalidCredentialsException());
+
+        domainEventService.publish(
+            "USER_LOGIN_SUCCEEDED",
+            "ACCOUNT",
+            account.getId(),
+            "USER",
+            user.getId(),
+            "PLATFORM",
+            null,
+            Map.of("lastLogin", account.getLastLogin() == null ? null : account.getLastLogin().toString())
+        );
 
         return identityMapper.toLoginResponse(user);
     }
@@ -164,6 +197,15 @@ public class IdentityServiceImpl implements IdentityService {
         userRole.setRole(role);
         userRoleRepository.save(userRole);
 
+        domainEventService.publish(
+            "USER_ROLE_ASSIGNED",
+            "USER",
+            userId,
+            "PLATFORM",
+            null,
+            Map.of("roleName", role.getName())
+        );
+
         return getUserRoles(userId);
     }
 
@@ -180,6 +222,14 @@ public class IdentityServiceImpl implements IdentityService {
         }
 
         userRoleRepository.deleteByUser_IdAndRole_Id(userId, role.getId());
+        domainEventService.publish(
+            "USER_ROLE_REMOVED",
+            "USER",
+            userId,
+            "PLATFORM",
+            null,
+            Map.of("roleName", role.getName())
+        );
         return getUserRoles(userId);
     }
 
@@ -209,6 +259,14 @@ public class IdentityServiceImpl implements IdentityService {
 
         if (!rolesToCreate.isEmpty()) {
             roleRepository.saveAll(rolesToCreate);
+            domainEventService.publish(
+                    "DEFAULT_ROLES_POPULATED",
+                    "ROLE",
+                    null,
+                    "PLATFORM",
+                    null,
+                    Map.of("createdRoles", rolesToCreate.stream().map(Role::getName).toList())
+            );
         }
 
         return rolesToCreate.stream()

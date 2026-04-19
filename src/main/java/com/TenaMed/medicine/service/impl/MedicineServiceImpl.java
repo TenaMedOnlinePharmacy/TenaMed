@@ -25,12 +25,14 @@ import com.TenaMed.medicine.repository.MedicineRepository;
 import com.TenaMed.medicine.service.MedicineService;
 import com.TenaMed.medicine.specification.MedicineSpecification;
 import com.TenaMed.medicine.validator.MedicineValidator;
+import com.TenaMed.events.DomainEventService;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.UUID;
 
 @Service
@@ -45,6 +47,7 @@ public class MedicineServiceImpl implements MedicineService {
     private final MedicineDopingRuleRepository medicineDopingRuleRepository;
     private final MedicineMapper medicineMapper;
     private final MedicineValidator medicineValidator;
+    private final DomainEventService domainEventService;
 
     public MedicineServiceImpl(MedicineRepository medicineRepository,
                                CategoryRepository categoryRepository,
@@ -53,7 +56,8 @@ public class MedicineServiceImpl implements MedicineService {
                                MedicineAllergenRepository medicineAllergenRepository,
                                MedicineDopingRuleRepository medicineDopingRuleRepository,
                                MedicineMapper medicineMapper,
-                               MedicineValidator medicineValidator) {
+                               MedicineValidator medicineValidator,
+                               DomainEventService domainEventService) {
         this.medicineRepository = medicineRepository;
         this.categoryRepository = categoryRepository;
         this.dosageFormRepository = dosageFormRepository;
@@ -62,6 +66,7 @@ public class MedicineServiceImpl implements MedicineService {
         this.medicineDopingRuleRepository = medicineDopingRuleRepository;
         this.medicineMapper = medicineMapper;
         this.medicineValidator = medicineValidator;
+        this.domainEventService = domainEventService;
     }
 
     @Override
@@ -74,6 +79,14 @@ public class MedicineServiceImpl implements MedicineService {
         medicine.setCategory(resolveOrCreateCategory(requestDto.getCategory()));
         medicine.setDosageForm(resolveOrCreateDosageForm(requestDto.getDosageForm()));
         Medicine saved = medicineRepository.save(medicine);
+        domainEventService.publish(
+            "MEDICINE_CREATED",
+            "MEDICINE",
+            saved.getId(),
+            "PLATFORM",
+            null,
+            Map.of("name", saved.getName())
+        );
         return toResponseDtoWithDopingRuleIds(saved);
     }
 
@@ -118,6 +131,14 @@ public class MedicineServiceImpl implements MedicineService {
         medicine.setCategory(resolveOrCreateCategory(requestDto.getCategory()));
         medicine.setDosageForm(resolveOrCreateDosageForm(requestDto.getDosageForm()));
         Medicine updated = medicineRepository.save(medicine);
+        domainEventService.publish(
+            "MEDICINE_UPDATED",
+            "MEDICINE",
+            updated.getId(),
+            "PLATFORM",
+            null,
+            Map.of("name", updated.getName())
+        );
         return toResponseDtoWithDopingRuleIds(updated);
     }
 
@@ -137,6 +158,15 @@ public class MedicineServiceImpl implements MedicineService {
         link.setAllergen(allergen);
         medicineAllergenRepository.save(link);
 
+        domainEventService.publish(
+            "MEDICINE_ALLERGEN_LINKED",
+            "MEDICINE",
+            medicineId,
+            "PLATFORM",
+            null,
+            Map.of("allergenId", allergenId.toString())
+        );
+
         return toResponseDtoWithDopingRuleIds(medicineRepository.findById(medicineId)
             .orElseThrow(() -> new MedicineNotFoundException(medicineId)));
         }
@@ -151,6 +181,15 @@ public class MedicineServiceImpl implements MedicineService {
                 "Allergen link not found for medicine id " + medicineId + " and allergen id " + allergenId));
 
         medicineAllergenRepository.delete(link);
+
+        domainEventService.publish(
+            "MEDICINE_ALLERGEN_UNLINKED",
+            "MEDICINE",
+            medicineId,
+            "PLATFORM",
+            null,
+            Map.of("allergenId", allergenId.toString())
+        );
 
         return toResponseDtoWithDopingRuleIds(medicineRepository.findById(medicineId)
             .orElseThrow(() -> new MedicineNotFoundException(medicineId)));
@@ -169,6 +208,14 @@ public class MedicineServiceImpl implements MedicineService {
         rule.setNotes(requestDto.getNotes());
 
         MedicineDopingRule saved = medicineDopingRuleRepository.save(rule);
+        domainEventService.publish(
+            "MEDICINE_DOPING_RULE_ADDED",
+            "MEDICINE",
+            medicineId,
+            "PLATFORM",
+            null,
+            Map.of("ruleId", saved.getId().toString(), "status", saved.getStatus().name())
+        );
         return MedicineDopingRuleResponseDto.builder()
             .id(saved.getId())
             .medicineId(medicineId)
@@ -189,6 +236,14 @@ public class MedicineServiceImpl implements MedicineService {
                 "Doping rule not found with id " + ruleId + " for medicine id " + medicineId));
 
         medicineDopingRuleRepository.delete(rule);
+        domainEventService.publish(
+            "MEDICINE_DOPING_RULE_REMOVED",
+            "MEDICINE",
+            medicineId,
+            "PLATFORM",
+            null,
+            Map.of("ruleId", ruleId.toString())
+        );
         }
 
     @Override
@@ -197,6 +252,14 @@ public class MedicineServiceImpl implements MedicineService {
             throw new MedicineNotFoundException(id);
         }
         medicineRepository.deleteById(id);
+        domainEventService.publish(
+                "MEDICINE_DELETED",
+                "MEDICINE",
+                id,
+                "PLATFORM",
+                null,
+                Map.of()
+        );
     }
 
     private Category resolveOrCreateCategory(String categoryName) {

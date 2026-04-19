@@ -5,6 +5,7 @@ import com.TenaMed.ocr.service.SupabaseStorageService;
 import com.TenaMed.pharmacy.dto.request.CreatePharmacyRequest;
 import com.TenaMed.pharmacy.dto.response.PharmacyResponse;
 import com.TenaMed.pharmacy.service.PharmacyService;
+import com.TenaMed.events.DomainEventService;
 import com.TenaMed.user.dto.RegisterPharmacistRequestDto;
 import com.TenaMed.user.dto.RegisterPharmacistResponseDto;
 import com.TenaMed.user.dto.RegisterRequestDto;
@@ -14,6 +15,7 @@ import com.TenaMed.user.service.PharmacistOnboardingService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Map;
 import java.util.Set;
 
 @Service("userPharmacistOnboardingService")
@@ -24,13 +26,16 @@ public class PharmacistOnboardingServiceImpl implements PharmacistOnboardingServ
     private final IdentityService identityService;
     private final PharmacyService pharmacyService;
     private final SupabaseStorageService supabaseStorageService;
+    private final DomainEventService domainEventService;
 
     public PharmacistOnboardingServiceImpl(IdentityService identityService,
                                            PharmacyService pharmacyService,
-                                           SupabaseStorageService supabaseStorageService) {
+                                           SupabaseStorageService supabaseStorageService,
+                                           DomainEventService domainEventService) {
         this.identityService = identityService;
         this.pharmacyService = pharmacyService;
         this.supabaseStorageService = supabaseStorageService;
+        this.domainEventService = domainEventService;
     }
 
     @Override
@@ -70,6 +75,17 @@ public class PharmacistOnboardingServiceImpl implements PharmacistOnboardingServ
         pharmacyRequest.setOwnerId(pharmacistResponse.getUserId());
 
         PharmacyResponse pharmacyResponse = pharmacyService.createPharmacy(pharmacyRequest);
+
+        domainEventService.publish(
+            "PHARMACY_OWNER_ONBOARDED",
+            "USER",
+            pharmacistResponse.getUserId(),
+            "PHARMACY_OWNER",
+            pharmacistResponse.getUserId(),
+            "PHARMACY",
+            pharmacyResponse.getId(),
+            Map.of("pharmacyId", pharmacyResponse.getId().toString())
+        );
 
         return new RegisterPharmacistResponseDto(pharmacistResponse, pharmacyResponse);
     }

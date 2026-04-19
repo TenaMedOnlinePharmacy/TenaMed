@@ -11,11 +11,13 @@ import com.TenaMed.pharmacy.mapper.UserPharmacyMapper;
 import com.TenaMed.pharmacy.repository.PharmacyRepository;
 import com.TenaMed.pharmacy.repository.UserPharmacyRepository;
 import com.TenaMed.pharmacy.service.StaffService;
+import com.TenaMed.events.DomainEventService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @Service
@@ -25,13 +27,16 @@ public class StaffServiceImpl implements StaffService {
     private final UserPharmacyRepository userPharmacyRepository;
     private final PharmacyRepository pharmacyRepository;
     private final UserPharmacyMapper userPharmacyMapper;
+    private final DomainEventService domainEventService;
 
     public StaffServiceImpl(UserPharmacyRepository userPharmacyRepository,
                             PharmacyRepository pharmacyRepository,
-                            UserPharmacyMapper userPharmacyMapper) {
+                            UserPharmacyMapper userPharmacyMapper,
+                            DomainEventService domainEventService) {
         this.userPharmacyRepository = userPharmacyRepository;
         this.pharmacyRepository = pharmacyRepository;
         this.userPharmacyMapper = userPharmacyMapper;
+        this.domainEventService = domainEventService;
     }
 
     @Override
@@ -44,7 +49,18 @@ public class StaffServiceImpl implements StaffService {
         }
 
         UserPharmacy staff = userPharmacyMapper.toEntity(request, pharmacy);
-        return userPharmacyMapper.toResponse(userPharmacyRepository.save(staff));
+        UserPharmacy saved = userPharmacyRepository.save(staff);
+        domainEventService.publish(
+            "PHARMACY_STAFF_ADDED",
+            "USER_PHARMACY",
+            saved.getId(),
+            "PHARMACY_OWNER",
+            pharmacy.getOwnerId(),
+            "PHARMACY",
+            pharmacy.getId(),
+            Map.of("userId", saved.getUserId().toString(), "staffRole", String.valueOf(saved.getStaffRole()))
+        );
+        return userPharmacyMapper.toResponse(saved);
     }
 
     @Override
@@ -53,7 +69,18 @@ public class StaffServiceImpl implements StaffService {
             .orElseThrow(() -> new UserPharmacyNotFoundException(userId));
         staff.setVerifiedBy(verifiedBy);
         staff.setVerifiedAt(LocalDateTime.now());
-        return userPharmacyMapper.toResponse(userPharmacyRepository.save(staff));
+        UserPharmacy saved = userPharmacyRepository.save(staff);
+        domainEventService.publish(
+                "PHARMACY_STAFF_VERIFIED",
+                "USER_PHARMACY",
+                saved.getId(),
+                "PHARMACY_OWNER",
+                verifiedBy,
+                "PHARMACY",
+                pharmacyId,
+                Map.of("userId", saved.getUserId().toString())
+        );
+        return userPharmacyMapper.toResponse(saved);
     }
 
     @Override

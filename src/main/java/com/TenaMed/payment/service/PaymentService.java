@@ -13,6 +13,7 @@ import com.TenaMed.pharmacy.repository.OrderRepository;
 import com.TenaMed.pharmacy.service.OrderService;
 import com.TenaMed.user.entity.User;
 import com.TenaMed.user.repository.UserRepository;
+import com.TenaMed.events.DomainEventService;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.stereotype.Service;
@@ -21,6 +22,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.Map;
 import java.util.UUID;
 
 @Service
@@ -32,18 +34,21 @@ public class PaymentService {
     private final UserRepository userRepository;
     private final OrderService orderService;
     private final ObjectMapper objectMapper;
+    private final DomainEventService domainEventService;
 
     public PaymentService(ChapaHttpClient chapaHttpClient,
                           PaymentRepository paymentRepository,
                           OrderRepository orderRepository,
                           UserRepository userRepository,
-                          OrderService orderService) {
+                          OrderService orderService,
+                          DomainEventService domainEventService) {
         this.chapaHttpClient = chapaHttpClient;
         this.paymentRepository = paymentRepository;
         this.orderRepository = orderRepository;
         this.userRepository = userRepository;
         this.orderService = orderService;
         this.objectMapper = new ObjectMapper();
+        this.domainEventService = domainEventService;
     }
 
     public String initializePayment(
@@ -97,13 +102,34 @@ public class PaymentService {
 
         if (checkoutUrl != null && !checkoutUrl.isBlank()) {
             saveInitializedPayment(orderId, order.getTotalAmount(), txRef);
+            domainEventService.publish(
+                    "PAYMENT_INITIALIZED",
+                    "PAYMENT",
+                    txRef,
+                    "USER",
+                    userId,
+                    "PLATFORM",
+                    null,
+                    Map.of("orderId", orderId.toString(), "amount", order.getTotalAmount().toPlainString())
+            );
         }
 
         return checkoutUrl;
     }
 
     public String verifyPayment(String txRef) throws IOException {
-        return chapaHttpClient.verifyTransaction(txRef);
+        String response = chapaHttpClient.verifyTransaction(txRef);
+        domainEventService.publish(
+                "PAYMENT_VERIFIED",
+                "PAYMENT",
+                parseUuid(txRef),
+                "SYSTEM",
+                null,
+                "PLATFORM",
+                null,
+                Map.of("verificationRawPresent", response != null && !response.isBlank())
+        );
+        return response;
     }
 
     public CancelPaymentResponse cancelPayment(String txRef) {
@@ -113,6 +139,16 @@ public class PaymentService {
 
         try {
             String rawResponse = chapaHttpClient.cancelTransaction(txRef);
+            domainEventService.publish(
+                    "PAYMENT_CANCELLED",
+                    "PAYMENT",
+                    parseUuid(txRef),
+                    "SYSTEM",
+                    null,
+                    "PLATFORM",
+                    null,
+                    Map.of("status", "REQUESTED")
+            );
             return mapCancelResponse(rawResponse);
         } catch (IOException ex) {
             return new CancelPaymentResponse("Unable to cancel transaction at this time", "failed", null);
@@ -148,6 +184,16 @@ public class PaymentService {
         }
 
         if ("SUCCESS".equalsIgnoreCase(payment.getStatus())) {
+            domainEventService.publish(
+                "PAYMENT_WEBHOOK_PROCESSED",
+                "PAYMENT",
+                payment.getTxRef(),
+                "EXTERNAL_PROVIDER",
+                null,
+                "PLATFORM",
+                null,
+                Map.of("result", "ALREADY_PROCESSED")
+            );
             return new PaymentWebhookResponse(
                     "Payment already processed",
                     "success",
@@ -160,6 +206,16 @@ public class PaymentService {
         }
 
         if (!success) {
+            domainEventService.publish(
+                "PAYMENT_FAILED",
+                "PAYMENT",
+                payment.getTxRef(),
+                "EXTERNAL_PROVIDER",
+                null,
+                "PLATFORM",
+                null,
+                Map.of("reason", "VERIFICATION_FAILED")
+            );
             return new PaymentWebhookResponse(
                     "Payment verification failed",
                     "failed",
@@ -176,6 +232,17 @@ public class PaymentService {
         paymentRepository.save(payment);
 
         OrderResponse updatedOrder = orderService.updatePaymentStatus(payment.getOrderId(), PaymentStatus.SUCCESS);
+
+        domainEventService.publish(
+            "PAYMENT_WEBHOOK_PROCESSED",
+            "PAYMENT",
+            payment.getTxRef(),
+            "EXTERNAL_PROVIDER",
+            null,
+            "PLATFORM",
+            null,
+            Map.of("result", "SUCCESS", "orderId", payment.getOrderId().toString())
+        );
 
         return new PaymentWebhookResponse(
                 "Payment verified and order updated",

@@ -18,12 +18,14 @@ import com.TenaMed.inventory.repository.BatchRepository;
 import com.TenaMed.inventory.repository.InventoryRepository;
 import com.TenaMed.inventory.repository.StockMovementRepository;
 import com.TenaMed.inventory.service.InventoryService;
+import com.TenaMed.events.DomainEventService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @Service
@@ -35,17 +37,20 @@ public class InventoryServiceImpl implements InventoryService {
     private final StockMovementRepository stockMovementRepository;
     private final InventoryMapper inventoryMapper;
     private final BatchMapper batchMapper;
+    private final DomainEventService domainEventService;
 
     public InventoryServiceImpl(InventoryRepository inventoryRepository,
                                 BatchRepository batchRepository,
                                 StockMovementRepository stockMovementRepository,
                                 InventoryMapper inventoryMapper,
-                                BatchMapper batchMapper) {
+                                BatchMapper batchMapper,
+                                DomainEventService domainEventService) {
         this.inventoryRepository = inventoryRepository;
         this.batchRepository = batchRepository;
         this.stockMovementRepository = stockMovementRepository;
         this.inventoryMapper = inventoryMapper;
         this.batchMapper = batchMapper;
+        this.domainEventService = domainEventService;
     }
 
     @Override
@@ -58,6 +63,14 @@ public class InventoryServiceImpl implements InventoryService {
             });
 
         Inventory saved = inventoryRepository.save(inventoryMapper.toEntity(request));
+        domainEventService.publish(
+            "INVENTORY_CREATED",
+            "INVENTORY",
+            saved.getId(),
+            "PHARMACY",
+            saved.getPharmacyId(),
+            Map.of("medicineId", saved.getMedicineId().toString())
+        );
         return inventoryMapper.toResponse(saved, List.of());
     }
 
@@ -74,6 +87,15 @@ public class InventoryServiceImpl implements InventoryService {
         inventoryRepository.save(inventory);
 
         saveMovement(inventory.getId(), StockMovementType.IN, request.getQuantity(), savedBatch.getId());
+
+        domainEventService.publish(
+            "INVENTORY_BATCH_ADDED",
+            "INVENTORY",
+            inventory.getId(),
+            "PHARMACY",
+            inventory.getPharmacyId(),
+            Map.of("batchId", savedBatch.getId().toString(), "quantity", request.getQuantity())
+        );
 
         return batchMapper.toResponse(savedBatch);
     }
@@ -163,6 +185,16 @@ public class InventoryServiceImpl implements InventoryService {
         inventory.setReservedQuantity(inventory.getReservedQuantity() + quantity);
         inventoryRepository.save(inventory);
         saveMovement(inventory.getId(), StockMovementType.RESERVE, quantity, referenceId);
+        domainEventService.publish(
+            "INVENTORY_STOCK_RESERVED",
+            "INVENTORY",
+            inventory.getId(),
+            "SYSTEM",
+            null,
+            "PHARMACY",
+            inventory.getPharmacyId(),
+            Map.of("medicineId", medicineId.toString(), "quantity", quantity)
+        );
         return true;
     }
 
@@ -204,6 +236,16 @@ public class InventoryServiceImpl implements InventoryService {
         inventory.setTotalQuantity(inventory.getTotalQuantity() - quantity);
         inventoryRepository.save(inventory);
         saveMovement(inventory.getId(), StockMovementType.OUT, quantity, referenceId);
+        domainEventService.publish(
+            "INVENTORY_STOCK_CONFIRMED",
+            "INVENTORY",
+            inventory.getId(),
+            "SYSTEM",
+            null,
+            "PHARMACY",
+            inventory.getPharmacyId(),
+            Map.of("medicineId", medicineId.toString(), "quantity", quantity)
+        );
         return true;
     }
 
@@ -228,6 +270,16 @@ public class InventoryServiceImpl implements InventoryService {
         inventory.setReservedQuantity(inventory.getReservedQuantity() - quantity);
         inventoryRepository.save(inventory);
         saveMovement(inventory.getId(), StockMovementType.RELEASE, quantity, referenceId);
+        domainEventService.publish(
+            "INVENTORY_STOCK_RELEASED",
+            "INVENTORY",
+            inventory.getId(),
+            "SYSTEM",
+            null,
+            "PHARMACY",
+            inventory.getPharmacyId(),
+            Map.of("medicineId", medicineId.toString(), "quantity", quantity)
+        );
     }
 
     private void saveMovement(UUID inventoryId, StockMovementType type, Integer quantity, UUID referenceId) {

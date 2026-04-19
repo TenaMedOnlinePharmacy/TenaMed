@@ -15,10 +15,12 @@ import com.TenaMed.hospital.repository.HospitalRepository;
 import com.TenaMed.hospital.service.HospitalService;
 import com.TenaMed.invitation.dto.InvitationResponseDto;
 import com.TenaMed.invitation.service.InvitationService;
+import com.TenaMed.events.DomainEventService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @Service
@@ -29,17 +31,20 @@ public class HospitalServiceImpl implements HospitalService {
     private final DoctorService doctorService;
     private final InvitationService invitationService;
     private final CurrentUserProvider currentUserProvider;
+    private final DomainEventService domainEventService;
 
     public HospitalServiceImpl(HospitalRepository hospitalRepository,
                                HospitalMapper hospitalMapper,
                                DoctorService doctorService,
                                InvitationService invitationService,
-                               CurrentUserProvider currentUserProvider) {
+                               CurrentUserProvider currentUserProvider,
+                               DomainEventService domainEventService) {
         this.hospitalRepository = hospitalRepository;
         this.hospitalMapper = hospitalMapper;
         this.doctorService = doctorService;
         this.invitationService = invitationService;
         this.currentUserProvider = currentUserProvider;
+        this.domainEventService = domainEventService;
     }
 
     @Override
@@ -69,6 +74,16 @@ public class HospitalServiceImpl implements HospitalService {
         hospital.setStatus(HospitalStatus.PENDING);
 
         Hospital saved = hospitalRepository.save(hospital);
+        domainEventService.publish(
+            "HOSPITAL_CREATED",
+            "HOSPITAL",
+            saved.getId(),
+            "HOSPITAL_OWNER",
+            ownerId,
+            "HOSPITAL",
+            saved.getId(),
+            Map.of("status", saved.getStatus().name())
+        );
         return hospitalMapper.toResponse(saved);
     }
 
@@ -97,6 +112,14 @@ public class HospitalServiceImpl implements HospitalService {
         hospital.setLicenseNumber(normalizedLicense);
 
         Hospital saved = hospitalRepository.save(hospital);
+        domainEventService.publish(
+            "HOSPITAL_UPDATED",
+            "HOSPITAL",
+            saved.getId(),
+            "HOSPITAL",
+            saved.getId(),
+            Map.of("licenseNumber", saved.getLicenseNumber())
+        );
         return hospitalMapper.toResponse(saved);
     }
 
@@ -110,6 +133,16 @@ public class HospitalServiceImpl implements HospitalService {
         hospital.setVerifiedBy(currentUserProvider.getCurrentUserId());
 
         Hospital saved = hospitalRepository.save(hospital);
+        domainEventService.publish(
+            "HOSPITAL_VERIFIED",
+            "HOSPITAL",
+            saved.getId(),
+            "ADMIN",
+            currentUserProvider.getCurrentUserId(),
+            "HOSPITAL",
+            saved.getId(),
+            Map.of("status", saved.getStatus().name())
+        );
         return hospitalMapper.toResponse(saved);
     }
 
@@ -130,7 +163,16 @@ public class HospitalServiceImpl implements HospitalService {
             throw new BadRequestException("Hospital must be ACTIVE before inviting doctors");
         }
 
-        return invitationService.createDoctorInvitation(hospitalId, email);
+        InvitationResponseDto invitation = invitationService.createDoctorInvitation(hospitalId, email);
+        domainEventService.publish(
+            "HOSPITAL_DOCTOR_INVITATION_REQUESTED",
+            "INVITATION",
+            invitation.getId(),
+            "HOSPITAL",
+            hospitalId,
+            Map.of("email", email)
+        );
+        return invitation;
     }
 
     private Hospital getHospitalEntityById(UUID hospitalId) {

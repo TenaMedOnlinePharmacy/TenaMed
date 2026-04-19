@@ -5,12 +5,14 @@ import com.TenaMed.antidoping.entity.BannedSubstanceStatus;
 import com.TenaMed.antidoping.entity.MedicineDopingRuleStatus;
 import com.TenaMed.antidoping.repository.BannedSubstanceRepository;
 import com.TenaMed.antidoping.service.dto.DopingCheckResult;
+import com.TenaMed.events.DomainEventService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -19,11 +21,14 @@ public class DopingCheckService {
 
     private final IngredientResolverService ingredientResolverService;
     private final BannedSubstanceRepository bannedSubstanceRepository;
+    private final DomainEventService domainEventService;
 
     public DopingCheckService(IngredientResolverService ingredientResolverService,
-                              BannedSubstanceRepository bannedSubstanceRepository) {
+                              BannedSubstanceRepository bannedSubstanceRepository,
+                              DomainEventService domainEventService) {
         this.ingredientResolverService = ingredientResolverService;
         this.bannedSubstanceRepository = bannedSubstanceRepository;
+        this.domainEventService = domainEventService;
     }
 
     @Transactional
@@ -50,11 +55,22 @@ public class DopingCheckService {
         List<DopingCheckResult.MatchedSubstance> matchedSubstances = toMatchedSubstances(matched);
         String message = buildMessage(finalStatus, matchedSubstances);
 
-        return DopingCheckResult.builder()
+        DopingCheckResult result = DopingCheckResult.builder()
                 .status(finalStatus)
                 .matchedSubstances(matchedSubstances)
                 .explanationMessage(message)
                 .build();
+
+        domainEventService.publish(
+            "DOPING_CHECK_EXECUTED",
+            "DOPING_CHECK",
+            null,
+            "PLATFORM",
+            null,
+            Map.of("medicineName", medicineName, "status", finalStatus.name(), "matches", matchedSubstances.size())
+        );
+
+        return result;
     }
 
     private MedicineDopingRuleStatus resolveStatus(List<BannedSubstance> matchedSubstances) {

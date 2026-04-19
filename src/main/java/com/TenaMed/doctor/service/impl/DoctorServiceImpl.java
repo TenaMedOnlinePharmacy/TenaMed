@@ -11,12 +11,14 @@ import com.TenaMed.doctor.entity.DoctorStatus;
 import com.TenaMed.doctor.mapper.DoctorMapper;
 import com.TenaMed.doctor.repository.DoctorRepository;
 import com.TenaMed.doctor.service.DoctorService;
+import com.TenaMed.events.DomainEventService;
 import com.TenaMed.hospital.entity.Hospital;
 import com.TenaMed.hospital.repository.HospitalRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @Service
@@ -26,15 +28,18 @@ public class DoctorServiceImpl implements DoctorService {
     private final DoctorMapper doctorMapper;
     private final HospitalRepository hospitalRepository;
     private final CurrentUserProvider currentUserProvider;
+    private final DomainEventService domainEventService;
 
     public DoctorServiceImpl(DoctorRepository doctorRepository,
                              DoctorMapper doctorMapper,
                              HospitalRepository hospitalRepository,
-                             CurrentUserProvider currentUserProvider) {
+                             CurrentUserProvider currentUserProvider,
+                             DomainEventService domainEventService) {
         this.doctorRepository = doctorRepository;
         this.doctorMapper = doctorMapper;
         this.hospitalRepository = hospitalRepository;
         this.currentUserProvider = currentUserProvider;
+        this.domainEventService = domainEventService;
     }
 
     @Override
@@ -68,6 +73,16 @@ public class DoctorServiceImpl implements DoctorService {
         doctor.setStatus(DoctorStatus.PENDING);
 
         Doctor saved = doctorRepository.save(doctor);
+        domainEventService.publish(
+            "DOCTOR_PROFILE_CREATED",
+            "DOCTOR",
+            saved.getId(),
+            "DOCTOR",
+            userId,
+            "HOSPITAL",
+            hospitalId,
+            Map.of("status", saved.getStatus().name())
+        );
         return doctorMapper.toResponse(saved);
     }
 
@@ -107,6 +122,16 @@ public class DoctorServiceImpl implements DoctorService {
         doctor.setStatus(DoctorStatus.ACTIVE);
         doctor.setVerifiedBy(currentUserId);
         Doctor saved = doctorRepository.save(doctor);
+        domainEventService.publish(
+            "DOCTOR_VERIFIED",
+            "DOCTOR",
+            saved.getId(),
+            "HOSPITAL_OWNER",
+            currentUserId,
+            "HOSPITAL",
+            hospital.getId(),
+            Map.of("status", saved.getStatus().name())
+        );
         return doctorMapper.toResponse(saved);
     }
 

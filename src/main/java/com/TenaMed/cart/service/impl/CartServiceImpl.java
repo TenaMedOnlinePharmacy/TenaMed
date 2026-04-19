@@ -20,6 +20,7 @@ import com.TenaMed.pharmacy.dto.request.CreateOrderFromCartRequest;
 import com.TenaMed.pharmacy.dto.response.OrderResponse;
 import com.TenaMed.pharmacy.service.OrderService;
 import com.TenaMed.prescription.service.PrescriptionService;
+import com.TenaMed.events.DomainEventService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -44,6 +45,7 @@ public class CartServiceImpl implements CartService {
     private final PrescriptionService prescriptionService;
     private final OrderService orderService;
     private final CartMapper cartMapper;
+    private final DomainEventService domainEventService;
 
     public CartServiceImpl(CartRepository cartRepository,
                            CartItemRepository cartItemRepository,
@@ -51,7 +53,8 @@ public class CartServiceImpl implements CartService {
                            InventoryService inventoryService,
                            PrescriptionService prescriptionService,
                            OrderService orderService,
-                           CartMapper cartMapper) {
+                           CartMapper cartMapper,
+                           DomainEventService domainEventService) {
         this.cartRepository = cartRepository;
         this.cartItemRepository = cartItemRepository;
         this.medicineService = medicineService;
@@ -59,6 +62,7 @@ public class CartServiceImpl implements CartService {
         this.prescriptionService = prescriptionService;
         this.orderService = orderService;
         this.cartMapper = cartMapper;
+        this.domainEventService = domainEventService;
     }
 
     @Override
@@ -116,7 +120,18 @@ public class CartServiceImpl implements CartService {
             cart.getItems().add(item);
         }
 
-        return cartMapper.toResponse(cartRepository.save(cart));
+        Cart saved = cartRepository.save(cart);
+        domainEventService.publish(
+            "CART_ITEM_ADDED",
+            "CART",
+            saved.getId(),
+            "USER",
+            userId,
+            "PLATFORM",
+            null,
+            Map.of("itemCount", saved.getItems().size())
+        );
+        return cartMapper.toResponse(saved);
     }
 
     @Override
@@ -135,7 +150,18 @@ public class CartServiceImpl implements CartService {
         item.setQuantity(request.getQuantity());
         item.calculateTotalPrice();
 
-        return cartMapper.toResponse(cartRepository.save(cart));
+        Cart saved = cartRepository.save(cart);
+        domainEventService.publish(
+            "CART_ITEM_UPDATED",
+            "CART",
+            saved.getId(),
+            "USER",
+            userId,
+            "PLATFORM",
+            null,
+            Map.of("itemId", itemId.toString(), "quantity", request.getQuantity())
+        );
+        return cartMapper.toResponse(saved);
     }
 
     @Override
@@ -152,7 +178,18 @@ public class CartServiceImpl implements CartService {
         cart.getItems().remove(item);
         cartItemRepository.delete(item);
 
-        return cartMapper.toResponse(cartRepository.save(cart));
+        Cart saved = cartRepository.save(cart);
+        domainEventService.publish(
+            "CART_ITEM_REMOVED",
+            "CART",
+            saved.getId(),
+            "USER",
+            userId,
+            "PLATFORM",
+            null,
+            Map.of("itemId", itemId.toString())
+        );
+        return cartMapper.toResponse(saved);
     }
 
     @Override
@@ -178,7 +215,18 @@ public class CartServiceImpl implements CartService {
 
         Cart cart = getActiveCart(userId);
         cart.getItems().clear();
-        return cartMapper.toResponse(cartRepository.save(cart));
+        Cart saved = cartRepository.save(cart);
+        domainEventService.publish(
+            "CART_CLEARED",
+            "CART",
+            saved.getId(),
+            "USER",
+            userId,
+            "PLATFORM",
+            null,
+            Map.of()
+        );
+        return cartMapper.toResponse(saved);
     }
 
     @Override
@@ -222,7 +270,18 @@ public class CartServiceImpl implements CartService {
 
         cart.setStatus(CartStatus.CHECKED_OUT);
         cart.setExpiresAt(LocalDateTime.now());
-        cartRepository.save(cart);
+        Cart saved = cartRepository.save(cart);
+
+        domainEventService.publish(
+            "CART_CHECKED_OUT",
+            "CART",
+            saved.getId(),
+            "USER",
+            userId,
+            "PLATFORM",
+            null,
+            Map.of("orderIds", orderIds)
+        );
 
         return CheckoutCartResponse.builder()
                 .orderIds(orderIds)
@@ -237,7 +296,17 @@ public class CartServiceImpl implements CartService {
             Cart cart = existing.get();
             if (isExpired(cart)) {
                 cart.setStatus(CartStatus.EXPIRED);
-                cartRepository.save(cart);
+                Cart expired = cartRepository.save(cart);
+                domainEventService.publish(
+                        "CART_EXPIRED",
+                        "CART",
+                        expired.getId(),
+                        "USER",
+                        userId,
+                        "PLATFORM",
+                        null,
+                        Map.of()
+                );
                 return createNewCart(userId);
             }
             return cart;
@@ -254,7 +323,17 @@ public class CartServiceImpl implements CartService {
     private Cart expireIfNeeded(Cart cart) {
         if (isExpired(cart)) {
             cart.setStatus(CartStatus.EXPIRED);
-            cartRepository.save(cart);
+            Cart expired = cartRepository.save(cart);
+            domainEventService.publish(
+                    "CART_EXPIRED",
+                    "CART",
+                    expired.getId(),
+                    "USER",
+                    expired.getUserId(),
+                    "PLATFORM",
+                    null,
+                    Map.of()
+            );
             throw new CartValidationException("Active cart has expired");
         }
         return cart;
@@ -269,7 +348,18 @@ public class CartServiceImpl implements CartService {
         cart.setUserId(userId);
         cart.setStatus(CartStatus.ACTIVE);
         cart.setExpiresAt(LocalDateTime.now().plusHours(CART_EXPIRY_HOURS));
-        return cartRepository.save(cart);
+        Cart saved = cartRepository.save(cart);
+        domainEventService.publish(
+                "CART_CREATED",
+                "CART",
+                saved.getId(),
+                "USER",
+                userId,
+                "PLATFORM",
+                null,
+                Map.of("status", saved.getStatus().name())
+        );
+        return saved;
     }
 
     private void validateUserId(UUID userId) {

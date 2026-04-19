@@ -8,6 +8,7 @@ import com.TenaMed.pharmacy.exception.PharmacyNotFoundException;
 import com.TenaMed.pharmacy.exception.PharmacyValidationException;
 import com.TenaMed.invitation.dto.InvitationResponseDto;
 import com.TenaMed.invitation.service.InvitationService;
+import com.TenaMed.events.DomainEventService;
 import com.TenaMed.pharmacy.mapper.PharmacyMapper;
 import com.TenaMed.pharmacy.repository.PharmacyRepository;
 import com.TenaMed.pharmacy.service.PharmacyService;
@@ -19,6 +20,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.Locale;
+import java.util.Map;
 import java.util.UUID;
 
 @Service
@@ -28,13 +30,16 @@ public class PharmacyServiceImpl implements PharmacyService {
     private final PharmacyRepository pharmacyRepository;
     private final PharmacyMapper pharmacyMapper;
     private final InvitationService invitationService;
+    private final DomainEventService domainEventService;
 
     public PharmacyServiceImpl(PharmacyRepository pharmacyRepository,
                                PharmacyMapper pharmacyMapper,
-                               InvitationService invitationService) {
+                               InvitationService invitationService,
+                               DomainEventService domainEventService) {
         this.pharmacyRepository = pharmacyRepository;
         this.pharmacyMapper = pharmacyMapper;
         this.invitationService = invitationService;
+        this.domainEventService = domainEventService;
     }
 
     @Override
@@ -65,6 +70,16 @@ public class PharmacyServiceImpl implements PharmacyService {
 
         Pharmacy pharmacy = pharmacyMapper.toEntity(request);
         Pharmacy saved = pharmacyRepository.save(pharmacy);
+        domainEventService.publish(
+            "PHARMACY_CREATED",
+            "PHARMACY",
+            saved.getId(),
+            "PHARMACY_OWNER",
+            saved.getOwnerId(),
+            "PHARMACY",
+            saved.getId(),
+            Map.of("status", String.valueOf(saved.getStatus()))
+        );
         return pharmacyMapper.toResponse(saved);
     }
 
@@ -80,7 +95,18 @@ public class PharmacyServiceImpl implements PharmacyService {
         pharmacy.setStatus(PharmacyStatus.VERIFIED);
         pharmacy.setVerifiedBy(principal.getUserId());
         pharmacy.setVerifiedAt(LocalDateTime.now());
-        return pharmacyMapper.toResponse(pharmacyRepository.save(pharmacy));
+        Pharmacy saved = pharmacyRepository.save(pharmacy);
+        domainEventService.publish(
+            "PHARMACY_VERIFIED",
+            "PHARMACY",
+            saved.getId(),
+            "ADMIN",
+            principal.getUserId(),
+            "PHARMACY",
+            saved.getId(),
+            Map.of("status", saved.getStatus().name())
+        );
+        return pharmacyMapper.toResponse(saved);
     }
 
     @Override
@@ -113,7 +139,16 @@ public class PharmacyServiceImpl implements PharmacyService {
             throw new PharmacyValidationException("Pharmacy must be VERIFIED before inviting pharmacists");
         }
 
-        return invitationService.createPharmacistInvitation(pharmacyId, email.trim());
+        InvitationResponseDto invitation = invitationService.createPharmacistInvitation(pharmacyId, email.trim());
+        domainEventService.publish(
+            "PHARMACY_PHARMACIST_INVITATION_REQUESTED",
+            "INVITATION",
+            invitation.getId(),
+            "PHARMACY",
+            pharmacyId,
+            Map.of("email", email.trim())
+        );
+        return invitation;
     }
 
     private void validateCreateRequest(CreatePharmacyRequest request) {

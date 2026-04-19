@@ -3,6 +3,7 @@ package com.TenaMed.user.service.impl;
 import com.TenaMed.antidoping.entity.AthleteProfile;
 import com.TenaMed.antidoping.repository.AthleteProfileRepository;
 import com.TenaMed.common.exception.BadRequestException;
+import com.TenaMed.events.DomainEventService;
 import com.TenaMed.user.dto.RegisterAthleteRequestDto;
 import com.TenaMed.user.dto.RegisterAthleteResponseDto;
 import com.TenaMed.user.dto.RegisterRequestDto;
@@ -12,6 +13,7 @@ import com.TenaMed.user.service.IdentityService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Map;
 import java.util.Set;
 
 @Service
@@ -21,11 +23,14 @@ public class AthleteOnboardingServiceImpl implements AthleteOnboardingService {
 
     private final IdentityService identityService;
     private final AthleteProfileRepository athleteProfileRepository;
+    private final DomainEventService domainEventService;
 
     public AthleteOnboardingServiceImpl(IdentityService identityService,
-                                        AthleteProfileRepository athleteProfileRepository) {
+                                        AthleteProfileRepository athleteProfileRepository,
+                                        DomainEventService domainEventService) {
         this.identityService = identityService;
         this.athleteProfileRepository = athleteProfileRepository;
+        this.domainEventService = domainEventService;
     }
 
     @Override
@@ -58,6 +63,17 @@ public class AthleteOnboardingServiceImpl implements AthleteOnboardingService {
                         savedProfile.getAdvisorEnabled(),
                         savedProfile.getCreatedAt()
                 );
+
+        domainEventService.publish(
+            "ATHLETE_ONBOARDED",
+            "ATHLETE_PROFILE",
+            savedProfile.getUserId(),
+            "ATHLETE",
+            savedProfile.getUserId(),
+            "PLATFORM",
+            null,
+            Map.of("advisorEnabled", Boolean.TRUE.equals(savedProfile.getAdvisorEnabled()))
+        );
 
         return new RegisterAthleteResponseDto(athleteResponse, athleteProfileDto);
     }

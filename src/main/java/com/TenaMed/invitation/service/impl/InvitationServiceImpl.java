@@ -17,11 +17,13 @@ import com.TenaMed.pharmacy.entity.Pharmacy;
 import com.TenaMed.pharmacy.repository.PharmacyRepository;
 import com.TenaMed.invitation.repository.InvitationRepository;
 import com.TenaMed.invitation.service.InvitationService;
+import com.TenaMed.events.DomainEventService;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.Map;
 import java.util.UUID;
 
 @Service
@@ -37,6 +39,7 @@ public class InvitationServiceImpl implements InvitationService {
     private final PharmacyRepository pharmacyRepository;
     private final EmailService emailService;
     private final EmailTemplateBuilder emailTemplateBuilder;
+    private final DomainEventService domainEventService;
 
     @Value("${app.invitation.base-url:http://localhost:8080/api/invitations}")
     private String invitationBaseUrl;
@@ -46,13 +49,15 @@ public class InvitationServiceImpl implements InvitationService {
                                  HospitalRepository hospitalRepository,
                                  PharmacyRepository pharmacyRepository,
                                  EmailService emailService,
-                                 EmailTemplateBuilder emailTemplateBuilder) {
+                                 EmailTemplateBuilder emailTemplateBuilder,
+                                 DomainEventService domainEventService) {
         this.invitationRepository = invitationRepository;
         this.invitationMapper = invitationMapper;
         this.hospitalRepository = hospitalRepository;
         this.pharmacyRepository = pharmacyRepository;
         this.emailService = emailService;
         this.emailTemplateBuilder = emailTemplateBuilder;
+        this.domainEventService = domainEventService;
     }
 
     @Override
@@ -85,6 +90,15 @@ public class InvitationServiceImpl implements InvitationService {
         String invitationLink = buildInvitationLink(saved.getToken());
         String body = emailTemplateBuilder.buildDoctorInvitationEmail(hospital.getName(), invitationLink);
         emailService.sendEmail(new EmailRequest(saved.getEmail(), DOCTOR_INVITE_SUBJECT, body, true));
+
+        domainEventService.publish(
+            "INVITATION_CREATED",
+            "INVITATION",
+            saved.getId(),
+            "HOSPITAL",
+            hospitalId,
+            Map.of("role", saved.getRole().name(), "email", saved.getEmail())
+        );
 
         return response;
     }
@@ -120,6 +134,15 @@ public class InvitationServiceImpl implements InvitationService {
         String body = emailTemplateBuilder.buildPharmacistInvitationEmail(pharmacy.getName(), invitationLink);
         emailService.sendEmail(new EmailRequest(saved.getEmail(), PHARMACIST_INVITE_SUBJECT, body, true));
 
+        domainEventService.publish(
+            "INVITATION_CREATED",
+            "INVITATION",
+            saved.getId(),
+            "PHARMACY",
+            pharmacyId,
+            Map.of("role", saved.getRole().name(), "email", saved.getEmail())
+        );
+
         return response;
     }
 
@@ -134,9 +157,26 @@ public class InvitationServiceImpl implements InvitationService {
 
         if (invitation.getExpiresAt().isBefore(LocalDateTime.now())) {
             invitation.setStatus(InvitationStatus.EXPIRED);
-            invitationRepository.save(invitation);
+            Invitation expired = invitationRepository.save(invitation);
+            domainEventService.publish(
+                "INVITATION_EXPIRED",
+                "INVITATION",
+                expired.getId(),
+                "PLATFORM",
+                null,
+                Map.of("token", expired.getToken())
+            );
             throw new BadRequestException("Invitation token has expired");
         }
+
+        domainEventService.publish(
+            "INVITATION_VALIDATED",
+            "INVITATION",
+            invitation.getId(),
+            "PLATFORM",
+            null,
+            Map.of("role", invitation.getRole().name())
+        );
 
         return invitation;
     }
@@ -146,7 +186,15 @@ public class InvitationServiceImpl implements InvitationService {
     public void markAsAccepted(String token) {
         Invitation invitation = validateToken(token);
         invitation.setStatus(InvitationStatus.ACCEPTED);
-        invitationRepository.save(invitation);
+        Invitation saved = invitationRepository.save(invitation);
+        domainEventService.publish(
+            "INVITATION_ACCEPTED",
+            "INVITATION",
+            saved.getId(),
+            "PLATFORM",
+            null,
+            Map.of("role", saved.getRole().name())
+        );
     }
 
     @Override

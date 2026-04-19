@@ -9,11 +9,13 @@ import com.TenaMed.user.dto.RegisterHospitalOwnerRequestDto;
 import com.TenaMed.user.dto.RegisterHospitalOwnerResponseDto;
 import com.TenaMed.user.dto.RegisterRequestDto;
 import com.TenaMed.user.dto.RegisterResponseDto;
+import com.TenaMed.events.DomainEventService;
 import com.TenaMed.user.service.HospitalOwnerOnboardingService;
 import com.TenaMed.user.service.IdentityService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Map;
 import java.util.Set;
 
 @Service
@@ -24,13 +26,16 @@ public class HospitalOwnerOnboardingServiceImpl implements HospitalOwnerOnboardi
     private final IdentityService identityService;
     private final HospitalService hospitalService;
     private final SupabaseStorageService supabaseStorageService;
+    private final DomainEventService domainEventService;
 
     public HospitalOwnerOnboardingServiceImpl(IdentityService identityService,
                                               HospitalService hospitalService,
-                                              SupabaseStorageService supabaseStorageService) {
+                                              SupabaseStorageService supabaseStorageService,
+                                              DomainEventService domainEventService) {
         this.identityService = identityService;
         this.hospitalService = hospitalService;
         this.supabaseStorageService = supabaseStorageService;
+        this.domainEventService = domainEventService;
     }
 
     @Override
@@ -58,6 +63,17 @@ public class HospitalOwnerOnboardingServiceImpl implements HospitalOwnerOnboardi
         hospitalRequest.setLicenseImageUrl(licenseImageUrl);
 
         HospitalResponseDto hospitalResponse = hospitalService.createHospitalForOwner(hospitalRequest, ownerResponse.getUserId());
+
+        domainEventService.publish(
+            "HOSPITAL_OWNER_ONBOARDED",
+            "USER",
+            ownerResponse.getUserId(),
+            "HOSPITAL_OWNER",
+            ownerResponse.getUserId(),
+            "HOSPITAL",
+            hospitalResponse.getId(),
+            Map.of("hospitalId", hospitalResponse.getId().toString())
+        );
 
         return new RegisterHospitalOwnerResponseDto(ownerResponse, hospitalResponse);
     }

@@ -26,10 +26,12 @@ import com.TenaMed.patient.repository.PatientProfileRepository;
 import com.TenaMed.patient.repository.PatientRepository;
 import com.TenaMed.patient.service.PatientService;
 import com.TenaMed.prescription.repository.PrescriptionRepository;
+import com.TenaMed.events.DomainEventService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @Service
@@ -41,19 +43,22 @@ public class PatientServiceImpl implements PatientService {
     private final CustomerAllergyRepository customerAllergyRepository;
     private final PrescriptionRepository prescriptionRepository;
     private final PatientMapper patientMapper;
+    private final DomainEventService domainEventService;
 
     public PatientServiceImpl(PatientProfileRepository patientProfileRepository,
                               PatientRepository patientRepository,
                               AllergenRepository allergenRepository,
                               CustomerAllergyRepository customerAllergyRepository,
                               PrescriptionRepository prescriptionRepository,
-                              PatientMapper patientMapper) {
+                              PatientMapper patientMapper,
+                              DomainEventService domainEventService) {
         this.patientProfileRepository = patientProfileRepository;
         this.patientRepository = patientRepository;
         this.allergenRepository = allergenRepository;
         this.customerAllergyRepository = customerAllergyRepository;
         this.prescriptionRepository = prescriptionRepository;
         this.patientMapper = patientMapper;
+        this.domainEventService = domainEventService;
     }
 
     @Override
@@ -75,6 +80,16 @@ public class PatientServiceImpl implements PatientService {
             dto.getIsPregnant(), dto.getBloodType(), dto.getUniqueCode());
 
         PatientProfile saved = patientProfileRepository.save(profile);
+        domainEventService.publish(
+            "PATIENT_PROFILE_CREATED",
+            "PATIENT_PROFILE",
+            saved.getId(),
+            "PATIENT",
+            userId,
+            "PLATFORM",
+            null,
+            Map.of()
+        );
         return patientMapper.toProfileResponse(saved, List.of());
     }
 
@@ -100,6 +115,16 @@ public class PatientServiceImpl implements PatientService {
             dto.getIsPregnant(), dto.getBloodType(), dto.getUniqueCode());
 
         PatientProfile saved = patientProfileRepository.save(profile);
+        domainEventService.publish(
+            "PATIENT_PROFILE_UPDATED",
+            "PATIENT_PROFILE",
+            saved.getId(),
+            "PATIENT",
+            userId,
+            "PLATFORM",
+            null,
+            Map.of()
+        );
         List<CustomerAllergy> allergies = customerAllergyRepository.findByProfile_Id(saved.getId());
         return patientMapper.toProfileResponse(saved, allergies);
     }
@@ -125,6 +150,16 @@ public class PatientServiceImpl implements PatientService {
         customerAllergy.setAllergen(allergen);
         customerAllergy.setSeverity(dto.getSeverity());
         customerAllergyRepository.save(customerAllergy);
+        domainEventService.publish(
+            "PATIENT_ALLERGY_ADDED",
+            "CUSTOMER_ALLERGY",
+            customerAllergy.getId(),
+            "PATIENT",
+            userId,
+            "PLATFORM",
+            null,
+            Map.of("allergenId", allergen.getId().toString())
+        );
 
         List<CustomerAllergy> allergies = customerAllergyRepository.findByProfile_Id(profile.getId());
         return patientMapper.toProfileResponse(profile, allergies);
@@ -157,6 +192,16 @@ public class PatientServiceImpl implements PatientService {
 
         allergy.setSeverity(dto.severity());
         customerAllergyRepository.save(allergy);
+        domainEventService.publish(
+            "PATIENT_ALLERGY_UPDATED",
+            "CUSTOMER_ALLERGY",
+            allergy.getId(),
+            "PATIENT",
+            userId,
+            "PLATFORM",
+            null,
+            Map.of()
+        );
 
         List<CustomerAllergy> allergies = customerAllergyRepository.findByProfile_Id(profile.getId());
         return patientMapper.toProfileResponse(profile, allergies);
@@ -174,6 +219,16 @@ public class PatientServiceImpl implements PatientService {
         CustomerAllergy allergy = customerAllergyRepository.findByIdAndProfile_UserId(allergyId, userId)
                 .orElseThrow(() -> new CustomerAllergyNotFoundException(allergyId));
         customerAllergyRepository.delete(allergy);
+        domainEventService.publish(
+            "PATIENT_ALLERGY_REMOVED",
+            "CUSTOMER_ALLERGY",
+            allergyId,
+            "PATIENT",
+            userId,
+            "PLATFORM",
+            null,
+            Map.of()
+        );
     }
 
     @Override
@@ -196,6 +251,16 @@ public class PatientServiceImpl implements PatientService {
         PatientProfile savedProfile = patientProfileRepository.save(profile);
 
         prescriptionRepository.migratePatientToProfile(temporaryPatient.getId(), savedProfile.getId());
+        domainEventService.publish(
+            "TEMPORARY_PATIENT_CONVERTED",
+            "PATIENT",
+            temporaryPatient.getId(),
+            "PATIENT",
+            userId,
+            "PLATFORM",
+            null,
+            Map.of("profileId", savedProfile.getId().toString())
+        );
     }
 
     @Override
@@ -219,6 +284,16 @@ public class PatientServiceImpl implements PatientService {
         patient.setUniqueCode(uniqueCode);
 
         Patient saved = patientRepository.save(patient);
+        domainEventService.publish(
+            "TEMPORARY_PATIENT_CREATED",
+            "PATIENT",
+            saved.getId(),
+            "PATIENT",
+            null,
+            "PLATFORM",
+            null,
+            Map.of()
+        );
         return new PatientDto(saved.getId(), saved.getFullName(), saved.getPhone(), saved.getUniqueCode(), saved.getCreatedAt());
     }
 
@@ -232,6 +307,16 @@ public class PatientServiceImpl implements PatientService {
         Patient patient = patientRepository.findById(patientId)
                 .orElseThrow(() -> new TemporaryPatientNotFoundException(patientId));
         patientRepository.delete(patient);
+        domainEventService.publish(
+            "TEMPORARY_PATIENT_DELETED",
+            "PATIENT",
+            patientId,
+            "PATIENT",
+            null,
+            "PLATFORM",
+            null,
+            Map.of()
+        );
     }
 
     @Override

@@ -1,6 +1,7 @@
 package com.TenaMed.pharmacy.service.impl;
 
 import com.TenaMed.common.exception.BadRequestException;
+import com.TenaMed.events.DomainEventService;
 import com.TenaMed.invitation.entity.Invitation;
 import com.TenaMed.invitation.entity.InvitationInstituteType;
 import com.TenaMed.invitation.entity.InvitationRole;
@@ -18,6 +19,7 @@ import com.TenaMed.user.service.IdentityService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Map;
 import java.util.Set;
 
 @Service("pharmacyPharmacistOnboardingService")
@@ -28,13 +30,16 @@ public class PharmacistOnboardingServiceImpl implements PharmacistOnboardingServ
     private final InvitationService invitationService;
     private final IdentityService identityService;
     private final StaffService staffService;
+    private final DomainEventService domainEventService;
 
     public PharmacistOnboardingServiceImpl(InvitationService invitationService,
                                            IdentityService identityService,
-                                           StaffService staffService) {
+                                           StaffService staffService,
+                                           DomainEventService domainEventService) {
         this.invitationService = invitationService;
         this.identityService = identityService;
         this.staffService = staffService;
+        this.domainEventService = domainEventService;
     }
 
     @Override
@@ -83,6 +88,17 @@ public class PharmacistOnboardingServiceImpl implements PharmacistOnboardingServ
 
         StaffResponse staffResponse = staffService.addStaff(addStaffRequest);
         invitationService.markAsAccepted(token);
+
+        domainEventService.publish(
+            "PHARMACIST_ONBOARDED_FROM_INVITATION",
+            "USER_PHARMACY",
+            staffResponse.getId(),
+            "PHARMACIST",
+            registerResponse.getUserId(),
+            "PHARMACY",
+            invitation.getInstituteId(),
+            Map.of("userId", registerResponse.getUserId().toString())
+        );
         return staffResponse;
     }
 }

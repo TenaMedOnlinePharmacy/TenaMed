@@ -28,6 +28,7 @@ import com.TenaMed.pharmacy.repository.PharmacyRepository;
 import com.TenaMed.pharmacy.service.OrderService;
 import com.TenaMed.inventory.service.InventoryService;
 import com.TenaMed.prescription.service.PrescriptionService;
+import com.TenaMed.events.DomainEventService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -53,6 +54,7 @@ public class OrderServiceImpl implements OrderService {
     private final PrescriptionItemRepository prescriptionItemRepository;
     private final InventoryRepository inventoryRepository;
     private final BatchRepository batchRepository;
+    private final DomainEventService domainEventService;
 
     public OrderServiceImpl(OrderRepository orderRepository,
                             OrderItemRepository orderItemRepository,
@@ -62,7 +64,8 @@ public class OrderServiceImpl implements OrderService {
                             PrescriptionService prescriptionService,
                             PrescriptionItemRepository prescriptionItemRepository,
                             InventoryRepository inventoryRepository,
-                            BatchRepository batchRepository) {
+                            BatchRepository batchRepository,
+                            DomainEventService domainEventService) {
         this.orderRepository = orderRepository;
         this.orderItemRepository = orderItemRepository;
         this.pharmacyRepository = pharmacyRepository;
@@ -72,6 +75,7 @@ public class OrderServiceImpl implements OrderService {
         this.prescriptionItemRepository = prescriptionItemRepository;
         this.inventoryRepository = inventoryRepository;
         this.batchRepository = batchRepository;
+        this.domainEventService = domainEventService;
     }
 
     @Override
@@ -101,6 +105,17 @@ public class OrderServiceImpl implements OrderService {
         List<OrderItem> savedItems = orderItemRepository.saveAll(derivedItems);
         savedOrder.getItems().addAll(savedItems);
 
+        domainEventService.publish(
+            "ORDER_CREATED",
+            "ORDER",
+            savedOrder.getId(),
+            "USER",
+            customerId,
+            "PHARMACY",
+            pharmacy.getId(),
+            Map.of("status", savedOrder.getStatus().name())
+        );
+
         return orderMapper.toResponse(savedOrder);
     }
 
@@ -117,7 +132,18 @@ public class OrderServiceImpl implements OrderService {
         order.setAcceptedBy(actorUserId);
         order.setStatus(OrderStatus.ACCEPTED);
         order.setStatus(OrderStatus.PENDING_PAYMENT);
-        return orderMapper.toResponse(orderRepository.save(order));
+        Order saved = orderRepository.save(order);
+        domainEventService.publish(
+            "ORDER_ACCEPTED",
+            "ORDER",
+            saved.getId(),
+            actorRole == StaffRole.OWNER ? "PHARMACY_OWNER" : "PHARMACIST",
+            actorUserId,
+            "PHARMACY",
+            saved.getPharmacy().getId(),
+            Map.of("status", saved.getStatus().name())
+        );
+        return orderMapper.toResponse(saved);
     }
 
     @Override
@@ -125,7 +151,18 @@ public class OrderServiceImpl implements OrderService {
         Order order = fetchOrder(orderId);
         order.setStatus(OrderStatus.REJECTED);
         order.setRejectionReason(rejectionReason);
-        return orderMapper.toResponse(orderRepository.save(order));
+        Order saved = orderRepository.save(order);
+        domainEventService.publish(
+            "ORDER_REJECTED",
+            "ORDER",
+            saved.getId(),
+            "SYSTEM",
+            null,
+            "PHARMACY",
+            saved.getPharmacy().getId(),
+            Map.of("status", saved.getStatus().name())
+        );
+        return orderMapper.toResponse(saved);
     }
 
     @Override
@@ -138,7 +175,18 @@ public class OrderServiceImpl implements OrderService {
         if (paymentStatus == PaymentStatus.FAILED) {
             order.setStatus(OrderStatus.CANCELLED);
         }
-        return orderMapper.toResponse(orderRepository.save(order));
+        Order saved = orderRepository.save(order);
+        domainEventService.publish(
+            "ORDER_PAYMENT_UPDATED",
+            "ORDER",
+            saved.getId(),
+            "SYSTEM",
+            null,
+            "PHARMACY",
+            saved.getPharmacy().getId(),
+            Map.of("paymentStatus", String.valueOf(saved.getPaymentStatus()), "status", String.valueOf(saved.getStatus()))
+        );
+        return orderMapper.toResponse(saved);
     }
 
     @Override
@@ -202,6 +250,17 @@ public class OrderServiceImpl implements OrderService {
                 throw new PharmacyValidationException("Unable to reserve stock for medicine " + orderItem.getMedicineId());
             }
         }
+
+        domainEventService.publish(
+                "ORDER_CREATED",
+                "ORDER",
+                savedOrder.getId(),
+                "USER",
+                customerId,
+                "PHARMACY",
+                selectedPharmacyId,
+                Map.of("source", "CART", "status", savedOrder.getStatus().name())
+        );
 
         return orderMapper.toResponse(savedOrder);
     }

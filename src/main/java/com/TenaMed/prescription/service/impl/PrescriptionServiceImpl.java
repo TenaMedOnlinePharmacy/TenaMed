@@ -4,12 +4,14 @@ import com.TenaMed.prescription.entity.Prescription;
 import com.TenaMed.prescription.entity.PrescriptionType;
 import com.TenaMed.prescription.repository.PrescriptionRepository;
 import com.TenaMed.prescription.service.PrescriptionService;
+import com.TenaMed.events.DomainEventService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
+import java.util.Map;
 import java.util.UUID;
 
 @Service
@@ -17,9 +19,12 @@ import java.util.UUID;
 public class PrescriptionServiceImpl implements PrescriptionService {
 
     private final PrescriptionRepository prescriptionRepository;
+    private final DomainEventService domainEventService;
 
-    public PrescriptionServiceImpl(PrescriptionRepository prescriptionRepository) {
+    public PrescriptionServiceImpl(PrescriptionRepository prescriptionRepository,
+                                   DomainEventService domainEventService) {
         this.prescriptionRepository = prescriptionRepository;
+        this.domainEventService = domainEventService;
     }
 
     @Override
@@ -28,7 +33,16 @@ public class PrescriptionServiceImpl implements PrescriptionService {
         prescription.setType(PrescriptionType.UPLOADED);
         prescription.setStatus("UPLOADED");
         prescription.setIsVerified(false);
-        return prescriptionRepository.save(prescription);
+        Prescription saved = prescriptionRepository.save(prescription);
+        domainEventService.publish(
+            "PRESCRIPTION_UPLOADED",
+            "PRESCRIPTION",
+            saved.getId(),
+            "PLATFORM",
+            null,
+            Map.of("status", saved.getStatus())
+        );
+        return saved;
     }
 
     @Override
@@ -40,7 +54,18 @@ public class PrescriptionServiceImpl implements PrescriptionService {
 
         prescription.setIssueDate(parseToLocalDate(createdDate));
         prescription.setExpiryDate(parseToLocalDate(expirationDate));
-        return prescriptionRepository.save(prescription);
+        Prescription saved = prescriptionRepository.save(prescription);
+        domainEventService.publish(
+            "PRESCRIPTION_OCR_DATES_ATTACHED",
+            "PRESCRIPTION",
+            saved.getId(),
+            "SYSTEM",
+            null,
+            "PLATFORM",
+            null,
+            Map.of("issueDate", String.valueOf(saved.getIssueDate()), "expiryDate", String.valueOf(saved.getExpiryDate()))
+        );
+        return saved;
     }
 
     @Override

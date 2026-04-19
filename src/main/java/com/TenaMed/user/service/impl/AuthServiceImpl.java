@@ -15,6 +15,7 @@ import com.TenaMed.user.security.JwtService;
 import com.TenaMed.user.security.TokenHashingService;
 import com.TenaMed.user.service.AuthService;
 import com.TenaMed.user.service.RedisSessionService;
+import com.TenaMed.events.DomainEventService;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -23,6 +24,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
@@ -38,19 +41,22 @@ public class AuthServiceImpl implements AuthService {
     private final TokenHashingService tokenHashingService;
     private final AccountRepository accountRepository;
     private final CustomUserDetailsService customUserDetailsService;
+    private final DomainEventService domainEventService;
 
     public AuthServiceImpl(AuthenticationManager authenticationManager,
                            JwtService jwtService,
                            RedisSessionService redisSessionService,
                            TokenHashingService tokenHashingService,
                            AccountRepository accountRepository,
-                           CustomUserDetailsService customUserDetailsService) {
+                           CustomUserDetailsService customUserDetailsService,
+                           DomainEventService domainEventService) {
         this.authenticationManager = authenticationManager;
         this.jwtService = jwtService;
         this.redisSessionService = redisSessionService;
         this.tokenHashingService = tokenHashingService;
         this.accountRepository = accountRepository;
         this.customUserDetailsService = customUserDetailsService;
+        this.domainEventService = domainEventService;
     }
 
     @Override
@@ -86,6 +92,17 @@ public class AuthServiceImpl implements AuthService {
             account.setLastLogin(LocalDateTime.now());
             accountRepository.save(account);
 
+                domainEventService.publish(
+                    "AUTH_LOGIN_SUCCEEDED",
+                    "ACCOUNT",
+                    account.getId(),
+                    "USER",
+                    principal.getUserId(),
+                    "PLATFORM",
+                    null,
+                    Map.of("sessionId", sessionId.toString())
+                );
+
             return AuthTokenPair.builder()
                     .userId(principal.getUserId())
                     .sessionId(sessionId)
@@ -96,6 +113,16 @@ public class AuthServiceImpl implements AuthService {
             int attempts = account.getFailedLoginAttempts() == null ? 0 : account.getFailedLoginAttempts();
             account.setFailedLoginAttempts(attempts + 1);
             accountRepository.save(account);
+            domainEventService.publish(
+                    "AUTH_LOGIN_FAILED",
+                    "ACCOUNT",
+                    account.getId(),
+                    "USER",
+                    null,
+                    "PLATFORM",
+                    null,
+                    Map.of("failedLoginAttempts", account.getFailedLoginAttempts())
+            );
             throw new InvalidCredentialsException();
         }
     }
@@ -144,6 +171,17 @@ public class AuthServiceImpl implements AuthService {
             throw new InvalidSessionException("Failed to rotate refresh session");
         }
 
+        domainEventService.publish(
+            "AUTH_REFRESH_SUCCEEDED",
+            "SESSION",
+            sessionId,
+            "USER",
+            userId,
+            "PLATFORM",
+            null,
+            Map.of("deviceInfo", deviceInfo == null ? "" : deviceInfo)
+        );
+
         return AuthTokenPair.builder()
                 .userId(userId)
                 .sessionId(sessionId)
@@ -158,16 +196,42 @@ public class AuthServiceImpl implements AuthService {
         redisSessionService.getSession(sessionId).ifPresent(session -> {
             redisSessionService.deleteSession(sessionId);
             redisSessionService.removeSessionFromUserIndex(session.getUserId(), sessionId);
+
+            domainEventService.publish(
+                    "AUTH_LOGOUT",
+                    "SESSION",
+                    sessionId,
+                    "USER",
+                    session.getUserId(),
+                    "PLATFORM",
+                    null,
+                    Map.of()
+            );
         });
     }
 
     @Override
     public void logoutAll(UUID userId) {
         Set<String> sessionIds = redisSessionService.getUserSessionIds(userId);
+        int removed = 0;
         for (String sid : sessionIds) {
             redisSessionService.deleteSession(UUID.fromString(sid));
+            removed++;
         }
         redisSessionService.deleteUserSessionIndex(userId);
+
+        Map<String, Object> metadata = new LinkedHashMap<>();
+        metadata.put("removedSessionCount", removed);
+        domainEventService.publish(
+                "AUTH_LOGOUT_ALL",
+                "USER",
+                userId,
+                "USER",
+                userId,
+                "PLATFORM",
+                null,
+                metadata
+        );
     }
 
     private UUID parseSessionId(String sessionIdCookie) {
