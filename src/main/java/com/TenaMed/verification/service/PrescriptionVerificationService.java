@@ -56,10 +56,11 @@ public class PrescriptionVerificationService {
 	public VerificationResponseDto verify(UUID prescriptionId) {
 		Prescription prescription = prescriptionRepository.findById(prescriptionId)
 				.orElseThrow(() -> new PrescriptionNotFoundException(prescriptionId));
+		String oldStatus = prescription.getStatus();
 
 		if (verificationEngine.isDigital(prescription.getType())) {
 			prescriptionRepository.markVerified(prescriptionId, null, LocalDateTime.now());
-			publisher.publishEvent(new PrescriptionVerifiedEvent(prescriptionId));
+			publisher.publishEvent(new PrescriptionVerifiedEvent(prescriptionId, oldStatus, "VERIFIED", "SYSTEM", null));
 			return new VerificationResponseDto("VERIFIED", null, "ORDER_ALLOWED");
 		}
 
@@ -77,7 +78,7 @@ public class PrescriptionVerificationService {
 
 		if (decision.isVerified()) {
 			prescriptionRepository.markVerified(prescriptionId, null, LocalDateTime.now());
-			publisher.publishEvent(new PrescriptionVerifiedEvent(prescriptionId));
+			publisher.publishEvent(new PrescriptionVerifiedEvent(prescriptionId, oldStatus, "VERIFIED", "SYSTEM", null));
 			return new VerificationResponseDto("VERIFIED", null, "ORDER_ALLOWED");
 		}
 
@@ -98,6 +99,7 @@ public class PrescriptionVerificationService {
 
 		Prescription prescription = prescriptionRepository.findById(prescriptionId)
 				.orElseThrow(() -> new PrescriptionNotFoundException(prescriptionId));
+		String oldStatus = prescription.getStatus();
 
 		List<PrescriptionItem> toSave = items.stream().map(item -> {
 			if (item.getMedicineName() == null || item.getMedicineName().isBlank()) {
@@ -130,6 +132,8 @@ public class PrescriptionVerificationService {
 		if (updatedRows != 1) {
 			throw new VerificationException("Failed to update prescription verification status: " + prescriptionId);
 		}
+
+		publisher.publishEvent(new PrescriptionVerifiedEvent(prescriptionId, oldStatus, "VERIFIED", "PHARMACIST", verifiedBy));
 
 		log.info("Prescription items validated and saved: prescriptionId={} itemCount={}", prescriptionId, toSave.size());
 	}

@@ -122,6 +122,7 @@ public class OrderServiceImpl implements OrderService {
     @Override
     public OrderResponse acceptOrder(UUID orderId, UUID actorUserId, StaffRole actorRole) {
         Order order = fetchOrder(orderId);
+        String oldStatus = String.valueOf(order.getStatus());
 
         if (actorRole != StaffRole.OWNER && actorRole != StaffRole.PHARMACIST) {
             throw new OrderAuthorizationException();
@@ -141,7 +142,7 @@ public class OrderServiceImpl implements OrderService {
             actorUserId,
             "PHARMACY",
             saved.getPharmacy().getId(),
-            Map.of("status", saved.getStatus().name())
+                Map.of("changes", Map.of("status", Map.of("old", oldStatus, "new", saved.getStatus().name())))
         );
         return orderMapper.toResponse(saved);
     }
@@ -149,6 +150,7 @@ public class OrderServiceImpl implements OrderService {
     @Override
     public OrderResponse rejectOrder(UUID orderId, String rejectionReason) {
         Order order = fetchOrder(orderId);
+        String oldStatus = String.valueOf(order.getStatus());
         order.setStatus(OrderStatus.REJECTED);
         order.setRejectionReason(rejectionReason);
         Order saved = orderRepository.save(order);
@@ -160,7 +162,7 @@ public class OrderServiceImpl implements OrderService {
             null,
             "PHARMACY",
             saved.getPharmacy().getId(),
-            Map.of("status", saved.getStatus().name())
+                Map.of("changes", Map.of("status", Map.of("old", oldStatus, "new", saved.getStatus().name())))
         );
         return orderMapper.toResponse(saved);
     }
@@ -168,6 +170,8 @@ public class OrderServiceImpl implements OrderService {
     @Override
     public OrderResponse updatePaymentStatus(UUID orderId, PaymentStatus paymentStatus) {
         Order order = fetchOrder(orderId);
+        String oldStatus = String.valueOf(order.getStatus());
+        String oldPaymentStatus = String.valueOf(order.getPaymentStatus());
         order.setPaymentStatus(paymentStatus);
         if (paymentStatus == PaymentStatus.SUCCESS) {
             order.setStatus(OrderStatus.CONFIRMED);
@@ -184,7 +188,13 @@ public class OrderServiceImpl implements OrderService {
             null,
             "PHARMACY",
             saved.getPharmacy().getId(),
-            Map.of("paymentStatus", String.valueOf(saved.getPaymentStatus()), "status", String.valueOf(saved.getStatus()))
+            Map.of(
+                "changes",
+                Map.of(
+                    "paymentStatus", Map.of("old", oldPaymentStatus, "new", String.valueOf(saved.getPaymentStatus())),
+                    "status", Map.of("old", oldStatus, "new", String.valueOf(saved.getStatus()))
+                )
+            )
         );
         return orderMapper.toResponse(saved);
     }

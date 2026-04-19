@@ -28,25 +28,27 @@ public class ManualReviewService {
 	public void approve(UUID prescriptionId, UUID pharmacistId) {
 		Prescription prescription = prescriptionRepository.findById(prescriptionId)
 				.orElseThrow(() -> new PrescriptionNotFoundException(prescriptionId));
+		String oldStatus = prescription.getStatus();
 
 		if (!"PENDING_MANUAL_REVIEW".equals(prescription.getStatus())) {
 			throw new InvalidVerificationStateException("Prescription is not pending manual review");
 		}
 
 		prescriptionRepository.markVerifiedPreserveReviewReason(prescriptionId, pharmacistId, LocalDateTime.now());
-		publisher.publishEvent(new PrescriptionVerifiedEvent(prescriptionId));
+		publisher.publishEvent(new PrescriptionVerifiedEvent(prescriptionId, oldStatus, "VERIFIED", "PHARMACIST", pharmacistId));
 	}
 
 	@Transactional
 	public void reject(UUID prescriptionId, UUID pharmacistId, String reason) {
 		Prescription prescription = prescriptionRepository.findById(prescriptionId)
 				.orElseThrow(() -> new PrescriptionNotFoundException(prescriptionId));
+		String oldStatus = prescription.getStatus();
 
 		if (!"PENDING_MANUAL_REVIEW".equals(prescription.getStatus())) {
 			throw new InvalidVerificationStateException("Prescription is not pending manual review");
 		}
 
 		prescriptionRepository.markRejected(prescriptionId, reason, pharmacistId);
-		publisher.publishEvent(new PrescriptionRejectedEvent(prescriptionId, reason));
+		publisher.publishEvent(new PrescriptionRejectedEvent(prescriptionId, reason, oldStatus, "REJECTED", "PHARMACIST", pharmacistId));
 	}
 }

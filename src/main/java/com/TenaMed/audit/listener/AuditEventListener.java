@@ -33,21 +33,26 @@ public class AuditEventListener {
             return;
         }
 
-        Map<String, Object> payload = new LinkedHashMap<>();
-        payload.put("payload", event.getPayload());
-
-        UUID prescriptionId = extractPrescriptionId(event.getPayload());
+        String entityType = extractString(event.getPayload(), "entityType", "DOMAIN_EVENT");
+        UUID entityId = extractUuid(event.getPayload(), "entityId");
+        String actorType = extractString(event.getPayload(), "actorType", resolveActorType());
+        UUID actorId = extractUuid(event.getPayload(), "actorId");
+        String contextType = extractString(event.getPayload(), "contextType", CONTEXT_PLATFORM);
+        UUID contextId = extractUuid(event.getPayload(), "contextId");
+        Map<String, Object> metadata = extractMetadata(event.getPayload());
+        Map<String, Object> changes = extractChanges(metadata);
+        Map<String, Object> actionDetails = stripChanges(metadata);
 
         auditLogService.write(AuditLogWriteRequest.builder()
-                .entityType(prescriptionId == null ? "DOMAIN_EVENT" : "PRESCRIPTION")
-                .entityId(prescriptionId)
+                .entityType(entityType)
+                .entityId(entityId)
                 .action(normalizeAction(event.getEventType()))
-                .actionDetails(payload)
-                .changes(Map.of())
-                .actorType(resolveActorType())
-                .actorId(resolveActorId())
-                .contextType(CONTEXT_PLATFORM)
-                .contextId(null)
+                .actionDetails(actionDetails)
+                .changes(changes)
+                .actorType(actorType)
+                .actorId(actorId == null ? resolveActorId() : actorId)
+                .contextType(contextType)
+                .contextId(contextId)
                 .correlationId(resolveCorrelationId(event.getPayload()))
                 .build());
     }
@@ -63,9 +68,9 @@ public class AuditEventListener {
                 .entityId(event.getPrescriptionId())
                 .action("PRESCRIPTION_VERIFIED")
                 .actionDetails(Map.of("eventClass", PrescriptionVerifiedEvent.class.getSimpleName()))
-                .changes(Map.of("status", Map.of("to", "VERIFIED")))
-                .actorType(resolveActorType())
-                .actorId(resolveActorId())
+            .changes(Map.of("status", Map.of("old", event.getOldStatus(), "new", event.getNewStatus())))
+            .actorType(event.getActorType() == null ? resolveActorType() : event.getActorType())
+            .actorId(event.getActorId() == null ? resolveActorId() : event.getActorId())
                 .contextType(CONTEXT_PLATFORM)
                 .contextId(null)
                 .correlationId(null)
@@ -86,10 +91,10 @@ public class AuditEventListener {
                 .entityType("PRESCRIPTION")
                 .entityId(event.getPrescriptionId())
                 .action("PRESCRIPTION_REJECTED")
-            .actionDetails(details)
-                .changes(Map.of("status", Map.of("to", "REJECTED")))
-                .actorType(resolveActorType())
-                .actorId(resolveActorId())
+                .actionDetails(details)
+                .changes(Map.of("status", Map.of("old", event.getOldStatus(), "new", event.getNewStatus())))
+                .actorType(event.getActorType() == null ? resolveActorType() : event.getActorType())
+                .actorId(event.getActorId() == null ? resolveActorId() : event.getActorId())
                 .contextType(CONTEXT_PLATFORM)
                 .contextId(null)
                 .correlationId(null)
@@ -126,12 +131,12 @@ public class AuditEventListener {
         return value.trim().toUpperCase();
     }
 
-    private UUID extractPrescriptionId(Object payload) {
+    private UUID extractUuid(Object payload, String key) {
         if (!(payload instanceof Map<?, ?> map)) {
             return null;
         }
 
-        Object candidate = map.get("prescriptionId");
+        Object candidate = map.get(key);
         if (candidate == null) {
             return null;
         }
@@ -149,6 +154,57 @@ public class AuditEventListener {
         }
 
         return null;
+    }
+
+    private String extractString(Object payload, String key, String fallback) {
+        if (!(payload instanceof Map<?, ?> map)) {
+            return fallback;
+        }
+        Object value = map.get(key);
+        if (value instanceof String text && !text.isBlank()) {
+            return text.trim();
+        }
+        return fallback;
+    }
+
+    private Map<String, Object> extractMetadata(Object payload) {
+        if (!(payload instanceof Map<?, ?> map)) {
+            return Map.of();
+        }
+        Object metadata = map.get("metadata");
+        if (metadata instanceof Map<?, ?> raw) {
+            Map<String, Object> result = new LinkedHashMap<>();
+            for (Map.Entry<?, ?> entry : raw.entrySet()) {
+                if (entry.getKey() != null) {
+                    result.put(String.valueOf(entry.getKey()), entry.getValue());
+                }
+            }
+            return result;
+        }
+        return Map.of();
+    }
+
+    private Map<String, Object> extractChanges(Map<String, Object> metadata) {
+        Object rawChanges = metadata.get("changes");
+        if (rawChanges instanceof Map<?, ?> raw) {
+            Map<String, Object> changes = new LinkedHashMap<>();
+            for (Map.Entry<?, ?> entry : raw.entrySet()) {
+                if (entry.getKey() != null) {
+                    changes.put(String.valueOf(entry.getKey()), entry.getValue());
+                }
+            }
+            return changes;
+        }
+        return Map.of();
+    }
+
+    private Map<String, Object> stripChanges(Map<String, Object> metadata) {
+        if (metadata.isEmpty()) {
+            return Map.of();
+        }
+        Map<String, Object> details = new LinkedHashMap<>(metadata);
+        details.remove("changes");
+        return details;
     }
 
     private String resolveCorrelationId(Object payload) {

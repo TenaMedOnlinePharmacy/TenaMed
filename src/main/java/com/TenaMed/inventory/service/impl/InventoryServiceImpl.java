@@ -80,6 +80,7 @@ public class InventoryServiceImpl implements InventoryService {
 
         Inventory inventory = inventoryRepository.findById(request.getInventoryId())
             .orElseThrow(() -> new InventoryNotFoundException(request.getInventoryId()));
+        int oldTotalQuantity = inventory.getTotalQuantity();
 
         Batch savedBatch = batchRepository.save(batchMapper.toEntity(request, inventory));
 
@@ -94,7 +95,10 @@ public class InventoryServiceImpl implements InventoryService {
             inventory.getId(),
             "PHARMACY",
             inventory.getPharmacyId(),
-            Map.of("batchId", savedBatch.getId().toString(), "quantity", request.getQuantity())
+            Map.of(
+                "batchId", savedBatch.getId().toString(),
+                "changes", Map.of("totalQuantity", Map.of("old", oldTotalQuantity, "new", inventory.getTotalQuantity()))
+            )
         );
 
         return batchMapper.toResponse(savedBatch);
@@ -182,6 +186,7 @@ public class InventoryServiceImpl implements InventoryService {
             return false;
         }
 
+        int oldReservedQuantity = inventory.getReservedQuantity();
         inventory.setReservedQuantity(inventory.getReservedQuantity() + quantity);
         inventoryRepository.save(inventory);
         saveMovement(inventory.getId(), StockMovementType.RESERVE, quantity, referenceId);
@@ -193,7 +198,10 @@ public class InventoryServiceImpl implements InventoryService {
             null,
             "PHARMACY",
             inventory.getPharmacyId(),
-            Map.of("medicineId", medicineId.toString(), "quantity", quantity)
+            Map.of(
+                "medicineId", medicineId.toString(),
+                "changes", Map.of("reservedQuantity", Map.of("old", oldReservedQuantity, "new", inventory.getReservedQuantity()))
+            )
         );
         return true;
     }
@@ -232,6 +240,8 @@ public class InventoryServiceImpl implements InventoryService {
 
         batchRepository.saveAll(activeBatches);
 
+        int oldReservedQuantity = inventory.getReservedQuantity();
+        int oldTotalQuantity = inventory.getTotalQuantity();
         inventory.setReservedQuantity(inventory.getReservedQuantity() - quantity);
         inventory.setTotalQuantity(inventory.getTotalQuantity() - quantity);
         inventoryRepository.save(inventory);
@@ -244,7 +254,13 @@ public class InventoryServiceImpl implements InventoryService {
             null,
             "PHARMACY",
             inventory.getPharmacyId(),
-            Map.of("medicineId", medicineId.toString(), "quantity", quantity)
+            Map.of(
+                "medicineId", medicineId.toString(),
+                "changes", Map.of(
+                    "reservedQuantity", Map.of("old", oldReservedQuantity, "new", inventory.getReservedQuantity()),
+                    "totalQuantity", Map.of("old", oldTotalQuantity, "new", inventory.getTotalQuantity())
+                )
+            )
         );
         return true;
     }
@@ -267,6 +283,7 @@ public class InventoryServiceImpl implements InventoryService {
             throw new InventoryValidationException("Cannot release more than reserved quantity");
         }
 
+        int oldReservedQuantity = inventory.getReservedQuantity();
         inventory.setReservedQuantity(inventory.getReservedQuantity() - quantity);
         inventoryRepository.save(inventory);
         saveMovement(inventory.getId(), StockMovementType.RELEASE, quantity, referenceId);
@@ -278,7 +295,10 @@ public class InventoryServiceImpl implements InventoryService {
             null,
             "PHARMACY",
             inventory.getPharmacyId(),
-            Map.of("medicineId", medicineId.toString(), "quantity", quantity)
+            Map.of(
+                "medicineId", medicineId.toString(),
+                "changes", Map.of("reservedQuantity", Map.of("old", oldReservedQuantity, "new", inventory.getReservedQuantity()))
+            )
         );
     }
 
