@@ -3,6 +3,8 @@ package com.TenaMed.user.controller;
 import com.TenaMed.user.config.AuthCookieProperties;
 import com.TenaMed.user.dto.AuthTokenResponseDto;
 import com.TenaMed.user.dto.LoginRequestDto;
+import com.TenaMed.user.dto.RegisterAthleteRequestDto;
+import com.TenaMed.user.dto.RegisterAthleteResponseDto;
 import com.TenaMed.user.dto.RegisterRequestDto;
 import com.TenaMed.user.dto.RegisterHospitalOwnerRequestDto;
 import com.TenaMed.user.dto.RegisterHospitalOwnerResponseDto;
@@ -11,6 +13,7 @@ import com.TenaMed.user.dto.RegisterPharmacistResponseDto;
 import com.TenaMed.user.dto.RegisterResponseDto;
 import com.TenaMed.user.model.AuthTokenPair;
 import com.TenaMed.user.security.AuthenticatedUserPrincipal;
+import com.TenaMed.user.service.AthleteOnboardingService;
 import com.TenaMed.user.service.AuthService;
 import com.TenaMed.user.service.HospitalOwnerOnboardingService;
 import com.TenaMed.user.service.IdentityService;
@@ -38,15 +41,18 @@ public class AuthController {
     private final AuthService authService;
     private final HospitalOwnerOnboardingService hospitalOwnerOnboardingService;
     private final PharmacistOnboardingService pharmacistOnboardingService;
+    private final AthleteOnboardingService athleteOnboardingService;
 
     public AuthController(IdentityService identityService,
                           AuthService authService,
                           HospitalOwnerOnboardingService hospitalOwnerOnboardingService,
-                          PharmacistOnboardingService pharmacistOnboardingService) {
+                          PharmacistOnboardingService pharmacistOnboardingService,
+                          AthleteOnboardingService athleteOnboardingService) {
         this.identityService = identityService;
         this.authService = authService;
         this.hospitalOwnerOnboardingService = hospitalOwnerOnboardingService;
         this.pharmacistOnboardingService = pharmacistOnboardingService;
+        this.athleteOnboardingService = athleteOnboardingService;
     }
 
     @PostMapping("/register")
@@ -67,6 +73,13 @@ public class AuthController {
         return ResponseEntity.status(HttpStatus.CREATED)
             .body(pharmacistOnboardingService.registerPharmacist(requestDto));
         }
+
+    @PostMapping("/register-athlete")
+    public ResponseEntity<RegisterAthleteResponseDto> registerAthlete(
+            @Valid @RequestBody RegisterAthleteRequestDto requestDto) {
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(athleteOnboardingService.registerAthlete(requestDto));
+    }
 
     @PostMapping("/login")
     public ResponseEntity<AuthTokenResponseDto> login(@Valid @RequestBody LoginRequestDto requestDto,

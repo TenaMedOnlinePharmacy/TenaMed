@@ -2,10 +2,13 @@ package com.TenaMed.user.controller;
 
 import com.TenaMed.hospital.dto.HospitalResponseDto;
 import com.TenaMed.pharmacy.dto.response.PharmacyResponse;
+import com.TenaMed.user.dto.RegisterAthleteRequestDto;
+import com.TenaMed.user.dto.RegisterAthleteResponseDto;
 import com.TenaMed.user.dto.RegisterHospitalOwnerResponseDto;
 import com.TenaMed.user.dto.RegisterPharmacistResponseDto;
 import com.TenaMed.user.dto.RegisterRequestDto;
 import com.TenaMed.user.dto.RegisterResponseDto;
+import com.TenaMed.user.service.AthleteOnboardingService;
 import com.TenaMed.user.service.AuthService;
 import com.TenaMed.user.service.HospitalOwnerOnboardingService;
 import com.TenaMed.user.service.IdentityService;
@@ -54,6 +57,9 @@ class AuthControllerTests {
 
     @MockitoBean
     private PharmacistOnboardingService pharmacistOnboardingService;
+
+    @MockitoBean
+    private AthleteOnboardingService athleteOnboardingService;
 
     @Test
     void shouldRegisterUserWithAuthEndpoint() throws Exception {
@@ -175,5 +181,41 @@ class AuthControllerTests {
                     .andExpect(status().isCreated())
                     .andExpect(jsonPath("$.pharmacist.email").value("pharmacist@tenamed.com"))
                     .andExpect(jsonPath("$.pharmacy.name").value("City Pharmacy"));
+                }
+
+                @Test
+                void shouldRegisterAthleteAndCreateAthleteProfile() throws Exception {
+                UUID athleteUserId = UUID.randomUUID();
+
+                RegisterResponseDto athleteResponse = RegisterResponseDto.builder()
+                    .userId(athleteUserId)
+                    .email("athlete@tenamed.com")
+                    .accountStatus("ACTIVE")
+                    .roles(List.of("PATIENT"))
+                    .build();
+
+                RegisterAthleteResponseDto response = new RegisterAthleteResponseDto(
+                    athleteResponse,
+                    new RegisterAthleteResponseDto.AthleteProfileDto(athleteUserId, true, LocalDateTime.now())
+                );
+
+                when(athleteOnboardingService.registerAthlete(any(RegisterAthleteRequestDto.class))).thenReturn(response);
+
+                RegisterAthleteRequestDto request = new RegisterAthleteRequestDto();
+                request.setEmail("athlete@tenamed.com");
+                request.setPassword("StrongPass123");
+                request.setFirstName("Liya");
+                request.setLastName("Bekele");
+                request.setPhone("+251933333333");
+                request.setAddress(Map.of("city", "Addis Ababa"));
+                request.setAdvisorEnabled(true);
+
+                mockMvc.perform(post("/api/auth/register-athlete")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                    .andExpect(status().isCreated())
+                    .andExpect(jsonPath("$.athlete.email").value("athlete@tenamed.com"))
+                    .andExpect(jsonPath("$.athleteProfile.userId").value(athleteUserId.toString()))
+                    .andExpect(jsonPath("$.athleteProfile.advisorEnabled").value(true));
                 }
 }
