@@ -15,6 +15,7 @@ import com.TenaMed.user.repository.RoleRepository;
 import com.TenaMed.user.repository.UserRepository;
 import com.TenaMed.user.repository.UserRoleRepository;
 import com.TenaMed.user.service.impl.IdentityServiceImpl;
+import com.TenaMed.events.DomainEventService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -57,6 +58,9 @@ class IdentityServiceImplTests {
 
     @Mock
     private IdentityMapper identityMapper;
+
+    @Mock
+    private DomainEventService domainEventService;
 
     @InjectMocks
     private IdentityServiceImpl identityService;

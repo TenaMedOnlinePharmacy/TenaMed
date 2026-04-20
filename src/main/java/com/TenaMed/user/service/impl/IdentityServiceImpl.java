@@ -114,13 +114,18 @@ public class IdentityServiceImpl implements IdentityService {
         }
 
         User savedUser = userRepository.save(user);
+        Map<String, Object> registerMetadata = new HashMap<>();
+        registerMetadata.put("email", normalizedEmail);
+        if (savedAccount.getId() != null) {
+            registerMetadata.put("accountId", savedAccount.getId());
+        }
         domainEventService.publish(
             "USER_REGISTERED",
             "USER",
             savedUser.getId(),
             "PLATFORM",
             null,
-            Map.of("accountId", savedAccount.getId(), "email", normalizedEmail)
+            registerMetadata
         );
         return identityMapper.toRegisterResponse(savedUser);
     }
@@ -167,7 +172,9 @@ public class IdentityServiceImpl implements IdentityService {
             user.getId(),
             "PLATFORM",
             null,
-            Map.of("lastLogin", account.getLastLogin() == null ? null : account.getLastLogin().toString())
+            account.getLastLogin() == null
+                    ? Map.of()
+                    : Map.of("lastLogin", account.getLastLogin().toString())
         );
 
         return identityMapper.toLoginResponse(user);

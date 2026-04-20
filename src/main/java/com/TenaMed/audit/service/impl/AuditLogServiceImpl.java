@@ -4,8 +4,6 @@ import com.TenaMed.audit.entity.AuditLog;
 import com.TenaMed.audit.repository.AuditLogRepository;
 import com.TenaMed.audit.service.AuditLogService;
 import com.TenaMed.audit.service.AuditLogWriteRequest;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -22,11 +20,9 @@ public class AuditLogServiceImpl implements AuditLogService {
     private static final String DEFAULT_CONTEXT_TYPE = "PLATFORM";
 
     private final AuditLogRepository auditLogRepository;
-    private final ObjectMapper objectMapper;
 
-    public AuditLogServiceImpl(AuditLogRepository auditLogRepository, ObjectMapper objectMapper) {
+    public AuditLogServiceImpl(AuditLogRepository auditLogRepository) {
         this.auditLogRepository = auditLogRepository;
-        this.objectMapper = objectMapper;
     }
 
     @Override
@@ -45,8 +41,8 @@ public class AuditLogServiceImpl implements AuditLogService {
                 normalizedOrDefault(request.getEntityType(), DEFAULT_ENTITY_TYPE),
                 request.getEntityId(),
                 normalizedOrDefault(request.getAction(), DEFAULT_ACTION),
-                toJsonOrEmpty(request.getActionDetails()),
-                toJsonOrEmpty(request.getChanges()),
+                mapOrEmpty(request.getActionDetails()),
+                mapOrEmpty(request.getChanges()),
                 normalizedOrDefault(request.getActorType(), DEFAULT_ACTOR_TYPE),
                 request.getActorId(),
                 normalizedOrDefault(request.getContextType(), DEFAULT_CONTEXT_TYPE),
@@ -57,13 +53,8 @@ public class AuditLogServiceImpl implements AuditLogService {
         return auditLogRepository.save(log);
     }
 
-    private String toJsonOrEmpty(Map<String, Object> value) {
-        Map<String, Object> effective = value == null ? Map.of() : value;
-        try {
-            return objectMapper.writeValueAsString(effective);
-        } catch (JsonProcessingException ex) {
-            throw new IllegalStateException("Failed to serialize audit log JSON fields", ex);
-        }
+    private Map<String, Object> mapOrEmpty(Map<String, Object> value) {
+        return value == null ? Map.of() : value;
     }
 
     private String normalizedOrDefault(String value, String fallback) {

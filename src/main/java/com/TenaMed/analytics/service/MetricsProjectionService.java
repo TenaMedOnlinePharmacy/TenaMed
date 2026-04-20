@@ -16,6 +16,7 @@ public interface MetricsProjectionService {
     default Map<String, Object> asStringMap(Object payload) {
         return payload instanceof Map<?, ?> map ? map.entrySet().stream()
                 .filter(entry -> entry.getKey() != null)
+            .filter(entry -> entry.getValue() != null)
                 .collect(java.util.stream.Collectors.toMap(
                         entry -> String.valueOf(entry.getKey()),
                         Map.Entry::getValue,

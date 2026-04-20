@@ -11,6 +11,7 @@ import com.TenaMed.ocr.dto.OcrResultDto;
 import com.TenaMed.ocr.integration.OcrClient;
 import com.TenaMed.prescription.entity.Prescription;
 import com.TenaMed.prescription.repository.PrescriptionRepository;
+import com.TenaMed.events.DomainEventService;
 import com.TenaMed.verification.dto.VerificationResponseDto;
 import com.TenaMed.verification.service.PrescriptionVerificationService;
 import org.junit.jupiter.api.Test;
@@ -34,6 +35,7 @@ class PrescriptionPipelineServiceTests {
         ManualReviewService manualReviewService = mock(ManualReviewService.class);
         ApplicationEventPublisher publisher = mock(ApplicationEventPublisher.class);
         PrescriptionRepository prescriptionRepository = mock(PrescriptionRepository.class);
+        DomainEventService domainEventService = mock(DomainEventService.class);
 
         PrescriptionPipelineService service = new PrescriptionPipelineService(
                 ocrClient,
@@ -41,7 +43,8 @@ class PrescriptionPipelineServiceTests {
                 normalizationService,
                 manualReviewService,
                 publisher,
-                prescriptionRepository
+                prescriptionRepository,
+                domainEventService
         );
 
         UUID prescriptionId = UUID.randomUUID();
@@ -65,6 +68,7 @@ class PrescriptionPipelineServiceTests {
         ManualReviewService manualReviewService = mock(ManualReviewService.class);
         ApplicationEventPublisher publisher = mock(ApplicationEventPublisher.class);
         PrescriptionRepository prescriptionRepository = mock(PrescriptionRepository.class);
+        DomainEventService domainEventService = mock(DomainEventService.class);
 
         PrescriptionPipelineService service = new PrescriptionPipelineService(
                 ocrClient,
@@ -72,7 +76,8 @@ class PrescriptionPipelineServiceTests {
                 normalizationService,
                 manualReviewService,
                 publisher,
-                prescriptionRepository
+                prescriptionRepository,
+                domainEventService
         );
 
         UUID prescriptionId = UUID.randomUUID();

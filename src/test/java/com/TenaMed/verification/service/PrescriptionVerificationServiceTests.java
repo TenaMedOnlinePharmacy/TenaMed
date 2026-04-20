@@ -6,6 +6,7 @@ import com.TenaMed.Normalization.model.NormalizedOcrResultDto;
 import com.TenaMed.Normalization.repository.PrescriptionItemRepository;
 import com.TenaMed.medicine.repository.MedicineRepository;
 import com.TenaMed.prescription.repository.PrescriptionRepository;
+import com.TenaMed.events.DomainEventService;
 import com.TenaMed.verification.workflow.VerificationEngine;
 import org.junit.jupiter.api.Test;
 import org.springframework.test.util.ReflectionTestUtils;
@@ -18,7 +19,7 @@ import static org.mockito.Mockito.mock;
 
 class PrescriptionVerificationServiceTests {
 
-    @Test
+@Test
     void checkNormalizedResultShouldFailWhenAnyMedicineNeedsReviewOrLowConfidence() {
         PrescriptionVerificationService service = new PrescriptionVerificationService(
                 mock(PrescriptionRepository.class),
@@ -26,7 +27,8 @@ class PrescriptionVerificationServiceTests {
                 mock(MedicineRepository.class),
                 mock(VerificationEngine.class),
                 event -> {
-                }
+                },
+                mock(DomainEventService.class)
         );
         ReflectionTestUtils.setField(service, "normalizedConfidenceThreshold", 0.6);
 
@@ -48,7 +50,8 @@ class PrescriptionVerificationServiceTests {
                 mock(MedicineRepository.class),
                 mock(VerificationEngine.class),
                 event -> {
-                }
+                },
+                mock(DomainEventService.class)
         );
         ReflectionTestUtils.setField(service, "normalizedConfidenceThreshold", 0.6);
 

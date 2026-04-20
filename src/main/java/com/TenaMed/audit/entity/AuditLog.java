@@ -9,8 +9,11 @@ import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.time.LocalDateTime;
+import java.util.Map;
 import java.util.UUID;
 
 @Entity
@@ -32,11 +35,13 @@ public class AuditLog {
     @Column(name = "action", nullable = false, updatable = false, length = 120)
     private String action;
 
+    @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "action_details", nullable = false, updatable = false, columnDefinition = "jsonb")
-    private String actionDetails;
+    private Map<String, Object> actionDetails;
 
+    @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "changes", nullable = false, updatable = false, columnDefinition = "jsonb")
-    private String changes;
+    private Map<String, Object> changes;
 
     @Column(name = "actor_type", nullable = false, updatable = false, length = 60)
     private String actorType;
@@ -61,8 +66,8 @@ public class AuditLog {
                     String entityType,
                     UUID entityId,
                     String action,
-                    String actionDetails,
-                    String changes,
+                    Map<String, Object> actionDetails,
+                    Map<String, Object> changes,
                     String actorType,
                     UUID actorId,
                     String contextType,

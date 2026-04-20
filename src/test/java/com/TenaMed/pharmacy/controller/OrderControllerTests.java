@@ -125,12 +125,22 @@ class OrderControllerTests {
     @Test
     void shouldRejectOrder() throws Exception {
         UUID id = UUID.randomUUID();
+        UUID actorUserId = UUID.randomUUID();
         RejectOrderRequest request = new RejectOrderRequest();
         request.setRejectionReason("Out of stock");
+        AuthenticatedUserPrincipal principal = new AuthenticatedUserPrincipal(
+            actorUserId,
+            UUID.randomUUID(),
+            "owner@test.com",
+            "pwd",
+            List.of(new SimpleGrantedAuthority("ROLE_OWNER")),
+            true
+        );
         OrderResponse response = OrderResponse.builder().status(OrderStatus.REJECTED).rejectionReason("Out of stock").build();
-        when(orderService.rejectOrder(id, "Out of stock")).thenReturn(response);
+        when(orderService.rejectOrder(eq(id), eq("Out of stock"), eq(actorUserId), eq(StaffRole.OWNER))).thenReturn(response);
 
         mockMvc.perform(post("/api/orders/{id}/reject", id)
+                .principal(new UsernamePasswordAuthenticationToken(principal, null, principal.getAuthorities()))
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(request)))
             .andExpect(status().isOk())
