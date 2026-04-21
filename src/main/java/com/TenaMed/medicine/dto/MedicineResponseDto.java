@@ -32,6 +32,7 @@ public class MedicineResponseDto {
     private String sideEffects;
     private String dosageInstructions;
     private String pregnancyCategory;
+    private String imageUrl;
     private List<UUID> allergenIds;
     private List<UUID> dopingRuleIds;
 }

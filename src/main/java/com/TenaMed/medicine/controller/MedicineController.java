@@ -3,6 +3,7 @@ package com.TenaMed.medicine.controller;
 import com.TenaMed.medicine.dto.MedicineRequestDto;
 import com.TenaMed.medicine.dto.MedicineResponseDto;
 import com.TenaMed.medicine.dto.MedicineSearchDto;
+import com.TenaMed.medicine.dto.MedicinePharmacySearchResponseDto;
 import com.TenaMed.medicine.dto.MedicineDopingRuleRequestDto;
 import com.TenaMed.medicine.dto.MedicineDopingRuleResponseDto;
 import com.TenaMed.medicine.exception.MedicineAlreadyExistsException;
@@ -11,8 +12,10 @@ import com.TenaMed.medicine.exception.MedicineValidationException;
 import com.TenaMed.medicine.service.MedicineService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 import java.util.Map;
@@ -28,7 +31,7 @@ public class MedicineController {
         this.medicineService = medicineService;
     }
 
-    @PostMapping
+    @PostMapping(consumes = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<?> createMedicine(@Valid @RequestBody MedicineRequestDto requestDto) {
         try {
             MedicineResponseDto response = medicineService.createMedicine(requestDto);
@@ -36,6 +39,19 @@ public class MedicineController {
         } catch (MedicineAlreadyExistsException e) {
             return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of("error", e.getMessage()));
         } catch (MedicineValidationException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<?> createMedicineWithImage(@Valid @RequestPart("medicine") MedicineRequestDto requestDto,
+                                                     @RequestPart(value = "image", required = false) MultipartFile image) {
+        try {
+            MedicineResponseDto response = medicineService.createMedicine(requestDto, image);
+            return ResponseEntity.status(HttpStatus.CREATED).body(response);
+        } catch (MedicineAlreadyExistsException e) {
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of("error", e.getMessage()));
+        } catch (MedicineValidationException | IllegalArgumentException e) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("error", e.getMessage()));
         }
     }
@@ -56,7 +72,7 @@ public class MedicineController {
     }
 
     @GetMapping("/search")
-    public ResponseEntity<List<MedicineResponseDto>> searchMedicines(
+    public ResponseEntity<List<MedicinePharmacySearchResponseDto>> searchMedicines(
             @ModelAttribute MedicineSearchDto searchDto) {
         return ResponseEntity.ok(medicineService.searchMedicines(searchDto));
     }

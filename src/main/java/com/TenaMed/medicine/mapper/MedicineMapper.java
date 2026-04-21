@@ -35,6 +35,7 @@ public class MedicineMapper {
                 .sideEffects(medicine.getSideEffects())
                 .dosageInstructions(medicine.getDosageInstructions())
                 .pregnancyCategory(medicine.getPregnancyCategory())
+                .imageUrl(medicine.getImageUrl())
                 .allergenIds(medicine.getMedicineAllergens().stream()
                     .map(link -> link.getAllergen().getId())
                     .toList())

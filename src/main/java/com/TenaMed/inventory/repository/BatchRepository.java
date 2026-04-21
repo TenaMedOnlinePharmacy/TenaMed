@@ -12,4 +12,8 @@ public interface BatchRepository extends JpaRepository<Batch, UUID> {
     List<Batch> findByInventoryIdOrderByExpiryDateAsc(UUID inventoryId);
 
     List<Batch> findByInventoryIdAndStatusOrderByExpiryDateAsc(UUID inventoryId, BatchStatus status);
+
+    List<Batch> findByInventoryIdIn(Iterable<UUID> inventoryIds);
+
+    List<Batch> findByInventoryIdInAndStatus(Iterable<UUID> inventoryIds, BatchStatus status);
 }

@@ -69,6 +69,9 @@ public class Medicine extends BaseAuditableEntity {
     @Column(name = "pregnancy_category", length = 1)
     private String pregnancyCategory;
 
+    @Column(name = "image_url")
+    private String imageUrl;
+
     @OneToMany(mappedBy = "medicine", cascade = CascadeType.ALL, orphanRemoval = true)
     private Set<MedicineAllergen> medicineAllergens = new LinkedHashSet<>();
 }

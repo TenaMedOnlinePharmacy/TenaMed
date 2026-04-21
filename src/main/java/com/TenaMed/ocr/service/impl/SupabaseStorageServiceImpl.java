@@ -15,6 +15,8 @@ import java.util.UUID;
 @Service
 public class SupabaseStorageServiceImpl implements SupabaseStorageService {
 
+    private static final String DEFAULT_OCR_FOLDER = "ocr";
+
     private final WebClient webClient;
     private final String supabaseUrl;
     private final String serviceRoleKey;
@@ -39,10 +41,30 @@ public class SupabaseStorageServiceImpl implements SupabaseStorageService {
     public String uploadAndGetSignedUrl(MultipartFile file) {
         validate(file);
 
-        String objectPath = buildObjectPath(file.getOriginalFilename());
+        String objectPath = buildObjectPath(file.getOriginalFilename(), DEFAULT_OCR_FOLDER);
         uploadBinary(file, objectPath);
 
         return createSignedUrl(objectPath);
+    }
+
+    @Override
+    public String uploadAndGetSignedUrl(MultipartFile file, String folder) {
+        validate(file);
+
+        String objectPath = buildObjectPath(file.getOriginalFilename(), folder);
+        uploadBinary(file, objectPath);
+
+        return createSignedUrl(objectPath);
+    }
+
+    @Override
+    public String uploadAndGetPublicUrl(MultipartFile file, String folder) {
+        validate(file);
+
+        String objectPath = buildObjectPath(file.getOriginalFilename(), folder);
+        uploadBinary(file, objectPath);
+
+        return supabaseUrl + "/storage/v1/object/public/" + bucket + "/" + objectPath;
     }
 
     private void uploadBinary(MultipartFile file, String objectPath) {
@@ -100,10 +122,27 @@ public class SupabaseStorageServiceImpl implements SupabaseStorageService {
         }
     }
 
-    private String buildObjectPath(String originalName) {
+    private String buildObjectPath(String originalName, String folder) {
         String fileName = (originalName == null || originalName.isBlank()) ? "upload.bin" : originalName;
         String safeName = fileName.replaceAll("[^a-zA-Z0-9._-]", "_");
-        return "ocr/" + LocalDate.now() + "/" + UUID.randomUUID() + "-" + safeName;
+        String safeFolder = sanitizeFolder(folder);
+        return safeFolder + "/" + LocalDate.now() + "/" + UUID.randomUUID() + "-" + safeName;
+    }
+
+    private String sanitizeFolder(String folder) {
+        if (folder == null || folder.isBlank()) {
+            return DEFAULT_OCR_FOLDER;
+        }
+        String normalized = folder.trim().replace('\\', '/');
+        normalized = normalized.replaceAll("[^a-zA-Z0-9/_-]", "_");
+        normalized = normalized.replaceAll("/+", "/");
+        if (normalized.startsWith("/")) {
+            normalized = normalized.substring(1);
+        }
+        if (normalized.endsWith("/")) {
+            normalized = normalized.substring(0, normalized.length() - 1);
+        }
+        return normalized.isBlank() ? DEFAULT_OCR_FOLDER : normalized;
     }
 
     private String trimTrailingSlash(String url) {
