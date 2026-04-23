@@ -11,8 +11,8 @@ import java.util.UUID;
 @Builder
 public class CartItemResponse {
     UUID id;
-    UUID medicineId;
-    UUID pharmacyId;
+    String medicineName;
+    String pharmacyName;
     Integer quantity;
     BigDecimal unitPrice;
     BigDecimal totalPrice;
