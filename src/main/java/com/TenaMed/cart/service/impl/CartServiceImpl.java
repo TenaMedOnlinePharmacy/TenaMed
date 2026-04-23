@@ -15,9 +15,13 @@ import com.TenaMed.cart.repository.CartRepository;
 import com.TenaMed.cart.service.CartService;
 import com.TenaMed.inventory.service.InventoryService;
 import com.TenaMed.medicine.dto.MedicineResponseDto;
+import com.TenaMed.medicine.entity.Medicine;
+import com.TenaMed.medicine.repository.MedicineRepository;
 import com.TenaMed.medicine.service.MedicineService;
+import com.TenaMed.pharmacy.entity.Pharmacy;
 import com.TenaMed.pharmacy.dto.request.CreateOrderFromCartRequest;
 import com.TenaMed.pharmacy.dto.response.OrderResponse;
+import com.TenaMed.pharmacy.repository.PharmacyRepository;
 import com.TenaMed.pharmacy.service.OrderService;
 import com.TenaMed.prescription.service.PrescriptionService;
 import com.TenaMed.events.DomainEventService;
@@ -40,6 +44,8 @@ public class CartServiceImpl implements CartService {
 
     private final CartRepository cartRepository;
     private final CartItemRepository cartItemRepository;
+    private final MedicineRepository medicineRepository;
+    private final PharmacyRepository pharmacyRepository;
     private final MedicineService medicineService;
     private final InventoryService inventoryService;
     private final PrescriptionService prescriptionService;
@@ -49,6 +55,8 @@ public class CartServiceImpl implements CartService {
 
     public CartServiceImpl(CartRepository cartRepository,
                            CartItemRepository cartItemRepository,
+                           MedicineRepository medicineRepository,
+                           PharmacyRepository pharmacyRepository,
                            MedicineService medicineService,
                            InventoryService inventoryService,
                            PrescriptionService prescriptionService,
@@ -57,6 +65,8 @@ public class CartServiceImpl implements CartService {
                            DomainEventService domainEventService) {
         this.cartRepository = cartRepository;
         this.cartItemRepository = cartItemRepository;
+        this.medicineRepository = medicineRepository;
+        this.pharmacyRepository = pharmacyRepository;
         this.medicineService = medicineService;
         this.inventoryService = inventoryService;
         this.prescriptionService = prescriptionService;
@@ -76,18 +86,20 @@ public class CartServiceImpl implements CartService {
     @Transactional
     public CartResponse addItem(UUID userId, AddCartItemRequest request) {
         validateUserId(userId);
-        validatePharmacyId(request.getPharmacyId());
         validateQuantity(request.getQuantity());
+
+        UUID medicineId = resolveMedicineId(request.getMedicineName());
+        UUID pharmacyId = resolvePharmacyId(request.getPharmacyName());
 
         Cart cart = getOrCreateActiveCart(userId);
 
-        MedicineResponseDto medicine = medicineService.getMedicineById(request.getMedicineId());
-        BigDecimal unitPrice = inventoryService.resolveUnitPrice(request.getMedicineId());
+        MedicineResponseDto medicine = medicineService.getMedicineById(medicineId);
+        BigDecimal unitPrice = inventoryService.resolveUnitPrice(medicineId);
         if (medicine == null || unitPrice == null) {
             throw new CartValidationException("Medicine details not found");
         }
 
-        ensureStockAvailable(request.getPharmacyId(), request.getMedicineId(), request.getQuantity());
+        ensureStockAvailable(pharmacyId, medicineId, request.getQuantity());
 
         if (medicine.isRequiresPrescription()) {
             if (request.getPrescriptionId() == null) {
@@ -100,8 +112,8 @@ public class CartServiceImpl implements CartService {
 
         Optional<CartItem> existingItem = cartItemRepository.findByCartIdAndMedicineIdAndPharmacyId(
                 cart.getId(),
-                request.getMedicineId(),
-                request.getPharmacyId()
+            medicineId,
+            pharmacyId
         );
 
         if (existingItem.isPresent()) {
@@ -117,8 +129,8 @@ public class CartServiceImpl implements CartService {
         } else {
             CartItem item = new CartItem();
             item.setCart(cart);
-            item.setMedicineId(request.getMedicineId());
-            item.setPharmacyId(request.getPharmacyId());
+            item.setMedicineId(medicineId);
+            item.setPharmacyId(pharmacyId);
             item.setQuantity(request.getQuantity());
             item.setUnitPrice(unitPrice);
             item.setRequiresPrescription(medicine.isRequiresPrescription());
@@ -385,6 +397,21 @@ public class CartServiceImpl implements CartService {
         if (pharmacyId == null) {
             throw new CartValidationException("pharmacyId is required");
         }
+    }
+
+    private UUID resolveMedicineId(String medicineName) {
+        Medicine medicine = medicineRepository
+                .findFirstByNameIgnoreCaseOrGenericNameIgnoreCase(medicineName, medicineName)
+                .orElseThrow(() -> new CartValidationException("Medicine not found: " + medicineName));
+        return medicine.getId();
+    }
+
+    private UUID resolvePharmacyId(String pharmacyName) {
+        Pharmacy pharmacy = pharmacyRepository
+                .findFirstByNameIgnoreCaseOrLegalNameIgnoreCase(pharmacyName, pharmacyName)
+                .orElseThrow(() -> new CartValidationException("Pharmacy not found: " + pharmacyName));
+        validatePharmacyId(pharmacy.getId());
+        return pharmacy.getId();
     }
 
     private boolean isSamePrescription(UUID existingPrescriptionId, UUID requestPrescriptionId) {
