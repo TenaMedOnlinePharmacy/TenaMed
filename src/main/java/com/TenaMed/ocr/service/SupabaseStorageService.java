@@ -4,9 +4,13 @@ import org.springframework.web.multipart.MultipartFile;
 
 public interface SupabaseStorageService {
 
+    String uploadAndGetObjectPath(MultipartFile file, String folder);
+
     String uploadAndGetSignedUrl(MultipartFile file);
 
     String uploadAndGetSignedUrl(MultipartFile file, String folder);
 
     String uploadAndGetPublicUrl(MultipartFile file, String folder);
+
+    String resolveSignedUrl(String storedReference);
 }

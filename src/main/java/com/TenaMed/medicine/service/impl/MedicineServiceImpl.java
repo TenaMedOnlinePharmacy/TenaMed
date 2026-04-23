@@ -113,7 +113,7 @@ public class MedicineServiceImpl implements MedicineService {
         }
         Medicine medicine = medicineMapper.toEntity(requestDto);
         if (image != null && !image.isEmpty()) {
-            medicine.setImageUrl(supabaseStorageService.uploadAndGetSignedUrl(image, MEDICINE_IMAGE_FOLDER));
+            medicine.setImageUrl(supabaseStorageService.uploadAndGetObjectPath(image, MEDICINE_IMAGE_FOLDER));
         }
         medicine.setCategory(resolveOrCreateCategory(requestDto.getCategory()));
         medicine.setDosageForm(resolveOrCreateDosageForm(requestDto.getDosageForm()));
@@ -233,7 +233,7 @@ public class MedicineServiceImpl implements MedicineService {
             .pharmacyLegalName(resolvePharmacyLegalName(pharmacy))
             .price(price)
             .medicineCategory(medicine.getCategory() != null ? medicine.getCategory().getName() : null)
-            .imageUrl(medicine.getImageUrl())
+            .imageUrl(supabaseStorageService.resolveSignedUrl(medicine.getImageUrl()))
             .indications(medicine.getIndications())
             .contraindications(medicine.getContraindications())
             .sideEffects(medicine.getSideEffects())
@@ -422,6 +422,7 @@ public class MedicineServiceImpl implements MedicineService {
 
     private MedicineResponseDto toResponseDtoWithDopingRuleIds(Medicine medicine) {
         MedicineResponseDto response = medicineMapper.toResponseDto(medicine);
+        response.setImageUrl(supabaseStorageService.resolveSignedUrl(response.getImageUrl()));
         response.setDopingRuleIds(
                 medicineDopingRuleRepository.findAllByMedicineId(medicine.getId())
                         .stream()

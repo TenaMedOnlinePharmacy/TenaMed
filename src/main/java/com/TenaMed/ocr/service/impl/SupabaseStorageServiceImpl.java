@@ -40,6 +40,15 @@ public class SupabaseStorageServiceImpl implements SupabaseStorageService {
     }
 
     @Override
+    public String uploadAndGetObjectPath(MultipartFile file, String folder) {
+        validate(file);
+
+        String objectPath = buildObjectPath(file.getOriginalFilename(), folder);
+        uploadBinary(file, objectPath);
+        return objectPath;
+    }
+
+    @Override
     public String uploadAndGetSignedUrl(MultipartFile file) {
         validate(file);
 
@@ -67,6 +76,25 @@ public class SupabaseStorageServiceImpl implements SupabaseStorageService {
         uploadBinary(file, objectPath);
 
         return supabaseUrl + "/storage/v1/object/public/" + bucket + "/" + objectPath;
+    }
+
+    @Override
+    public String resolveSignedUrl(String storedReference) {
+        if (storedReference == null || storedReference.isBlank()) {
+            return storedReference;
+        }
+
+        String normalized = storedReference.trim();
+        if (isPublicUrl(normalized)) {
+            return normalized;
+        }
+
+        String objectPath = extractObjectPath(normalized);
+        if (objectPath == null || objectPath.isBlank()) {
+            return normalized;
+        }
+
+        return createSignedUrl(objectPath);
     }
 
     private void uploadBinary(MultipartFile file, String objectPath) {
@@ -159,5 +187,44 @@ public class SupabaseStorageServiceImpl implements SupabaseStorageService {
             return MIN_SIGNED_URL_EXPIRY_SECONDS;
         }
         return Math.min(configuredValue, MAX_SIGNED_URL_EXPIRY_SECONDS);
+    }
+
+    private boolean isPublicUrl(String reference) {
+        String absolutePrefix = supabaseUrl + "/storage/v1/object/public/" + bucket + "/";
+        String relativePrefix = "/storage/v1/object/public/" + bucket + "/";
+        return reference.startsWith(absolutePrefix) || reference.startsWith(relativePrefix);
+    }
+
+    private String extractObjectPath(String reference) {
+        String absoluteSignedPrefix = supabaseUrl + "/storage/v1/object/sign/" + bucket + "/";
+        String relativeSignedPrefix = "/storage/v1/object/sign/" + bucket + "/";
+        String absoluteObjectPrefix = supabaseUrl + "/storage/v1/object/" + bucket + "/";
+        String relativeObjectPrefix = "/storage/v1/object/" + bucket + "/";
+
+        if (reference.startsWith(absoluteSignedPrefix)) {
+            return removeQueryString(reference.substring(absoluteSignedPrefix.length()));
+        }
+        if (reference.startsWith(relativeSignedPrefix)) {
+            return removeQueryString(reference.substring(relativeSignedPrefix.length()));
+        }
+        if (reference.startsWith(absoluteObjectPrefix)) {
+            return removeQueryString(reference.substring(absoluteObjectPrefix.length()));
+        }
+        if (reference.startsWith(relativeObjectPrefix)) {
+            return removeQueryString(reference.substring(relativeObjectPrefix.length()));
+        }
+        if (reference.startsWith("http://") || reference.startsWith("https://")) {
+            return null;
+        }
+
+        return removeQueryString(reference);
+    }
+
+    private String removeQueryString(String value) {
+        int queryIndex = value.indexOf('?');
+        if (queryIndex < 0) {
+            return value;
+        }
+        return value.substring(0, queryIndex);
     }
 }
