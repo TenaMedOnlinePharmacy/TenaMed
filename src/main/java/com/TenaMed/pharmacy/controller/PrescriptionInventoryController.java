@@ -1,6 +1,6 @@
 package com.TenaMed.pharmacy.controller;
 
-import com.TenaMed.pharmacy.dto.response.PrescriptionInventoryMatchDto;
+import com.TenaMed.medicine.dto.MedicinePharmacySearchResponseDto;
 import com.TenaMed.pharmacy.exception.PharmacyException;
 import com.TenaMed.pharmacy.service.PrescriptionInventoryMatchService;
 import org.springframework.http.HttpStatus;
@@ -27,7 +27,7 @@ public class PrescriptionInventoryController {
     @GetMapping("/{prescriptionId}/inventory-matches")
     public ResponseEntity<?> getInventoryMatches(@PathVariable UUID prescriptionId) {
         try {
-            List<PrescriptionInventoryMatchDto> matches =
+            List<MedicinePharmacySearchResponseDto> matches =
                 prescriptionInventoryMatchService.findInventoryMatchesByPrescription(prescriptionId);
             return ResponseEntity.ok(matches);
         } catch (PharmacyException ex) {

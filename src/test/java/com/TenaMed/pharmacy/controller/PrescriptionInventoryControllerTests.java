@@ -1,6 +1,6 @@
 package com.TenaMed.pharmacy.controller;
 
-import com.TenaMed.pharmacy.dto.response.PrescriptionInventoryMatchDto;
+import com.TenaMed.medicine.dto.MedicinePharmacySearchResponseDto;
 import com.TenaMed.pharmacy.exception.PharmacyValidationException;
 import com.TenaMed.pharmacy.service.PrescriptionInventoryMatchService;
 import org.junit.jupiter.api.Test;
@@ -10,6 +10,7 @@ import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.UUID;
 
@@ -31,24 +32,25 @@ class PrescriptionInventoryControllerTests {
     @Test
     void shouldReturnInventoryMatches() throws Exception {
         UUID prescriptionId = UUID.randomUUID();
-        UUID prescriptionItemId = UUID.randomUUID();
-        UUID pharmacyId = UUID.randomUUID();
-        UUID medicineId = UUID.randomUUID();
 
         when(prescriptionInventoryMatchService.findInventoryMatchesByPrescription(prescriptionId))
-            .thenReturn(List.of(PrescriptionInventoryMatchDto.builder()
-                .prescriptionId(prescriptionId)
-                .prescriptionItemId(prescriptionItemId)
-                .pharmacyId(pharmacyId)
-                .medicineId(medicineId)
+            .thenReturn(List.of(MedicinePharmacySearchResponseDto.builder()
+                .medicineName("Paracetamol")
+                .pharmacyLegalName("City Pharmacy Ltd")
+                .price(new BigDecimal("99.99"))
+                .medicineCategory("Analgesics")
+                .imageUrl("https://img/med.png")
+                .indications("Pain")
+                .contraindications("Allergy")
+                .sideEffects("Nausea")
                 .build()));
 
         mockMvc.perform(get("/api/pharmacy/prescriptions/{prescriptionId}/inventory-matches", prescriptionId))
             .andExpect(status().isOk())
-            .andExpect(jsonPath("$[0].prescriptionId").value(prescriptionId.toString()))
-            .andExpect(jsonPath("$[0].prescriptionItemId").value(prescriptionItemId.toString()))
-            .andExpect(jsonPath("$[0].pharmacyId").value(pharmacyId.toString()))
-            .andExpect(jsonPath("$[0].medicineId").value(medicineId.toString()));
+            .andExpect(jsonPath("$[0].medicineName").value("Paracetamol"))
+            .andExpect(jsonPath("$[0].pharmacyLegalName").value("City Pharmacy Ltd"))
+            .andExpect(jsonPath("$[0].price").value(99.99))
+            .andExpect(jsonPath("$[0].medicineCategory").value("Analgesics"));
     }
 
     @Test

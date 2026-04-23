@@ -1,7 +1,7 @@
 package com.TenaMed.ocr.controller;
 
+import com.TenaMed.medicine.dto.MedicinePharmacySearchResponseDto;
 import com.TenaMed.ocr.dto.response.PrescriptionPipelineStatusResponseDto;
-import com.TenaMed.pharmacy.dto.response.PrescriptionInventoryMatchDto;
 import com.TenaMed.pharmacy.service.PrescriptionInventoryMatchService;
 import com.TenaMed.prescription.entity.Prescription;
 import com.TenaMed.prescription.repository.PrescriptionRepository;
@@ -41,7 +41,7 @@ public class PrescriptionPipelineStatusController {
         String prescriptionStatus = prescription.getStatus() == null ? "UPLOADED" : prescription.getStatus();
 
         if ("VERIFIED".equals(prescriptionStatus)) {
-            List<PrescriptionInventoryMatchDto> matches =
+            List<MedicinePharmacySearchResponseDto> matches =
                     prescriptionInventoryMatchService.findInventoryMatchesByPrescription(prescriptionId);
             return ResponseEntity.ok(new PrescriptionPipelineStatusResponseDto(
                 "FINISHED",

@@ -1,6 +1,6 @@
 package com.TenaMed.ocr.dto.response;
 
-import com.TenaMed.pharmacy.dto.response.PrescriptionInventoryMatchDto;
+import com.TenaMed.medicine.dto.MedicinePharmacySearchResponseDto;
 
 import java.util.List;
 import java.util.UUID;
@@ -10,6 +10,6 @@ public record PrescriptionPipelineStatusResponseDto(
         String message,
         UUID prescriptionId,
         String prescriptionStatus,
-        List<PrescriptionInventoryMatchDto> inventoryMatches
+        List<MedicinePharmacySearchResponseDto> inventoryMatches
 ) {
 }

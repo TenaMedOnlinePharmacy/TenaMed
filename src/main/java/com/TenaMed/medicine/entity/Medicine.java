@@ -70,6 +70,7 @@ public class Medicine extends BaseAuditableEntity {
     private String pregnancyCategory;
 
     @Column(name = "image_url")
+    @Size(max = 5000)
     private String imageUrl;
 
     @OneToMany(mappedBy = "medicine", cascade = CascadeType.ALL, orphanRemoval = true)

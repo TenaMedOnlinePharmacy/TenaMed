@@ -2,11 +2,18 @@ package com.TenaMed.pharmacy.service;
 
 import com.TenaMed.Normalization.entity.PrescriptionItem;
 import com.TenaMed.Normalization.repository.PrescriptionItemRepository;
+import com.TenaMed.inventory.entity.Batch;
 import com.TenaMed.inventory.entity.Inventory;
+import com.TenaMed.inventory.enums.BatchStatus;
+import com.TenaMed.inventory.repository.BatchRepository;
 import com.TenaMed.inventory.repository.InventoryRepository;
+import com.TenaMed.medicine.dto.MedicinePharmacySearchResponseDto;
+import com.TenaMed.medicine.entity.Category;
 import com.TenaMed.medicine.entity.Medicine;
-import com.TenaMed.pharmacy.dto.response.PrescriptionInventoryMatchDto;
+import com.TenaMed.medicine.repository.MedicineRepository;
+import com.TenaMed.pharmacy.entity.Pharmacy;
 import com.TenaMed.pharmacy.exception.PharmacyValidationException;
+import com.TenaMed.pharmacy.repository.PharmacyRepository;
 import com.TenaMed.pharmacy.service.impl.PrescriptionInventoryMatchServiceImpl;
 import com.TenaMed.prescription.entity.Prescription;
 import com.TenaMed.prescription.repository.PrescriptionRepository;
@@ -16,6 +23,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -38,6 +46,15 @@ class PrescriptionInventoryMatchServiceImplTests {
     @Mock
     private InventoryRepository inventoryRepository;
 
+    @Mock
+    private MedicineRepository medicineRepository;
+
+    @Mock
+    private PharmacyRepository pharmacyRepository;
+
+    @Mock
+    private BatchRepository batchRepository;
+
     @InjectMocks
     private PrescriptionInventoryMatchServiceImpl service;
 
@@ -53,35 +70,57 @@ class PrescriptionInventoryMatchServiceImplTests {
     @Test
     void shouldReturnMatchesFromInventoryUsingPrescriptionItemsMedicineIds() {
         UUID prescriptionId = UUID.randomUUID();
-        UUID prescriptionItemId = UUID.randomUUID();
+        UUID inventoryId = UUID.randomUUID();
         UUID medicineId = UUID.randomUUID();
         UUID pharmacyId = UUID.randomUUID();
 
         Prescription prescription = new Prescription();
         prescription.setId(prescriptionId);
 
+        Category category = mock(Category.class);
+        when(category.getName()).thenReturn("Analgesics");
+
         Medicine medicine = mock(Medicine.class);
         when(medicine.getId()).thenReturn(medicineId);
+        when(medicine.getName()).thenReturn("Paracetamol");
+        when(medicine.getCategory()).thenReturn(category);
+        when(medicine.getImageUrl()).thenReturn("https://img/med.png");
+        when(medicine.getIndications()).thenReturn("Pain");
+        when(medicine.getContraindications()).thenReturn("Allergy");
+        when(medicine.getSideEffects()).thenReturn("Nausea");
 
         PrescriptionItem item = new PrescriptionItem();
-        item.setId(prescriptionItemId);
         item.setPrescription(prescription);
         item.setMedicine(medicine);
 
+        Pharmacy pharmacy = new Pharmacy();
+        pharmacy.setId(pharmacyId);
+        pharmacy.setLegalName("City Pharmacy Ltd");
+
         Inventory inventory = new Inventory();
+        inventory.setId(inventoryId);
         inventory.setPharmacyId(pharmacyId);
         inventory.setMedicineId(medicineId);
+
+        Batch batch = new Batch();
+        batch.setInventory(inventory);
+        batch.setQuantity(10);
+        batch.setSellingPrice(new BigDecimal("99.99"));
+        batch.setStatus(BatchStatus.ACTIVE);
 
         when(prescriptionRepository.findById(prescriptionId)).thenReturn(Optional.of(prescription));
         when(prescriptionItemRepository.findByPrescriptionId(prescriptionId)).thenReturn(List.of(item));
         when(inventoryRepository.findByMedicineIdIn(anyCollection())).thenReturn(List.of(inventory));
+        when(batchRepository.findByInventoryIdIn(anyCollection())).thenReturn(List.of(batch));
+        when(medicineRepository.findAllById(anyCollection())).thenReturn(List.of(medicine));
+        when(pharmacyRepository.findAllById(anyCollection())).thenReturn(List.of(pharmacy));
 
-        List<PrescriptionInventoryMatchDto> result = service.findInventoryMatchesByPrescription(prescriptionId);
+        List<MedicinePharmacySearchResponseDto> result = service.findInventoryMatchesByPrescription(prescriptionId);
 
         assertEquals(1, result.size());
-        assertEquals(prescriptionId, result.getFirst().getPrescriptionId());
-        assertEquals(prescriptionItemId, result.getFirst().getPrescriptionItemId());
-        assertEquals(pharmacyId, result.getFirst().getPharmacyId());
-        assertEquals(medicineId, result.getFirst().getMedicineId());
+        assertEquals("Paracetamol", result.getFirst().getMedicineName());
+        assertEquals("City Pharmacy Ltd", result.getFirst().getPharmacyLegalName());
+        assertEquals(new BigDecimal("99.99"), result.getFirst().getPrice());
+        assertEquals("Analgesics", result.getFirst().getMedicineCategory());
     }
 }

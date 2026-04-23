@@ -19,7 +19,7 @@ public class PrescriptionVerifiedEventListener {
         System.out.println(
                 prescriptionInventoryMatchService.findInventoryMatchesByPrescription(event.getPrescriptionId())
                         .stream()
-                        .map(x -> "pharmacyId=" + x.getPharmacyId() + ", medicineId=" + x.getMedicineId())
+                .map(x -> "pharmacy=" + x.getPharmacyLegalName() + ", medicine=" + x.getMedicineName())
                         .toList()
         );    }
 }

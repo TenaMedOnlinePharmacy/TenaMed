@@ -113,7 +113,7 @@ public class MedicineServiceImpl implements MedicineService {
         }
         Medicine medicine = medicineMapper.toEntity(requestDto);
         if (image != null && !image.isEmpty()) {
-            medicine.setImageUrl(supabaseStorageService.uploadAndGetPublicUrl(image, MEDICINE_IMAGE_FOLDER));
+            medicine.setImageUrl(supabaseStorageService.uploadAndGetSignedUrl(image, MEDICINE_IMAGE_FOLDER));
         }
         medicine.setCategory(resolveOrCreateCategory(requestDto.getCategory()));
         medicine.setDosageForm(resolveOrCreateDosageForm(requestDto.getDosageForm()));
