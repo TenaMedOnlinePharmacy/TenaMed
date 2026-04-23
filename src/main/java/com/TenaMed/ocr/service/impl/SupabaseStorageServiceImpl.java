@@ -16,6 +16,8 @@ import java.util.UUID;
 public class SupabaseStorageServiceImpl implements SupabaseStorageService {
 
     private static final String DEFAULT_OCR_FOLDER = "ocr";
+    private static final int MAX_SIGNED_URL_EXPIRY_SECONDS = 31_536_000;
+    private static final int MIN_SIGNED_URL_EXPIRY_SECONDS = 60;
 
     private final WebClient webClient;
     private final String supabaseUrl;
@@ -28,13 +30,13 @@ public class SupabaseStorageServiceImpl implements SupabaseStorageService {
             @Value("${supabase.url}") String supabaseUrl,
             @Value("${supabase.service-role-key}") String serviceRoleKey,
             @Value("${supabase.storage.bucket}") String bucket,
-            @Value("${supabase.storage.signed-url-expiry-seconds:600}") int signedUrlExpirySeconds
+                @Value("${supabase.storage.signed-url-expiry-seconds:31536000}") int signedUrlExpirySeconds
     ) {
         this.webClient = webClientBuilder.build();
         this.supabaseUrl = trimTrailingSlash(supabaseUrl);
         this.serviceRoleKey = serviceRoleKey;
         this.bucket = bucket;
-        this.signedUrlExpirySeconds = signedUrlExpirySeconds;
+        this.signedUrlExpirySeconds = normalizeSignedUrlExpirySeconds(signedUrlExpirySeconds);
     }
 
     @Override
@@ -150,5 +152,12 @@ public class SupabaseStorageServiceImpl implements SupabaseStorageService {
             throw new IllegalStateException("supabase.url is not configured");
         }
         return url.endsWith("/") ? url.substring(0, url.length() - 1) : url;
+    }
+
+    private int normalizeSignedUrlExpirySeconds(int configuredValue) {
+        if (configuredValue < MIN_SIGNED_URL_EXPIRY_SECONDS) {
+            return MIN_SIGNED_URL_EXPIRY_SECONDS;
+        }
+        return Math.min(configuredValue, MAX_SIGNED_URL_EXPIRY_SECONDS);
     }
 }

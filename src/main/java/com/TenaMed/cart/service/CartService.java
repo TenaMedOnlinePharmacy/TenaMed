@@ -9,6 +9,8 @@ import java.util.UUID;
 
 public interface CartService {
 
+    void ensureActiveCart(UUID userId);
+
     CartResponse addItem(UUID userId, AddCartItemRequest request);
 
     CartResponse updateItemQuantity(UUID userId, UUID itemId, UpdateCartItemQuantityRequest request);

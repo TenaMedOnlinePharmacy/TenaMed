@@ -1,5 +1,6 @@
 package com.TenaMed.user.controller;
 
+import com.TenaMed.cart.service.CartService;
 import com.TenaMed.user.config.AuthCookieProperties;
 import com.TenaMed.user.dto.AuthTokenResponseDto;
 import com.TenaMed.user.dto.LoginRequestDto;
@@ -31,24 +32,30 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.Locale;
 import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/auth")
 public class AuthController {
 
+    private static final String CUSTOMER_ROLE = "PATIENT";
+
     private final IdentityService identityService;
+    private final CartService cartService;
     private final AuthService authService;
     private final HospitalOwnerOnboardingService hospitalOwnerOnboardingService;
     private final PharmacistOnboardingService pharmacistOnboardingService;
     private final AthleteOnboardingService athleteOnboardingService;
 
     public AuthController(IdentityService identityService,
+                          CartService cartService,
                           AuthService authService,
                           HospitalOwnerOnboardingService hospitalOwnerOnboardingService,
                           PharmacistOnboardingService pharmacistOnboardingService,
                           AthleteOnboardingService athleteOnboardingService) {
         this.identityService = identityService;
+        this.cartService = cartService;
         this.authService = authService;
         this.hospitalOwnerOnboardingService = hospitalOwnerOnboardingService;
         this.pharmacistOnboardingService = pharmacistOnboardingService;
@@ -57,7 +64,11 @@ public class AuthController {
 
     @PostMapping("/register")
     public ResponseEntity<RegisterResponseDto> register(@Valid @RequestBody RegisterRequestDto requestDto) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(identityService.register(requestDto));
+        RegisterResponseDto response = identityService.register(requestDto);
+        if (response.getUserId() != null && hasCustomerRole(requestDto)) {
+            cartService.ensureActiveCart(response.getUserId());
+        }
+        return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
     @PostMapping(value = "/register-hospital-owner", consumes = "multipart/form-data")
@@ -150,5 +161,14 @@ public class AuthController {
                 .path(AuthCookieProperties.COOKIE_PATH)
                 .maxAge(0)
                 .build();
+    }
+
+    private boolean hasCustomerRole(RegisterRequestDto requestDto) {
+        if (requestDto.getRoleNames() == null || requestDto.getRoleNames().isEmpty()) {
+            return false;
+        }
+        return requestDto.getRoleNames().stream()
+                .map(role -> role.toLowerCase(Locale.ROOT))
+                .anyMatch(CUSTOMER_ROLE.toLowerCase(Locale.ROOT)::equals);
     }
 }

@@ -1,5 +1,6 @@
 package com.TenaMed.user.controller;
 
+import com.TenaMed.cart.service.CartService;
 import com.TenaMed.hospital.dto.HospitalResponseDto;
 import com.TenaMed.pharmacy.dto.response.PharmacyResponse;
 import com.TenaMed.user.dto.RegisterAthleteRequestDto;
@@ -30,6 +31,7 @@ import java.util.Set;
 import java.util.UUID;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -48,6 +50,9 @@ class AuthControllerTests {
 
     @MockitoBean
     private IdentityService identityService;
+
+    @MockitoBean
+    private CartService cartService;
 
     @MockitoBean
     private AuthService authService;
@@ -89,6 +94,8 @@ class AuthControllerTests {
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.email").value("test@tenamed.com"))
                 .andExpect(jsonPath("$.accountStatus").value("ACTIVE"));
+
+        verify(cartService).ensureActiveCart(response.getUserId());
     }
 
             @Test

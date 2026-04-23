@@ -67,6 +67,13 @@ public class CartServiceImpl implements CartService {
 
     @Override
     @Transactional
+    public void ensureActiveCart(UUID userId) {
+        validateUserId(userId);
+        getOrCreateActiveCart(userId);
+    }
+
+    @Override
+    @Transactional
     public CartResponse addItem(UUID userId, AddCartItemRequest request) {
         validateUserId(userId);
         validatePharmacyId(request.getPharmacyId());
