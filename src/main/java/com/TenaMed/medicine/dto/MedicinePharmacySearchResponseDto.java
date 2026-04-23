@@ -14,6 +14,7 @@ import java.math.BigDecimal;
 public class MedicinePharmacySearchResponseDto {
 
     private String medicineName;
+    private boolean prescriptionRequired;
     private String pharmacyLegalName;
     private BigDecimal price;
     private String medicineCategory;

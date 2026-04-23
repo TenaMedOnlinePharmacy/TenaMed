@@ -22,6 +22,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -77,17 +78,19 @@ class PrescriptionInventoryMatchServiceImplTests {
         Prescription prescription = new Prescription();
         prescription.setId(prescriptionId);
 
-        Category category = mock(Category.class);
-        when(category.getName()).thenReturn("Analgesics");
+        Category category = new Category();
+        category.setName("Analgesics");
 
-        Medicine medicine = mock(Medicine.class);
-        when(medicine.getId()).thenReturn(medicineId);
-        when(medicine.getName()).thenReturn("Paracetamol");
-        when(medicine.getCategory()).thenReturn(category);
-        when(medicine.getImageUrl()).thenReturn("https://img/med.png");
-        when(medicine.getIndications()).thenReturn("Pain");
-        when(medicine.getContraindications()).thenReturn("Allergy");
-        when(medicine.getSideEffects()).thenReturn("Nausea");
+        Medicine medicine = new Medicine();
+        ReflectionTestUtils.setField(medicine, "id", medicineId);
+        medicine.setName("Paracetamol");
+        medicine.setRequiresPrescription(false);
+        ReflectionTestUtils.setField(medicine, "requiresPrescription", false);
+        medicine.setCategory(category);
+        medicine.setImageUrl("https://img/med.png");
+        medicine.setIndications("Pain");
+        medicine.setContraindications("Allergy");
+        medicine.setSideEffects("Nausea");
 
         PrescriptionItem item = new PrescriptionItem();
         item.setPrescription(prescription);
@@ -119,6 +122,7 @@ class PrescriptionInventoryMatchServiceImplTests {
 
         assertEquals(1, result.size());
         assertEquals("Paracetamol", result.getFirst().getMedicineName());
+        assertEquals(medicine.isRequiresPrescription(), result.getFirst().isPrescriptionRequired());
         assertEquals("City Pharmacy Ltd", result.getFirst().getPharmacyLegalName());
         assertEquals(new BigDecimal("99.99"), result.getFirst().getPrice());
         assertEquals("Analgesics", result.getFirst().getMedicineCategory());

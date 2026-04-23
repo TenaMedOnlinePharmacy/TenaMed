@@ -36,6 +36,7 @@ class PrescriptionInventoryControllerTests {
         when(prescriptionInventoryMatchService.findInventoryMatchesByPrescription(prescriptionId))
             .thenReturn(List.of(MedicinePharmacySearchResponseDto.builder()
                 .medicineName("Paracetamol")
+                .prescriptionRequired(true)
                 .pharmacyLegalName("City Pharmacy Ltd")
                 .price(new BigDecimal("99.99"))
                 .medicineCategory("Analgesics")
@@ -48,6 +49,7 @@ class PrescriptionInventoryControllerTests {
         mockMvc.perform(get("/api/pharmacy/prescriptions/{prescriptionId}/inventory-matches", prescriptionId))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$[0].medicineName").value("Paracetamol"))
+            .andExpect(jsonPath("$[0].prescriptionRequired").value(true))
             .andExpect(jsonPath("$[0].pharmacyLegalName").value("City Pharmacy Ltd"))
             .andExpect(jsonPath("$[0].price").value(99.99))
             .andExpect(jsonPath("$[0].medicineCategory").value("Analgesics"));

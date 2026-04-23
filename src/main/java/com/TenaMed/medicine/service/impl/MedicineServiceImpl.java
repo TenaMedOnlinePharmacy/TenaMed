@@ -229,6 +229,7 @@ public class MedicineServiceImpl implements MedicineService {
 
         return MedicinePharmacySearchResponseDto.builder()
             .medicineName(medicine.getName())
+            .prescriptionRequired(medicine.isRequiresPrescription())
             .pharmacyLegalName(resolvePharmacyLegalName(pharmacy))
             .price(price)
             .medicineCategory(medicine.getCategory() != null ? medicine.getCategory().getName() : null)
