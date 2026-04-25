@@ -358,16 +358,7 @@ public class OrderServiceImpl implements OrderService {
                             .build();
                 }).toList();
 
-        boolean isPrescriptionRequiredForOrder = order.getItems().stream()
-                .anyMatch(item -> {
-                    Medicine medicine = medicineRepository.findById(item.getMedicineId()).orElse(null);
-                    return medicine != null && medicine.isRequiresPrescription();
-                });
-
-        String prescriptionImage = null;
-        if (isPrescriptionRequiredForOrder && prescription != null) {
-            prescriptionImage = prescription.getOriginalImages();
-        }
+        String prescriptionImage = (prescription != null) ? prescription.getOriginalImages() : null;
 
         return PharmacyOrderResponse.builder()
                 .orderId(order.getId())
