@@ -37,6 +37,7 @@ public class UserPharmacyMapper {
             .verifiedAt(userPharmacy.getVerifiedAt())
             .createdAt(userPharmacy.getCreatedAt())
             .updatedAt(userPharmacy.getUpdatedAt())
+            .isVerified(userPharmacy.getIsVerified())
             .build();
     }
 }

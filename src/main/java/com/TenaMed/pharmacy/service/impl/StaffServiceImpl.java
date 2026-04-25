@@ -69,6 +69,7 @@ public class StaffServiceImpl implements StaffService {
             .orElseThrow(() -> new UserPharmacyNotFoundException(userId));
         staff.setVerifiedBy(verifiedBy);
         staff.setVerifiedAt(LocalDateTime.now());
+        staff.setIsVerified(true);
         UserPharmacy saved = userPharmacyRepository.save(staff);
         domainEventService.publish(
                 "PHARMACY_STAFF_VERIFIED",

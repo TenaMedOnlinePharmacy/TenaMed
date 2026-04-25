@@ -7,4 +7,8 @@ public class PharmacyNotFoundException extends PharmacyException {
     public PharmacyNotFoundException(UUID pharmacyId) {
         super("Pharmacy not found with id: " + pharmacyId);
     }
+
+    public PharmacyNotFoundException(String message) {
+        super(message);
+    }
 }

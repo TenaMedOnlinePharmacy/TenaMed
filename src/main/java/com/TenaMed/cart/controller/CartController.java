@@ -109,6 +109,7 @@ public class CartController {
 
         try {
             CheckoutCartResponse response = cartService.checkout(userId);
+            System.out.println(response);
             return ResponseEntity.ok(response);
         } catch (CartException ex) {
             return ResponseEntity.badRequest().body(Map.of("error", ex.getMessage()));

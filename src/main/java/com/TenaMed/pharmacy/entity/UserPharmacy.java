@@ -69,4 +69,7 @@ public class UserPharmacy extends BaseEntity {
 
     @Column(name = "verified_at")
     private LocalDateTime verifiedAt;
+
+    @Column(name = "is_verified")
+    private Boolean isVerified = false;
 }

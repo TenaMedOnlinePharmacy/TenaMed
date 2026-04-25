@@ -14,6 +14,8 @@ public interface PharmacyRepository extends JpaRepository<Pharmacy, UUID> {
 
     List<Pharmacy> findByStatus(PharmacyStatus status);
 
+    Optional<Pharmacy> findByOwnerId(UUID ownerId);
+
     Optional<Pharmacy> findByIdAndStatus(UUID id, PharmacyStatus status);
 
     boolean existsByLicenseNumberIgnoreCase(String licenseNumber);

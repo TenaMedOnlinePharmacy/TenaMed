@@ -214,7 +214,7 @@ public class InvitationServiceImpl implements InvitationService {
     }
 
     private String buildInvitationLink(String token) {
-        String baseUrl = invitationBaseUrl == null ? "http://localhost:8080/api/invitations" : invitationBaseUrl.trim();
+        String baseUrl = invitationBaseUrl == null ? "http://localhost:5173/register" : invitationBaseUrl.trim();
         if (baseUrl.endsWith("/")) {
             return baseUrl + token;
         }

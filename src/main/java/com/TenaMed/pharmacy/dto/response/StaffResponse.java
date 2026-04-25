@@ -26,4 +26,5 @@ public class StaffResponse {
     private LocalDateTime verifiedAt;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
+    private Boolean isVerified;
 }
