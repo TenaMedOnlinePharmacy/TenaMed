@@ -11,6 +11,8 @@ import com.TenaMed.pharmacy.mapper.UserPharmacyMapper;
 import com.TenaMed.pharmacy.repository.PharmacyRepository;
 import com.TenaMed.pharmacy.repository.UserPharmacyRepository;
 import com.TenaMed.pharmacy.service.impl.StaffServiceImpl;
+import com.TenaMed.user.entity.User;
+import com.TenaMed.user.repository.UserRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -37,6 +39,9 @@ class StaffServiceImplTests {
     @Mock
     private UserPharmacyMapper userPharmacyMapper;
 
+    @Mock
+    private UserRepository userRepository;
+
     @InjectMocks
     private StaffServiceImpl staffService;
 
@@ -54,11 +59,16 @@ class StaffServiceImplTests {
         UserPharmacy membership = new UserPharmacy();
         StaffResponse response = StaffResponse.builder().userId(userId).build();
 
+        User user = new User();
+        user.setFirstName("John");
+        user.setLastName("Doe");
+ 
         when(pharmacyRepository.findById(pharmacyId)).thenReturn(Optional.of(pharmacy));
         when(userPharmacyRepository.existsByUserIdAndPharmacyId(userId, pharmacyId)).thenReturn(false);
         when(userPharmacyMapper.toEntity(request, pharmacy)).thenReturn(membership);
         when(userPharmacyRepository.save(membership)).thenReturn(membership);
-        when(userPharmacyMapper.toResponse(membership)).thenReturn(response);
+        when(userRepository.findById(userId)).thenReturn(Optional.of(user));
+        when(userPharmacyMapper.toResponse(membership, "John", "Doe")).thenReturn(response);
 
         StaffResponse actual = staffService.addStaff(request);
 
@@ -88,9 +98,14 @@ class StaffServiceImplTests {
         UserPharmacy membership = new UserPharmacy();
         StaffResponse response = StaffResponse.builder().verifiedBy(verifier).build();
 
+        User user = new User();
+        user.setFirstName("John");
+        user.setLastName("Doe");
+ 
         when(userPharmacyRepository.findByUserIdAndPharmacy_Id(userId, pharmacyId)).thenReturn(Optional.of(membership));
         when(userPharmacyRepository.save(any(UserPharmacy.class))).thenAnswer(invocation -> invocation.getArgument(0));
-        when(userPharmacyMapper.toResponse(any(UserPharmacy.class))).thenReturn(response);
+        when(userRepository.findById(userId)).thenReturn(Optional.of(user));
+        when(userPharmacyMapper.toResponse(any(UserPharmacy.class), any(), any())).thenReturn(response);
 
         StaffResponse actual = staffService.verifyStaff(pharmacyId, userId, verifier);
 

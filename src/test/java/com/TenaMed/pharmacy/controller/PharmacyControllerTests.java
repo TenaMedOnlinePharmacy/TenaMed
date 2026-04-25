@@ -3,6 +3,8 @@ package com.TenaMed.pharmacy.controller;
 import com.TenaMed.pharmacy.dto.request.CreatePharmacyRequest;
 import com.TenaMed.pharmacy.dto.response.PharmacyResponse;
 import com.TenaMed.pharmacy.enums.PharmacyStatus;
+import com.TenaMed.common.security.CurrentUserProvider;
+import com.TenaMed.pharmacy.repository.PharmacyRepository;
 import com.TenaMed.invitation.dto.InvitationResponseDto;
 import com.TenaMed.pharmacy.service.PharmacyService;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -35,6 +37,12 @@ class PharmacyControllerTests {
 
     @MockitoBean
     private PharmacyService pharmacyService;
+ 
+    @MockitoBean
+    private CurrentUserProvider currentUserProvider;
+ 
+    @MockitoBean
+    private PharmacyRepository pharmacyRepository;
 
     @Test
     void shouldCreatePharmacy() throws Exception {
@@ -92,9 +100,11 @@ class PharmacyControllerTests {
         response.setPharmacyId(id);
         response.setEmail("pharmacist@example.com");
 
-        when(pharmacyService.invitePharmacist(id, "pharmacist@example.com")).thenReturn(response);
+        when(currentUserProvider.getCurrentUserId()).thenReturn(UUID.randomUUID());
+        when(pharmacyRepository.findByOwnerId(any())).thenReturn(java.util.Optional.of(new com.TenaMed.pharmacy.entity.Pharmacy()));
+        when(pharmacyService.invitePharmacist(any(), any())).thenReturn(response);
 
-        mockMvc.perform(post("/api/pharmacies/{id}/invite-pharmacist", id)
+        mockMvc.perform(post("/api/pharmacies/invite-pharmacist")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(java.util.Map.of("email", "pharmacist@example.com"))))
             .andExpect(status().isCreated())

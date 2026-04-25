@@ -27,8 +27,15 @@ import com.TenaMed.pharmacy.repository.OrderRepository;
 import com.TenaMed.pharmacy.repository.PharmacyRepository;
 import com.TenaMed.pharmacy.service.OrderService;
 import com.TenaMed.inventory.service.InventoryService;
+import com.TenaMed.medicine.repository.MedicineRepository;
+import com.TenaMed.pharmacy.dto.response.PharmacyOrderResponse;
+import com.TenaMed.pharmacy.entity.UserPharmacy;
+import com.TenaMed.pharmacy.repository.UserPharmacyRepository;
+import com.TenaMed.prescription.entity.Prescription;
+import com.TenaMed.prescription.entity.PrescriptionType;
 import com.TenaMed.prescription.service.PrescriptionService;
 import com.TenaMed.events.DomainEventService;
+import com.TenaMed.medicine.entity.Medicine;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -55,6 +62,8 @@ public class OrderServiceImpl implements OrderService {
     private final InventoryRepository inventoryRepository;
     private final BatchRepository batchRepository;
     private final DomainEventService domainEventService;
+    private final UserPharmacyRepository userPharmacyRepository;
+    private final MedicineRepository medicineRepository;
 
     public OrderServiceImpl(OrderRepository orderRepository,
                             OrderItemRepository orderItemRepository,
@@ -65,7 +74,9 @@ public class OrderServiceImpl implements OrderService {
                             PrescriptionItemRepository prescriptionItemRepository,
                             InventoryRepository inventoryRepository,
                             BatchRepository batchRepository,
-                            DomainEventService domainEventService) {
+                            DomainEventService domainEventService,
+                            UserPharmacyRepository userPharmacyRepository,
+                            MedicineRepository medicineRepository) {
         this.orderRepository = orderRepository;
         this.orderItemRepository = orderItemRepository;
         this.pharmacyRepository = pharmacyRepository;
@@ -76,6 +87,8 @@ public class OrderServiceImpl implements OrderService {
         this.inventoryRepository = inventoryRepository;
         this.batchRepository = batchRepository;
         this.domainEventService = domainEventService;
+        this.userPharmacyRepository = userPharmacyRepository;
+        this.medicineRepository = medicineRepository;
     }
 
     @Override
@@ -128,6 +141,15 @@ public class OrderServiceImpl implements OrderService {
             throw new OrderAuthorizationException();
         }
 
+        // Verify that the user belongs to the pharmacy of the order
+        java.util.List<UserPharmacy> userPharmacies = userPharmacyRepository.findByUserId(actorUserId);
+        boolean isAuthorized = userPharmacies.stream()
+                .anyMatch(up -> up.getPharmacy().getId().equals(order.getPharmacy().getId()));
+
+        if (!isAuthorized) {
+            throw new OrderAuthorizationException("You are not authorized to accept orders for this pharmacy");
+        }
+
         reserveOrderItems(order);
 
         order.setAcceptedBy(actorUserId);
@@ -154,6 +176,16 @@ public class OrderServiceImpl implements OrderService {
         if (actorRole != StaffRole.OWNER && actorRole != StaffRole.PHARMACIST) {
             throw new OrderAuthorizationException();
         }
+
+        // Verify that the user belongs to the pharmacy of the order
+        java.util.List<UserPharmacy> userPharmacies = userPharmacyRepository.findByUserId(actorUserId);
+        boolean isAuthorized = userPharmacies.stream()
+                .anyMatch(up -> up.getPharmacy().getId().equals(order.getPharmacy().getId()));
+
+        if (!isAuthorized) {
+            throw new OrderAuthorizationException("You are not authorized to reject orders for this pharmacy");
+        }
+
         order.setStatus(OrderStatus.REJECTED);
         order.setRejectionReason(rejectionReason);
         Order saved = orderRepository.save(order);
@@ -290,6 +322,62 @@ public class OrderServiceImpl implements OrderService {
                 throw new PharmacyValidationException("Insufficient stock for medicine " + item.getMedicineId());
             }
         }
+    }
+
+    @Override
+    public java.util.List<PharmacyOrderResponse> getPharmacyOrders(UUID ownerId) {
+        java.util.List<UserPharmacy> userPharmacies = userPharmacyRepository.findByUserId(ownerId);
+        if (userPharmacies.isEmpty()) {
+            throw new PharmacyNotFoundException("No pharmacy found for the given owner");
+        }
+
+        java.util.List<UUID> pharmacyIds = userPharmacies.stream()
+                .map(up -> up.getPharmacy().getId())
+                .toList();
+
+        java.util.List<Order> orders = pharmacyIds.stream()
+                .flatMap(pid -> orderRepository.findByPharmacyId(pid).stream())
+                .toList();
+
+        return orders.stream().map(this::mapToPharmacyOrderResponse).toList();
+    }
+
+    private PharmacyOrderResponse mapToPharmacyOrderResponse(Order order) {
+        Prescription prescription = null;
+        if (order.getPrescriptionId() != null) {
+            prescription = prescriptionService.getPrescription(order.getPrescriptionId());
+        }
+
+        java.util.List<PharmacyOrderResponse.PharmacyOrderItemResponse> itemResponses = order.getItems().stream()
+                .map(item -> {
+                    Medicine medicine = medicineRepository.findById(item.getMedicineId()).orElse(null);
+                    return PharmacyOrderResponse.PharmacyOrderItemResponse.builder()
+                            .medicineName(medicine != null ? medicine.getName() : "Unknown Medicine")
+                            .quantity(item.getQuantity())
+                            .unitPrice(item.getUnitPrice())
+                            .build();
+                }).toList();
+
+        boolean isPrescriptionRequiredForOrder = order.getItems().stream()
+                .anyMatch(item -> {
+                    Medicine medicine = medicineRepository.findById(item.getMedicineId()).orElse(null);
+                    return medicine != null && medicine.isRequiresPrescription();
+                });
+
+        String prescriptionImage = null;
+        if (isPrescriptionRequiredForOrder && prescription != null) {
+            prescriptionImage = prescription.getOriginalImages();
+        }
+
+        return PharmacyOrderResponse.builder()
+                .orderId(order.getId())
+                .prescriptionImage(prescriptionImage)
+                .orderItems(itemResponses)
+                .type(prescription != null ? prescription.getType() : null)
+                .highRisk(prescription != null ? prescription.getHighRisk() : null)
+                .confidenceScore(prescription != null ? prescription.getConfidenceScore() : null)
+                .totalAmount(order.getTotalAmount())
+                .build();
     }
 
     private List<OrderItem> buildOrderItems(CreateOrderRequest request) {

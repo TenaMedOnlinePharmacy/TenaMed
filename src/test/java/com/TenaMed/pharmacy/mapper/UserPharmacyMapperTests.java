@@ -46,10 +46,14 @@ class UserPharmacyMapperTests {
         userPharmacy.setStaffRole(StaffRole.OWNER);
         userPharmacy.setEmploymentStatus(EmploymentStatus.ACTIVE);
 
-        StaffResponse response = userPharmacyMapper.toResponse(userPharmacy);
+        String firstName = "John";
+        String lastName = "Doe";
+        StaffResponse response = userPharmacyMapper.toResponse(userPharmacy, firstName, lastName);
 
         assertEquals(userPharmacy.getId(), response.getId());
         assertEquals(pharmacy.getId(), response.getPharmacyId());
         assertEquals(StaffRole.OWNER, response.getStaffRole());
+        assertEquals(firstName, response.getFirstName());
+        assertEquals(lastName, response.getLastName());
     }
 }

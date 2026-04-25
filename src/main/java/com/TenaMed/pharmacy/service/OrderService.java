@@ -12,11 +12,13 @@ public interface OrderService {
 
     OrderResponse createOrder(CreateOrderRequest request, UUID customerId);
 
-    OrderResponse acceptOrder(UUID orderId, UUID actorUserId, StaffRole actorRole);
+    OrderResponse acceptOrder(java.util.UUID orderId, java.util.UUID actorUserId, StaffRole actorRole);
 
-    OrderResponse rejectOrder(UUID orderId, String rejectionReason, UUID actorUserId, StaffRole actorRole);
+    OrderResponse rejectOrder(java.util.UUID orderId, String rejectionReason, java.util.UUID actorUserId, StaffRole actorRole);
 
     OrderResponse updatePaymentStatus(UUID orderId, PaymentStatus paymentStatus);
 
     OrderResponse createOrderFromCart(UUID customerId, CreateOrderFromCartRequest request);
+
+    java.util.List<com.TenaMed.pharmacy.dto.response.PharmacyOrderResponse> getPharmacyOrders(java.util.UUID ownerId);
 }

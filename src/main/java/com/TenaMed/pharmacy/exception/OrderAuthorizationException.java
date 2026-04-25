@@ -5,4 +5,8 @@ public class OrderAuthorizationException extends PharmacyException {
     public OrderAuthorizationException() {
         super("Only pharmacy owner or pharmacist can accept orders");
     }
+
+    public OrderAuthorizationException(String message) {
+        super(message);
+    }
 }

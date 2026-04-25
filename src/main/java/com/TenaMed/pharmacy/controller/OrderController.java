@@ -1,5 +1,6 @@
 package com.TenaMed.pharmacy.controller;
 
+import com.TenaMed.pharmacy.dto.request.AcceptOrderRequest;
 import com.TenaMed.pharmacy.dto.request.CreateOrderRequest;
 import com.TenaMed.pharmacy.dto.request.RejectOrderRequest;
 import com.TenaMed.pharmacy.dto.request.UpdatePaymentStatusRequest;
@@ -14,6 +15,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -51,8 +53,8 @@ public class OrderController {
         }
     }
 
-    @PostMapping("/{id}/accept")
-    public ResponseEntity<?> acceptOrder(@PathVariable UUID id,
+    @PostMapping("/accept")
+    public ResponseEntity<?> acceptOrder(@Valid @RequestBody AcceptOrderRequest request,
                                          Principal principal) {
         UUID actorUserId = resolveCustomerId(principal);
         StaffRole actorRole = resolveStaffRole(principal);
@@ -64,15 +66,14 @@ public class OrderController {
                 .body(Map.of("error", "Only pharmacy owner or pharmacist can accept orders"));
         }
         try {
-            return ResponseEntity.ok(orderService.acceptOrder(id, actorUserId, actorRole));
+            return ResponseEntity.ok(orderService.acceptOrder(request.getOrderId(), actorUserId, actorRole));
         } catch (PharmacyException ex) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("error", ex.getMessage()));
         }
     }
 
-    @PostMapping("/{id}/reject")
-    public ResponseEntity<?> rejectOrder(@PathVariable UUID id,
-                                         @Valid @RequestBody RejectOrderRequest request,
+    @PostMapping("/reject")
+    public ResponseEntity<?> rejectOrder(@Valid @RequestBody RejectOrderRequest request,
                                          Principal principal) {
         UUID actorUserId = resolveCustomerId(principal);
         StaffRole actorRole = resolveStaffRole(principal);
@@ -84,7 +85,7 @@ public class OrderController {
                 .body(Map.of("error", "Only pharmacy owner or pharmacist can reject orders"));
         }
         try {
-            return ResponseEntity.ok(orderService.rejectOrder(id, request.getRejectionReason(), actorUserId, actorRole));
+            return ResponseEntity.ok(orderService.rejectOrder(request.getOrderId(), request.getRejectionReason(), actorUserId, actorRole));
         } catch (PharmacyException ex) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("error", ex.getMessage()));
         }
@@ -95,6 +96,19 @@ public class OrderController {
                                                  @Valid @RequestBody UpdatePaymentStatusRequest request) {
         try {
             return ResponseEntity.ok(orderService.updatePaymentStatus(id, request.getPaymentStatus()));
+        } catch (PharmacyException ex) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("error", ex.getMessage()));
+        }
+    }
+
+    @GetMapping("/pharmacyOrders")
+    public ResponseEntity<?> getPharmacyOrders(Principal principal) {
+        UUID ownerId = resolveCustomerId(principal);
+        if (ownerId == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("error", "Authentication required"));
+        }
+        try {
+            return ResponseEntity.ok(orderService.getPharmacyOrders(ownerId));
         } catch (PharmacyException ex) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("error", ex.getMessage()));
         }
