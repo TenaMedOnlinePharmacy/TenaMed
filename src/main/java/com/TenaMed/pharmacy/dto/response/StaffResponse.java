@@ -27,4 +27,6 @@ public class StaffResponse {
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
     private Boolean isVerified;
+    private String firstName;
+    private String lastName;
 }

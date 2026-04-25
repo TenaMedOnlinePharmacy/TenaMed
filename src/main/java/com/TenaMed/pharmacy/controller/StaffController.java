@@ -62,12 +62,14 @@ public class StaffController {
         }
     }
 
-    @PostMapping("/{id}/staff/{userId}/verify")
-    public ResponseEntity<?> verifyPharmacist(@PathVariable UUID id,
-                                              @PathVariable UUID userId) {
+    @PostMapping("/staff/{userId}/verify")
+    public ResponseEntity<?> verifyPharmacist(@PathVariable UUID userId) {
         try {
-            UUID verifierId = currentUserProvider.getCurrentUserId();
-            StaffResponse response = staffService.verifyStaff(id, userId, verifierId);
+            UUID ownerId = currentUserProvider.getCurrentUserId();
+            UUID pharmacyId = pharmacyRepository.findByOwnerId(ownerId)
+                .orElseThrow(() -> new PharmacyNotFoundException("Pharmacy not found for current owner"))
+                .getId();
+            StaffResponse response = staffService.verifyStaff(pharmacyId, userId, ownerId);
             return ResponseEntity.ok(response);
         } catch (PharmacyException ex) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("error", ex.getMessage()));

@@ -1,10 +1,13 @@
 package com.TenaMed.pharmacy.controller;
 
+import com.TenaMed.common.security.CurrentUserProvider;
 import com.TenaMed.pharmacy.dto.request.CreatePharmacyRequest;
 import com.TenaMed.pharmacy.dto.response.PharmacyResponse;
 import com.TenaMed.invitation.dto.InvitationResponseDto;
 import com.TenaMed.invitation.dto.PharmacistInvitationRequestDto;
 import com.TenaMed.pharmacy.exception.PharmacyException;
+import com.TenaMed.pharmacy.exception.PharmacyNotFoundException;
+import com.TenaMed.pharmacy.repository.PharmacyRepository;
 import com.TenaMed.pharmacy.service.PharmacyService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
@@ -24,9 +27,15 @@ import java.util.UUID;
 public class PharmacyController {
 
     private final PharmacyService pharmacyService;
+    private final CurrentUserProvider currentUserProvider;
+    private final PharmacyRepository pharmacyRepository;
 
-    public PharmacyController(PharmacyService pharmacyService) {
+    public PharmacyController(PharmacyService pharmacyService,
+                              CurrentUserProvider currentUserProvider,
+                              PharmacyRepository pharmacyRepository) {
         this.pharmacyService = pharmacyService;
+        this.currentUserProvider = currentUserProvider;
+        this.pharmacyRepository = pharmacyRepository;
     }
 
     @PostMapping
@@ -57,11 +66,14 @@ public class PharmacyController {
         }
     }
 
-    @PostMapping("/{id}/invite-pharmacist")
-    public ResponseEntity<?> invitePharmacist(@PathVariable UUID id,
-                                              @Valid @RequestBody PharmacistInvitationRequestDto request) {
+    @PostMapping("/invite-pharmacist")
+    public ResponseEntity<?> invitePharmacist(@Valid @RequestBody PharmacistInvitationRequestDto request) {
         try {
-            InvitationResponseDto response = pharmacyService.invitePharmacist(id, request.getEmail());
+            UUID ownerId = currentUserProvider.getCurrentUserId();
+            UUID pharmacyId = pharmacyRepository.findByOwnerId(ownerId)
+                .orElseThrow(() -> new PharmacyNotFoundException("Pharmacy not found for current owner"))
+                .getId();
+            InvitationResponseDto response = pharmacyService.invitePharmacist(pharmacyId, request.getEmail());
             return ResponseEntity.status(HttpStatus.CREATED).body(response);
         } catch (PharmacyException ex) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("error", ex.getMessage()));

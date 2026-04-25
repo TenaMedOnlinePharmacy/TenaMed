@@ -22,7 +22,7 @@ public class UserPharmacyMapper {
         return userPharmacy;
     }
 
-    public StaffResponse toResponse(UserPharmacy userPharmacy) {
+    public StaffResponse toResponse(UserPharmacy userPharmacy, String firstName, String lastName) {
         return StaffResponse.builder()
             .id(userPharmacy.getId())
             .userId(userPharmacy.getUserId())
@@ -38,6 +38,8 @@ public class UserPharmacyMapper {
             .createdAt(userPharmacy.getCreatedAt())
             .updatedAt(userPharmacy.getUpdatedAt())
             .isVerified(userPharmacy.getIsVerified())
+            .firstName(firstName)
+            .lastName(lastName)
             .build();
     }
 }
