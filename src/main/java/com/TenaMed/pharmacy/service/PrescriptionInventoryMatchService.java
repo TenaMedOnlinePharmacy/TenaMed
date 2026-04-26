@@ -8,4 +8,6 @@ import java.util.UUID;
 public interface PrescriptionInventoryMatchService {
 
     List<MedicinePharmacySearchResponseDto> findInventoryMatchesByPrescription(UUID prescriptionId);
+
+    List<com.TenaMed.pharmacy.dto.response.PrescriptionProductOptionDto> getProductOptionsForPrescriptionItem(UUID prescriptionItemId);
 }

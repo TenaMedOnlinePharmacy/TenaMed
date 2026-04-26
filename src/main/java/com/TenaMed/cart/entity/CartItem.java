@@ -23,7 +23,7 @@ import java.util.UUID;
 @Table(
     name = "cart_item",
     uniqueConstraints = {
-        @UniqueConstraint(name = "uk_cart_item_cart_medicine_pharmacy", columnNames = {"cart_id", "medicine_id", "pharmacy_id"})
+        @UniqueConstraint(name = "uk_cart_item_cart_product_pharmacy", columnNames = {"cart_id", "product_id", "pharmacy_id"})
     }
 )
 @Getter
@@ -40,8 +40,8 @@ public class CartItem extends BaseEntity {
     @JoinColumn(name = "cart_id", nullable = false)
     private Cart cart;
 
-    @Column(name = "medicine_id", nullable = false)
-    private UUID medicineId;
+    @Column(name = "product_id", nullable = false)
+    private UUID productId;
 
     @Column(name = "pharmacy_id", nullable = false)
     private UUID pharmacyId;

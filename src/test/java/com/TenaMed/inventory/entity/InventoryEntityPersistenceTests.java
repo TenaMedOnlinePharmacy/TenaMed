@@ -32,7 +32,7 @@ class InventoryEntityPersistenceTests {
     void shouldPersistInventoryBatchAndStockMovement() {
         Inventory inventory = new Inventory();
         inventory.setPharmacyId(UUID.randomUUID());
-        inventory.setMedicineId(UUID.randomUUID());
+        inventory.setProductId(UUID.randomUUID());
         inventory.setTotalQuantity(100);
         inventory.setReservedQuantity(10);
         inventory.setReorderLevel(20);

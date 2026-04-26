@@ -28,19 +28,19 @@ class InventoryRepositoryDataJpaTests {
     private StockMovementRepository stockMovementRepository;
 
     @Test
-    void shouldFindInventoryByPharmacyAndMedicine() {
+    void shouldFindInventoryByPharmacyAndProduct() {
         UUID pharmacyId = UUID.randomUUID();
-        UUID medicineId = UUID.randomUUID();
+        UUID productId = UUID.randomUUID();
 
         Inventory inventory = new Inventory();
         inventory.setPharmacyId(pharmacyId);
-        inventory.setMedicineId(medicineId);
+        inventory.setProductId(productId);
         inventory.setTotalQuantity(50);
         inventory.setReservedQuantity(5);
         inventory.setReorderLevel(10);
         inventoryRepository.save(inventory);
 
-        Optional<Inventory> found = inventoryRepository.findByPharmacyIdAndMedicineId(pharmacyId, medicineId);
+        Optional<Inventory> found = inventoryRepository.findByPharmacyIdAndProductId(pharmacyId, productId);
         assertTrue(found.isPresent());
         assertEquals(50, found.get().getTotalQuantity());
     }
@@ -49,7 +49,7 @@ class InventoryRepositoryDataJpaTests {
     void shouldFindBatchesOrderedByExpiryDate() {
         Inventory inventory = new Inventory();
         inventory.setPharmacyId(UUID.randomUUID());
-        inventory.setMedicineId(UUID.randomUUID());
+        inventory.setProductId(UUID.randomUUID());
         inventory.setTotalQuantity(120);
         inventory.setReservedQuantity(0);
         inventory.setReorderLevel(10);

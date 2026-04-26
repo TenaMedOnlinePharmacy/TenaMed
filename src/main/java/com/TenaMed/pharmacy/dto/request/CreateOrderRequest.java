@@ -18,6 +18,16 @@ public class CreateOrderRequest {
     private UUID prescriptionId;
 
     @NotEmpty
-    private List<UUID> prescriptionItemIds;
+    private List<Item> items;
+
+    @Getter
+    @Setter
+    public static class Item {
+        @NotNull
+        private UUID prescriptionItemId;
+
+        @NotNull
+        private UUID productId;
+    }
 
 }

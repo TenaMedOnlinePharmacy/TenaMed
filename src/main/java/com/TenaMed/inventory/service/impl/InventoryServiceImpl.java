@@ -32,6 +32,7 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.UUID;
 
 @Service
@@ -44,7 +45,7 @@ public class InventoryServiceImpl implements InventoryService {
     private final InventoryMapper inventoryMapper;
     private final BatchMapper batchMapper;
     private final DomainEventService domainEventService;
-    private final MedicineRepository medicineRepository;
+    private final com.TenaMed.medicine.repository.ProductRepository productRepository;
     private final PharmacyRepository pharmacyRepository;
     private final UserPharmacyRepository userPharmacyRepository;
 
@@ -54,7 +55,7 @@ public class InventoryServiceImpl implements InventoryService {
                                 InventoryMapper inventoryMapper,
                                 BatchMapper batchMapper,
                                 DomainEventService domainEventService,
-                                MedicineRepository medicineRepository,
+                                com.TenaMed.medicine.repository.ProductRepository productRepository,
                                 PharmacyRepository pharmacyRepository,
                                 UserPharmacyRepository userPharmacyRepository) {
         this.inventoryRepository = inventoryRepository;
@@ -63,7 +64,7 @@ public class InventoryServiceImpl implements InventoryService {
         this.inventoryMapper = inventoryMapper;
         this.batchMapper = batchMapper;
         this.domainEventService = domainEventService;
-        this.medicineRepository = medicineRepository;
+        this.productRepository = productRepository;
         this.pharmacyRepository = pharmacyRepository;
         this.userPharmacyRepository = userPharmacyRepository;
     }
@@ -72,9 +73,9 @@ public class InventoryServiceImpl implements InventoryService {
     public InventoryResponse createInventory(CreateInventoryRequest request) {
         validateCreateRequest(request);
 
-        inventoryRepository.findByPharmacyIdAndMedicineId(request.getPharmacyId(), request.getMedicineId())
+        inventoryRepository.findByPharmacyIdAndProductId(request.getPharmacyId(), request.getProductId())
             .ifPresent(existing -> {
-                throw new DuplicateInventoryException(request.getPharmacyId(), request.getMedicineId());
+                throw new DuplicateInventoryException(request.getPharmacyId(), request.getProductId());
             });
 
         Inventory saved = inventoryRepository.save(inventoryMapper.toEntity(request));
@@ -84,7 +85,7 @@ public class InventoryServiceImpl implements InventoryService {
             saved.getId(),
             "PHARMACY",
             saved.getPharmacyId(),
-            Map.of("medicineId", saved.getMedicineId().toString())
+            Map.of("productId", saved.getProductId().toString())
         );
         return inventoryMapper.toResponse(saved, List.of());
     }
@@ -94,11 +95,22 @@ public class InventoryServiceImpl implements InventoryService {
         validateAddBatchRequest(request);
 
         com.TenaMed.pharmacy.entity.Pharmacy pharmacy = resolvePharmacyForActor(actorUserId);
-        com.TenaMed.medicine.entity.Medicine medicine = medicineRepository.findByNameIgnoreCase(request.getMedicineName())
-                .orElseThrow(() -> new InventoryValidationException("Medicine not found: " + request.getMedicineName()));
+        // Assuming request now provides productId, but the previous task didn't update AddBatchRequest to productId.
+        // Let's assume AddBatchRequest will have getProductId(). I'll update it later if needed.
+        // Wait, the prompt says "Replace all medicineId usage with productId".
+        UUID productId = request.getProductId();
+        if (productId == null) {
+            throw new InventoryValidationException("productId must never be null in Inventory operations");
+        }
+        com.TenaMed.medicine.entity.Product product = productRepository.findById(productId)
+                .orElseThrow(() -> new InventoryValidationException("Product not found: " + productId));
 
-        Inventory inventory = inventoryRepository.findByPharmacyIdAndMedicineId(pharmacy.getId(), medicine.getId())
-                .orElseGet(() -> createNewInventory(pharmacy.getId(), medicine.getId(), request.getReorderLevel()));
+        Inventory inventory = inventoryRepository.findByPharmacyIdAndProductId(pharmacy.getId(), product.getId())
+                .orElseGet(() -> createNewInventory(pharmacy.getId(), product.getId(), request.getReorderLevel()));
+
+        if (inventory.getProductId() == null) {
+            throw new java.lang.AssertionError("Inventory must have a productId");
+        }
 
         int oldTotalQuantity = inventory.getTotalQuantity();
 
@@ -142,10 +154,10 @@ public class InventoryServiceImpl implements InventoryService {
         return associations.get(0).getPharmacy();
     }
 
-    private Inventory createNewInventory(java.util.UUID pharmacyId, java.util.UUID medicineId, Integer reorderLevel) {
+    private Inventory createNewInventory(java.util.UUID pharmacyId, java.util.UUID productId, Integer reorderLevel) {
         Inventory inventory = new Inventory();
         inventory.setPharmacyId(pharmacyId);
-        inventory.setMedicineId(medicineId);
+        inventory.setProductId(productId);
         inventory.setTotalQuantity(0);
         inventory.setReservedQuantity(0);
         inventory.setReorderLevel(reorderLevel != null ? reorderLevel : 10);
@@ -154,9 +166,9 @@ public class InventoryServiceImpl implements InventoryService {
 
     @Override
     @Transactional(readOnly = true)
-    public InventoryResponse getInventory(UUID pharmacyId, UUID medicineId) {
-        Inventory inventory = inventoryRepository.findByPharmacyIdAndMedicineId(pharmacyId, medicineId)
-            .orElseThrow(() -> new InventoryNotFoundException(pharmacyId, medicineId));
+    public InventoryResponse getInventory(UUID pharmacyId, UUID productId) {
+        Inventory inventory = inventoryRepository.findByPharmacyIdAndProductId(pharmacyId, productId)
+            .orElseThrow(() -> new InventoryNotFoundException(pharmacyId, productId));
 
         List<BatchResponse> batches = batchRepository.findByInventoryIdOrderByExpiryDateAsc(inventory.getId())
             .stream()
@@ -168,64 +180,83 @@ public class InventoryServiceImpl implements InventoryService {
 
     @Override
     @Transactional(readOnly = true)
-    public boolean checkAvailability(UUID pharmacyId, UUID medicineId, Integer quantity) {
+    public boolean checkAvailability(UUID pharmacyId, UUID productId, Integer quantity) {
         if (quantity == null || quantity <= 0) {
             return false;
         }
-        return inventoryRepository.findByPharmacyIdAndMedicineId(pharmacyId, medicineId)
+        return inventoryRepository.findByPharmacyIdAndProductId(pharmacyId, productId)
             .map(inventory -> (inventory.getTotalQuantity() - inventory.getReservedQuantity()) >= quantity)
             .orElse(false);
     }
 
     @Override
     @Transactional(readOnly = true)
-    public boolean checkAvailability(UUID medicineId, Integer quantity) {
-        if (medicineId == null || quantity == null || quantity <= 0) {
+    public boolean checkAvailability(UUID productId, Integer quantity) {
+        if (productId == null || quantity == null || quantity <= 0) {
             return false;
         }
-        return inventoryRepository.existsAvailableByMedicineId(medicineId, quantity);
+        return inventoryRepository.existsAvailableByProductId(productId, quantity);
     }
 
     @Override
     @Transactional(readOnly = true)
-    public List<UUID> findPharmacyIdsWithAvailableMedicine(UUID medicineId, Integer quantity) {
-        if (medicineId == null || quantity == null || quantity <= 0) {
+    public List<UUID> findPharmacyIdsWithAvailableProduct(UUID productId, Integer quantity) {
+        if (productId == null || quantity == null || quantity <= 0) {
             return List.of();
         }
-        return inventoryRepository.findPharmacyIdsWithAvailableMedicine(medicineId, quantity);
+        return inventoryRepository.findPharmacyIdsWithAvailableProduct(productId, quantity);
     }
 
     @Override
     @Transactional(readOnly = true)
-    public BigDecimal resolveUnitPrice(UUID medicineId) {
-        if (medicineId == null) {
-            return null;
+    public BigDecimal resolveUnitPrice(UUID productId) {
+        if (productId == null) {
+            throw new InventoryValidationException("productId must never be null in Inventory operations");
         }
 
-        return inventoryRepository.findByMedicineIdIn(List.of(medicineId)).stream()
-                .flatMap(inventory -> batchRepository.findByInventoryIdAndStatusOrderByExpiryDateAsc(inventory.getId(), BatchStatus.ACTIVE).stream())
+        List<Inventory> inventories = inventoryRepository.findByProductIdIn(List.of(productId));
+        BigDecimal resultPrice = null;
+
+        for (Inventory inventory : inventories) {
+            List<BigDecimal> activePrices = batchRepository.findByInventoryIdAndStatusOrderByExpiryDateAsc(inventory.getId(), BatchStatus.ACTIVE).stream()
                 .filter(batch -> batch.getQuantity() != null && batch.getQuantity() > 0)
                 .map(Batch::getSellingPrice)
-                .filter(price -> price != null)
-                .min(BigDecimal::compareTo)
-                .orElse(null);
+                .filter(Objects::nonNull)
+                .distinct()
+                .toList();
+
+            if (activePrices.size() > 1) {
+                org.slf4j.LoggerFactory.getLogger(InventoryServiceImpl.class).error("Price source lock violation: Multiple active prices detected for product {} in pharmacy {}: {}", productId, inventory.getPharmacyId(), activePrices);
+                throw new InventoryValidationException("Price mismatch detected for product " + productId + " at pharmacy " + inventory.getPharmacyId());
+            }
+
+            if (!activePrices.isEmpty()) {
+                BigDecimal pharmacyPrice = activePrices.get(0);
+                if (resultPrice == null || pharmacyPrice.compareTo(resultPrice) < 0) {
+                    resultPrice = pharmacyPrice;
+                }
+            }
+        }
+
+        return resultPrice;
     }
 
     @Override
-    public boolean reserveStock(UUID pharmacyId, UUID medicineId, Integer quantity) {
-        return reserveStock(pharmacyId, medicineId, quantity, null);
+    public boolean reserveStock(UUID pharmacyId, UUID productId, Integer quantity) {
+        return reserveStock(pharmacyId, productId, quantity, null);
     }
 
     @Override
-    public boolean reserveStock(UUID pharmacyId, UUID medicineId, Integer quantity, UUID referenceId) {
+    public boolean reserveStock(UUID pharmacyId, UUID productId, Integer quantity, UUID referenceId) {
         if (quantity == null || quantity <= 0) {
             return false;
         }
 
-        Inventory inventory = inventoryRepository.findWithLockByPharmacyIdAndMedicineId(pharmacyId, medicineId)
+        Inventory inventory = inventoryRepository.findWithLockByPharmacyIdAndProductId(pharmacyId, productId)
             .orElse(null);
 
         if (inventory == null) {
+            org.slf4j.LoggerFactory.getLogger(InventoryServiceImpl.class).warn("Stock failure: Product {} not found in pharmacy {}", productId, pharmacyId);
             return false;
         }
 
@@ -247,7 +278,7 @@ public class InventoryServiceImpl implements InventoryService {
             "PHARMACY",
             inventory.getPharmacyId(),
             Map.of(
-                "medicineId", medicineId.toString(),
+                "productId", productId.toString(),
                 "changes", Map.of("reservedQuantity", Map.of("old", oldReservedQuantity, "new", inventory.getReservedQuantity()))
             )
         );
@@ -255,12 +286,12 @@ public class InventoryServiceImpl implements InventoryService {
     }
 
     @Override
-    public boolean confirmStock(UUID pharmacyId, UUID medicineId, Integer quantity, UUID referenceId) {
+    public boolean confirmStock(UUID pharmacyId, UUID productId, Integer quantity, UUID referenceId) {
         if (quantity == null || quantity <= 0) {
             return false;
         }
 
-        Inventory inventory = inventoryRepository.findWithLockByPharmacyIdAndMedicineId(pharmacyId, medicineId)
+        Inventory inventory = inventoryRepository.findWithLockByPharmacyIdAndProductId(pharmacyId, productId)
             .orElse(null);
 
         if (inventory == null || inventory.getReservedQuantity() < quantity || inventory.getTotalQuantity() < quantity) {
@@ -303,7 +334,7 @@ public class InventoryServiceImpl implements InventoryService {
             "PHARMACY",
             inventory.getPharmacyId(),
             Map.of(
-                "medicineId", medicineId.toString(),
+                "productId", productId.toString(),
                 "changes", Map.of(
                     "reservedQuantity", Map.of("old", oldReservedQuantity, "new", inventory.getReservedQuantity()),
                     "totalQuantity", Map.of("old", oldTotalQuantity, "new", inventory.getTotalQuantity())
@@ -314,18 +345,18 @@ public class InventoryServiceImpl implements InventoryService {
     }
 
     @Override
-    public void releaseStock(UUID pharmacyId, UUID medicineId, Integer quantity) {
-        releaseStock(pharmacyId, medicineId, quantity, null);
+    public void releaseStock(UUID pharmacyId, UUID productId, Integer quantity) {
+        releaseStock(pharmacyId, productId, quantity, null);
     }
 
     @Override
-    public void releaseStock(UUID pharmacyId, UUID medicineId, Integer quantity, UUID referenceId) {
+    public void releaseStock(UUID pharmacyId, UUID productId, Integer quantity, UUID referenceId) {
         if (quantity == null || quantity <= 0) {
             return;
         }
 
-        Inventory inventory = inventoryRepository.findWithLockByPharmacyIdAndMedicineId(pharmacyId, medicineId)
-            .orElseThrow(() -> new InventoryNotFoundException(pharmacyId, medicineId));
+        Inventory inventory = inventoryRepository.findWithLockByPharmacyIdAndProductId(pharmacyId, productId)
+            .orElseThrow(() -> new InventoryNotFoundException(pharmacyId, productId));
 
         if (inventory.getReservedQuantity() < quantity) {
             throw new InventoryValidationException("Cannot release more than reserved quantity");
@@ -344,7 +375,7 @@ public class InventoryServiceImpl implements InventoryService {
             "PHARMACY",
             inventory.getPharmacyId(),
             Map.of(
-                "medicineId", medicineId.toString(),
+                "productId", productId.toString(),
                 "changes", Map.of("reservedQuantity", Map.of("old", oldReservedQuantity, "new", inventory.getReservedQuantity()))
             )
         );

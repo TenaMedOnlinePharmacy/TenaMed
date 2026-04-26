@@ -14,7 +14,7 @@ import com.TenaMed.inventory.repository.BatchRepository;
 import com.TenaMed.inventory.repository.InventoryRepository;
 import com.TenaMed.inventory.repository.StockMovementRepository;
 import com.TenaMed.inventory.service.impl.InventoryServiceImpl;
-import com.TenaMed.medicine.repository.MedicineRepository;
+import com.TenaMed.medicine.repository.ProductRepository;
 import com.TenaMed.pharmacy.repository.PharmacyRepository;
 import com.TenaMed.pharmacy.repository.UserPharmacyRepository;
 import org.junit.jupiter.api.Test;
@@ -59,7 +59,7 @@ class InventoryServiceImplTests {
     private DomainEventService domainEventService;
 
     @Mock
-    private MedicineRepository medicineRepository;
+    private ProductRepository productRepository;
 
     @Mock
     private PharmacyRepository pharmacyRepository;
@@ -73,14 +73,14 @@ class InventoryServiceImplTests {
     @Test
     void shouldRejectDuplicateInventory() {
         UUID pharmacyId = UUID.randomUUID();
-        UUID medicineId = UUID.randomUUID();
+        UUID productId = UUID.randomUUID();
 
         CreateInventoryRequest request = new CreateInventoryRequest();
         request.setPharmacyId(pharmacyId);
-        request.setMedicineId(medicineId);
+        request.setProductId(productId);
         request.setTotalQuantity(10);
 
-        when(inventoryRepository.findByPharmacyIdAndMedicineId(pharmacyId, medicineId))
+        when(inventoryRepository.findByPharmacyIdAndProductId(pharmacyId, productId))
             .thenReturn(Optional.of(new Inventory()));
 
         assertThrows(DuplicateInventoryException.class, () -> inventoryService.createInventory(request));
@@ -90,25 +90,25 @@ class InventoryServiceImplTests {
     void shouldAddBatchAndIncreaseInventoryTotal() {
         UUID actorUserId = UUID.randomUUID();
         UUID pharmacyId = UUID.randomUUID();
-        UUID medicineId = UUID.randomUUID();
-        String medicineName = "Aspirin";
+        UUID productId = UUID.randomUUID();
+        String brandName = "Aspirin Brand";
 
         com.TenaMed.pharmacy.entity.Pharmacy pharmacy = new com.TenaMed.pharmacy.entity.Pharmacy();
         pharmacy.setId(pharmacyId);
 
-        com.TenaMed.medicine.entity.Medicine medicine = new com.TenaMed.medicine.entity.Medicine();
-
-        medicine.setName(medicineName);
+        com.TenaMed.medicine.entity.Product product = new com.TenaMed.medicine.entity.Product();
+        product.setId(productId);
+        product.setBrandName(brandName);
 
         Inventory inventory = new Inventory();
         inventory.setId(UUID.randomUUID());
         inventory.setPharmacyId(pharmacyId);
-        inventory.setMedicineId(medicineId);
+        inventory.setProductId(productId);
         inventory.setTotalQuantity(5);
         inventory.setReservedQuantity(0);
 
         AddBatchRequest request = new AddBatchRequest();
-        request.setMedicineName(medicineName);
+        request.setProductId(productId);
         request.setQuantity(7);
 
         Batch batch = new Batch();
@@ -118,8 +118,8 @@ class InventoryServiceImplTests {
         batch.setStatus(BatchStatus.ACTIVE);
 
         when(pharmacyRepository.findByOwnerId(actorUserId)).thenReturn(Optional.of(pharmacy));
-        when(medicineRepository.findByNameIgnoreCase(medicineName)).thenReturn(Optional.of(medicine));
-        when(inventoryRepository.findByPharmacyIdAndMedicineId(pharmacyId, medicineId)).thenReturn(Optional.of(inventory));
+        when(productRepository.findById(productId)).thenReturn(Optional.of(product));
+        when(inventoryRepository.findByPharmacyIdAndProductId(pharmacyId, productId)).thenReturn(Optional.of(inventory));
         when(batchMapper.toEntity(request, inventory)).thenReturn(batch);
         when(batchRepository.save(batch)).thenReturn(batch);
 
@@ -136,7 +136,7 @@ class InventoryServiceImplTests {
         inventory.setTotalQuantity(3);
         inventory.setReservedQuantity(1);
 
-        when(inventoryRepository.findWithLockByPharmacyIdAndMedicineId(any(), any()))
+        when(inventoryRepository.findWithLockByPharmacyIdAndProductId(any(), any()))
             .thenReturn(Optional.of(inventory));
 
         boolean reserved = inventoryService.reserveStock(UUID.randomUUID(), UUID.randomUUID(), 5);
@@ -147,7 +147,7 @@ class InventoryServiceImplTests {
     @Test
     void shouldConfirmStockUsingFifoBatches() {
         UUID pharmacyId = UUID.randomUUID();
-        UUID medicineId = UUID.randomUUID();
+        UUID productId = UUID.randomUUID();
         UUID referenceId = UUID.randomUUID();
 
         Inventory inventory = new Inventory();
@@ -167,12 +167,12 @@ class InventoryServiceImplTests {
         second.setQuantity(4);
         second.setExpiryDate(LocalDate.now().plusDays(10));
 
-        when(inventoryRepository.findWithLockByPharmacyIdAndMedicineId(pharmacyId, medicineId))
+        when(inventoryRepository.findWithLockByPharmacyIdAndProductId(pharmacyId, productId))
             .thenReturn(Optional.of(inventory));
         when(batchRepository.findByInventoryIdAndStatusOrderByExpiryDateAsc(inventory.getId(), BatchStatus.ACTIVE))
             .thenReturn(List.of(first, second));
 
-        boolean confirmed = inventoryService.confirmStock(pharmacyId, medicineId, 5, referenceId);
+        boolean confirmed = inventoryService.confirmStock(pharmacyId, productId, 5, referenceId);
 
         assertTrue(confirmed);
         assertEquals(0, first.getQuantity());
@@ -190,7 +190,7 @@ class InventoryServiceImplTests {
         Inventory inventory = new Inventory();
         inventory.setReservedQuantity(1);
 
-        when(inventoryRepository.findWithLockByPharmacyIdAndMedicineId(any(), any()))
+        when(inventoryRepository.findWithLockByPharmacyIdAndProductId(any(), any()))
             .thenReturn(Optional.of(inventory));
 
         assertThrows(InventoryValidationException.class,

@@ -66,9 +66,9 @@ public class InventoryController {
 
     @GetMapping
     public ResponseEntity<?> getInventory(@RequestParam UUID pharmacyId,
-                                          @RequestParam UUID medicineId) {
+                                          @RequestParam UUID productId) {
         try {
-            return ResponseEntity.ok(inventoryService.getInventory(pharmacyId, medicineId));
+            return ResponseEntity.ok(inventoryService.getInventory(pharmacyId, productId));
         } catch (InventoryNotFoundException ex) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", ex.getMessage()));
         }
@@ -76,9 +76,9 @@ public class InventoryController {
 
     @GetMapping("/check")
     public ResponseEntity<Map<String, Boolean>> checkAvailability(@RequestParam UUID pharmacyId,
-                                                                   @RequestParam UUID medicineId,
+                                                                   @RequestParam UUID productId,
                                                                    @RequestParam Integer quantity) {
-        boolean available = inventoryService.checkAvailability(pharmacyId, medicineId, quantity);
+        boolean available = inventoryService.checkAvailability(pharmacyId, productId, quantity);
         return ResponseEntity.ok(Map.of("available", available));
     }
 
@@ -86,7 +86,7 @@ public class InventoryController {
     public ResponseEntity<Map<String, Boolean>> reserve(@Valid @RequestBody StockActionRequest request) {
         boolean reserved = inventoryService.reserveStock(
             request.getPharmacyId(),
-            request.getMedicineId(),
+            request.getProductId(),
             request.getQuantity(),
             request.getReferenceId()
         );
@@ -97,7 +97,7 @@ public class InventoryController {
     public ResponseEntity<Map<String, Boolean>> confirm(@Valid @RequestBody StockActionRequest request) {
         boolean confirmed = inventoryService.confirmStock(
             request.getPharmacyId(),
-            request.getMedicineId(),
+            request.getProductId(),
             request.getQuantity(),
             request.getReferenceId()
         );
@@ -109,7 +109,7 @@ public class InventoryController {
         try {
             inventoryService.releaseStock(
                 request.getPharmacyId(),
-                request.getMedicineId(),
+                request.getProductId(),
                 request.getQuantity(),
                 request.getReferenceId()
             );

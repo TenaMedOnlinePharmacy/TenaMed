@@ -35,4 +35,16 @@ public class PrescriptionInventoryController {
                 .body(Map.of("error", ex.getMessage()));
         }
     }
+
+    @GetMapping("/items/{prescriptionItemId}/product-options")
+    public ResponseEntity<?> getProductOptions(@PathVariable UUID prescriptionItemId) {
+        try {
+            List<com.TenaMed.pharmacy.dto.response.PrescriptionProductOptionDto> options =
+                prescriptionInventoryMatchService.getProductOptionsForPrescriptionItem(prescriptionItemId);
+            return ResponseEntity.ok(options);
+        } catch (PharmacyException ex) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(Map.of("error", ex.getMessage()));
+        }
+    }
 }

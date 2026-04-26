@@ -64,6 +64,7 @@ public class MedicineServiceImpl implements MedicineService {
     private final AllergenRepository allergenRepository;
     private final MedicineAllergenRepository medicineAllergenRepository;
     private final MedicineDopingRuleRepository medicineDopingRuleRepository;
+    private final com.TenaMed.medicine.repository.ProductRepository productRepository;
     private final InventoryRepository inventoryRepository;
     private final BatchRepository batchRepository;
     private final PharmacyRepository pharmacyRepository;
@@ -78,6 +79,7 @@ public class MedicineServiceImpl implements MedicineService {
                                AllergenRepository allergenRepository,
                                MedicineAllergenRepository medicineAllergenRepository,
                                MedicineDopingRuleRepository medicineDopingRuleRepository,
+                               com.TenaMed.medicine.repository.ProductRepository productRepository,
                                InventoryRepository inventoryRepository,
                                BatchRepository batchRepository,
                                PharmacyRepository pharmacyRepository,
@@ -91,6 +93,7 @@ public class MedicineServiceImpl implements MedicineService {
         this.allergenRepository = allergenRepository;
         this.medicineAllergenRepository = medicineAllergenRepository;
         this.medicineDopingRuleRepository = medicineDopingRuleRepository;
+        this.productRepository = productRepository;
         this.inventoryRepository = inventoryRepository;
         this.batchRepository = batchRepository;
         this.pharmacyRepository = pharmacyRepository;
@@ -163,7 +166,15 @@ public class MedicineServiceImpl implements MedicineService {
         Map<UUID, Medicine> medicineById = medicines.stream()
             .collect(Collectors.toMap(Medicine::getId, medicine -> medicine));
 
-        List<Inventory> inventories = inventoryRepository.findByMedicineIdIn(medicineById.keySet());
+        List<com.TenaMed.medicine.entity.Product> products = productRepository.findByMedicineIdIn(medicineById.keySet());
+        if (products.isEmpty()) {
+            return List.of();
+        }
+
+        Set<UUID> productIds = products.stream().map(com.TenaMed.medicine.entity.Product::getId).collect(Collectors.toSet());
+        Map<UUID, com.TenaMed.medicine.entity.Product> productById = products.stream().collect(Collectors.toMap(com.TenaMed.medicine.entity.Product::getId, p -> p));
+
+        List<Inventory> inventories = inventoryRepository.findByProductIdIn(productIds);
         if (inventories.isEmpty()) {
             return List.of();
         }
@@ -206,7 +217,7 @@ public class MedicineServiceImpl implements MedicineService {
             .collect(Collectors.toMap(Pharmacy::getId, pharmacy -> pharmacy));
 
         return inventories.stream()
-            .map(inventory -> toMedicinePharmacySearchResponse(inventory, medicineById, pharmacyById, minPriceByInventoryId))
+            .map(inventory -> toMedicinePharmacySearchResponse(inventory, productById, medicineById, pharmacyById, minPriceByInventoryId))
             .filter(Objects::nonNull)
             .sorted(Comparator
                 .comparing(MedicinePharmacySearchResponseDto::getMedicineName, String.CASE_INSENSITIVE_ORDER)
@@ -216,10 +227,13 @@ public class MedicineServiceImpl implements MedicineService {
     }
 
         private MedicinePharmacySearchResponseDto toMedicinePharmacySearchResponse(Inventory inventory,
+                                            Map<UUID, com.TenaMed.medicine.entity.Product> productById,
                                             Map<UUID, Medicine> medicineById,
                                             Map<UUID, Pharmacy> pharmacyById,
                                             Map<UUID, BigDecimal> minPriceByInventoryId) {
-        Medicine medicine = medicineById.get(inventory.getMedicineId());
+        com.TenaMed.medicine.entity.Product product = productById.get(inventory.getProductId());
+        if (product == null) return null;
+        Medicine medicine = medicineById.get(product.getMedicine().getId());
         Pharmacy pharmacy = pharmacyById.get(inventory.getPharmacyId());
         BigDecimal price = minPriceByInventoryId.get(inventory.getId());
 
@@ -228,6 +242,8 @@ public class MedicineServiceImpl implements MedicineService {
         }
 
         return MedicinePharmacySearchResponseDto.builder()
+            .productId(product.getId())
+            .brandName(product.getBrandName())
             .medicineName(medicine.getName())
             .prescriptionRequired(medicine.isRequiresPrescription())
             .pharmacyLegalName(resolvePharmacyLegalName(pharmacy))

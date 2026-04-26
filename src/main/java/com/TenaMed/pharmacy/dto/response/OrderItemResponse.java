@@ -12,7 +12,7 @@ public class OrderItemResponse {
 
     private UUID id;
     private UUID inventoryId;
-    private UUID medicineId;
+    private UUID productId;
     private Integer quantity;
     private BigDecimal unitPrice;
 }

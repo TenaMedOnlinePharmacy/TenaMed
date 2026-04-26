@@ -13,7 +13,9 @@ import java.util.UUID;
 @Entity
 @Table(
     name = "inventory",
-    uniqueConstraints = @UniqueConstraint(name = "uk_inventory_pharmacy_medicine", columnNames = {"pharmacy_id", "medicine_id"})
+    uniqueConstraints = {
+        @UniqueConstraint(name = "uk_inventory_pharmacy_product", columnNames = {"pharmacy_id", "product_id"})
+    }
 )
 @Getter
 @Setter
@@ -28,8 +30,8 @@ public class Inventory extends BaseEntity {
     @Column(name = "pharmacy_id", nullable = false)
     private UUID pharmacyId;
 
-    @Column(name = "medicine_id", nullable = false)
-    private UUID medicineId;
+    @Column(name = "product_id", nullable = false)
+    private UUID productId;
 
     @Column(name = "total_quantity", nullable = false)
     private Integer totalQuantity;

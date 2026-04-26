@@ -10,8 +10,8 @@ import java.util.UUID;
 @Data
 public class AddCartItemRequest {
 
-    @NotBlank
-    private String medicineName;
+    @NotNull
+    private UUID productId;
 
     @NotBlank
     private String pharmacyName;

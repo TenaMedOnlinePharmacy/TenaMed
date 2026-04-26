@@ -66,4 +66,26 @@ class PrescriptionInventoryControllerTests {
             .andExpect(status().isBadRequest())
             .andExpect(jsonPath("$.error").value("Prescription not found"));
     }
+
+    @Test
+    void shouldReturnProductOptions() throws Exception {
+        UUID prescriptionItemId = UUID.randomUUID();
+
+        when(prescriptionInventoryMatchService.getProductOptionsForPrescriptionItem(prescriptionItemId))
+            .thenReturn(List.of(com.TenaMed.pharmacy.dto.response.PrescriptionProductOptionDto.builder()
+                .productId(UUID.randomUUID())
+                .brandName("Aspirin Brand")
+                .price(new BigDecimal("50.00"))
+                .available(true)
+                .availableQuantity(10)
+                .pharmacyId(UUID.randomUUID())
+                .pharmacyName("Central Pharmacy")
+                .build()));
+
+        mockMvc.perform(get("/api/pharmacy/prescriptions/items/{prescriptionItemId}/product-options", prescriptionItemId))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$[0].brandName").value("Aspirin Brand"))
+            .andExpect(jsonPath("$[0].price").value(50.00))
+            .andExpect(jsonPath("$[0].available").value(true));
+    }
 }

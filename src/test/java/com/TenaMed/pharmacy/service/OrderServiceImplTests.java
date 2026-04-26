@@ -1,4 +1,8 @@
 package com.TenaMed.pharmacy.service;
+import com.TenaMed.events.DomainEventService;
+import com.TenaMed.pharmacy.repository.UserPharmacyRepository;
+import org.springframework.test.util.ReflectionTestUtils;
+import com.TenaMed.pharmacy.entity.UserPharmacy;
 
 import com.TenaMed.Normalization.entity.PrescriptionItem;
 import com.TenaMed.Normalization.repository.PrescriptionItemRepository;
@@ -12,6 +16,8 @@ import com.TenaMed.pharmacy.dto.response.OrderResponse;
 import com.TenaMed.pharmacy.entity.Order;
 import com.TenaMed.pharmacy.entity.OrderItem;
 import com.TenaMed.medicine.entity.Medicine;
+import com.TenaMed.medicine.entity.Product;
+import com.TenaMed.medicine.repository.ProductRepository;
 import com.TenaMed.pharmacy.entity.Pharmacy;
 import com.TenaMed.pharmacy.enums.OrderStatus;
 import com.TenaMed.pharmacy.enums.PaymentStatus;
@@ -67,13 +73,22 @@ class OrderServiceImplTests {
     private PrescriptionItemRepository prescriptionItemRepository;
 
     @Mock
+    private ProductRepository productRepository;
+
+    @Mock
+    private OrderMapper orderMapper;
+
+    @Mock
+    private DomainEventService domainEventService;
+
+    @Mock
+    private UserPharmacyRepository userPharmacyRepository;
+
+    @Mock
     private InventoryRepository inventoryRepository;
 
     @Mock
     private BatchRepository batchRepository;
-
-    @Mock
-    private OrderMapper orderMapper;
 
     @InjectMocks
     private OrderServiceImpl orderService;
@@ -82,8 +97,9 @@ class OrderServiceImplTests {
     void shouldCreateOrderOnHappyPath() {
         UUID pharmacyId = UUID.randomUUID();
         UUID customerId = UUID.randomUUID();
-        CreateOrderRequest request = buildCreateOrderRequest(pharmacyId);
-        UUID prescriptionItemId = request.getPrescriptionItemIds().getFirst();
+        UUID productId = UUID.randomUUID();
+        CreateOrderRequest request = buildCreateOrderRequest(pharmacyId, productId);
+        UUID prescriptionItemId = request.getItems().getFirst().getPrescriptionItemId();
         UUID medicineId = UUID.randomUUID();
         UUID inventoryId = UUID.randomUUID();
         BigDecimal sellingPrice = new BigDecimal("75.50");
@@ -92,8 +108,12 @@ class OrderServiceImplTests {
         pharmacy.setId(pharmacyId);
         pharmacy.setStatus(PharmacyStatus.VERIFIED);
 
-        Medicine medicine = mock(Medicine.class);
-        when(medicine.getId()).thenReturn(medicineId);
+        Medicine medicine = new Medicine();
+        ReflectionTestUtils.setField(medicine, "id", medicineId);
+
+        Product product = new Product();
+        product.setId(productId);
+        product.setMedicine(medicine);
 
         PrescriptionItem prescriptionItem = new PrescriptionItem();
         prescriptionItem.setId(prescriptionItemId);
@@ -116,11 +136,12 @@ class OrderServiceImplTests {
         OrderResponse response = OrderResponse.builder().id(mappedOrder.getId()).status(OrderStatus.PENDING).build();
 
         when(pharmacyRepository.findById(pharmacyId)).thenReturn(Optional.of(pharmacy));
-        when(prescriptionItemRepository.findAllById(request.getPrescriptionItemIds())).thenReturn(List.of(prescriptionItem));
-        when(inventoryRepository.findByPharmacyIdAndMedicineId(pharmacyId, medicineId)).thenReturn(Optional.of(inventory));
+        when(prescriptionItemRepository.findAllById(any())).thenReturn(List.of(prescriptionItem));
+        when(productRepository.findById(productId)).thenReturn(Optional.of(product));
+        when(inventoryRepository.findByPharmacyIdAndProductId(pharmacyId, productId)).thenReturn(Optional.of(inventory));
         when(batchRepository.findByInventoryIdAndStatusOrderByExpiryDateAsc(inventoryId, BatchStatus.ACTIVE))
             .thenReturn(List.of(batch));
-        when(inventoryService.checkAvailability(pharmacyId, medicineId, 2)).thenReturn(true);
+        when(inventoryService.checkAvailability(pharmacyId, productId, 2)).thenReturn(true);
         when(orderMapper.toEntity(request, pharmacy, customerId)).thenReturn(mappedOrder);
         when(orderRepository.save(mappedOrder)).thenReturn(mappedOrder);
         when(orderItemRepository.saveAll(any())).thenAnswer(invocation -> invocation.getArgument(0));
@@ -141,7 +162,7 @@ class OrderServiceImplTests {
     @Test
     void shouldFailCreateOrderWhenPharmacyNotVerified() {
         UUID pharmacyId = UUID.randomUUID();
-        CreateOrderRequest request = buildCreateOrderRequest(pharmacyId);
+        CreateOrderRequest request = buildCreateOrderRequest(pharmacyId, UUID.randomUUID());
 
         Pharmacy pharmacy = new Pharmacy();
         pharmacy.setId(pharmacyId);
@@ -166,8 +187,12 @@ class OrderServiceImplTests {
 
         OrderResponse response = OrderResponse.builder().status(OrderStatus.ACCEPTED).paymentStatus(PaymentStatus.PENDING_PAYMENT).acceptedBy(actorId).build();
 
+        UserPharmacy userPharmacy = new UserPharmacy();
+        userPharmacy.setUserId(actorId);
+        userPharmacy.setPharmacy(pharmacy);
+        userPharmacy.setStaffRole(StaffRole.PHARMACIST);
         when(orderRepository.findById(orderId)).thenReturn(Optional.of(order));
-        when(inventoryService.reserveStock(order.getPharmacy().getId(), itemMedicineId(order), 1)).thenReturn(true);
+        when(userPharmacyRepository.findByUserId(actorId)).thenReturn(List.of(userPharmacy));
         when(orderRepository.save(order)).thenReturn(order);
         when(orderMapper.toResponse(order)).thenReturn(response);
 
@@ -219,20 +244,23 @@ class OrderServiceImplTests {
         assertEquals(PaymentStatus.CONFIRMED, actual.getPaymentStatus());
     }
 
-    private CreateOrderRequest buildCreateOrderRequest(UUID pharmacyId) {
+    private CreateOrderRequest buildCreateOrderRequest(UUID pharmacyId, UUID productId) {
         CreateOrderRequest request = new CreateOrderRequest();
         request.setPharmacyId(pharmacyId);
-        request.setPrescriptionItemIds(List.of(UUID.randomUUID()));
+        CreateOrderRequest.Item item = new CreateOrderRequest.Item();
+        item.setPrescriptionItemId(UUID.randomUUID());
+        item.setProductId(productId);
+        request.setItems(List.of(item));
         return request;
     }
 
-    private UUID itemMedicineId(Order order) {
+    private UUID itemProductId(Order order) {
         if (order.getItems().isEmpty()) {
             OrderItem item = new OrderItem();
-            item.setMedicineId(UUID.randomUUID());
+            item.setProductId(UUID.randomUUID());
             item.setQuantity(1);
             order.setItems(Set.of(item));
         }
-        return order.getItems().iterator().next().getMedicineId();
+        return order.getItems().iterator().next().getProductId();
     }
 }

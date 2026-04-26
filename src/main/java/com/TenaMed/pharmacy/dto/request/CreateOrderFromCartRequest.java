@@ -24,7 +24,7 @@ public class CreateOrderFromCartRequest {
     @Setter
     public static class Item {
         @NotNull
-        private UUID medicineId;
+        private UUID productId;
 
         @NotNull
         @Min(1)

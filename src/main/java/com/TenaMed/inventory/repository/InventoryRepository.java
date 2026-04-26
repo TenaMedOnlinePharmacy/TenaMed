@@ -13,26 +13,26 @@ import java.util.UUID;
 
 public interface InventoryRepository extends JpaRepository<Inventory, UUID> {
 
-    List<Inventory> findByMedicineIdIn(Collection<UUID> medicineIds);
+    List<Inventory> findByProductIdIn(Collection<UUID> productIds);
 
-    Optional<Inventory> findByPharmacyIdAndMedicineId(UUID pharmacyId, UUID medicineId);
+    Optional<Inventory> findByPharmacyIdAndProductId(UUID pharmacyId, UUID productId);
 
         @Query("""
                      select case when count(i) > 0 then true else false end
                      from Inventory i
-                     where i.medicineId = :medicineId
+                     where i.productId = :productId
                          and (i.totalQuantity - i.reservedQuantity) >= :quantity
                      """)
-        boolean existsAvailableByMedicineId(UUID medicineId, Integer quantity);
+        boolean existsAvailableByProductId(UUID productId, Integer quantity);
 
         @Query("""
                      select i.pharmacyId
                      from Inventory i
-                     where i.medicineId = :medicineId
+                     where i.productId = :productId
                          and (i.totalQuantity - i.reservedQuantity) >= :quantity
                      """)
-        List<UUID> findPharmacyIdsWithAvailableMedicine(UUID medicineId, Integer quantity);
+        List<UUID> findPharmacyIdsWithAvailableProduct(UUID productId, Integer quantity);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
-    Optional<Inventory> findWithLockByPharmacyIdAndMedicineId(UUID pharmacyId, UUID medicineId);
+    Optional<Inventory> findWithLockByPharmacyIdAndProductId(UUID pharmacyId, UUID productId);
 }

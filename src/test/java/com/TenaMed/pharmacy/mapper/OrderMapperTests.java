@@ -28,7 +28,10 @@ class OrderMapperTests {
         CreateOrderRequest request = new CreateOrderRequest();
         UUID customerId = UUID.randomUUID();
         request.setPharmacyId(pharmacy.getId());
-        request.setPrescriptionItemIds(List.of(UUID.randomUUID()));
+        CreateOrderRequest.Item itemRequest = new CreateOrderRequest.Item();
+        itemRequest.setPrescriptionItemId(UUID.randomUUID());
+        itemRequest.setProductId(UUID.randomUUID());
+        request.setItems(List.of(itemRequest));
 
         Order order = orderMapper.toEntity(request, pharmacy, customerId);
 
@@ -55,7 +58,7 @@ class OrderMapperTests {
         item.setId(UUID.randomUUID());
         item.setOrder(order);
         item.setInventoryId(UUID.randomUUID());
-        item.setMedicineId(UUID.randomUUID());
+        item.setProductId(UUID.randomUUID());
         item.setQuantity(3);
         item.setUnitPrice(new BigDecimal("40.00"));
         order.setItems(Set.of(item));

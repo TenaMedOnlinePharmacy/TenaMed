@@ -14,7 +14,7 @@ public class InventoryMapper {
     public Inventory toEntity(CreateInventoryRequest request) {
         Inventory inventory = new Inventory();
         inventory.setPharmacyId(request.getPharmacyId());
-        inventory.setMedicineId(request.getMedicineId());
+        inventory.setProductId(request.getProductId());
         inventory.setTotalQuantity(request.getTotalQuantity());
         inventory.setReservedQuantity(request.getReservedQuantity() == null ? 0 : request.getReservedQuantity());
         inventory.setReorderLevel(request.getReorderLevel());
@@ -26,7 +26,7 @@ public class InventoryMapper {
         return InventoryResponse.builder()
             .id(inventory.getId())
             .pharmacyId(inventory.getPharmacyId())
-            .medicineId(inventory.getMedicineId())
+            .productId(inventory.getProductId())
             .totalQuantity(inventory.getTotalQuantity())
             .reservedQuantity(inventory.getReservedQuantity())
             .reorderLevel(inventory.getReorderLevel())

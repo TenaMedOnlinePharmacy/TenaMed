@@ -45,6 +45,7 @@ public class CartServiceImpl implements CartService {
     private final CartRepository cartRepository;
     private final CartItemRepository cartItemRepository;
     private final MedicineRepository medicineRepository;
+    private final com.TenaMed.medicine.repository.ProductRepository productRepository;
     private final PharmacyRepository pharmacyRepository;
     private final MedicineService medicineService;
     private final InventoryService inventoryService;
@@ -56,6 +57,7 @@ public class CartServiceImpl implements CartService {
     public CartServiceImpl(CartRepository cartRepository,
                            CartItemRepository cartItemRepository,
                            MedicineRepository medicineRepository,
+                           com.TenaMed.medicine.repository.ProductRepository productRepository,
                            PharmacyRepository pharmacyRepository,
                            MedicineService medicineService,
                            InventoryService inventoryService,
@@ -66,6 +68,7 @@ public class CartServiceImpl implements CartService {
         this.cartRepository = cartRepository;
         this.cartItemRepository = cartItemRepository;
         this.medicineRepository = medicineRepository;
+        this.productRepository = productRepository;
         this.pharmacyRepository = pharmacyRepository;
         this.medicineService = medicineService;
         this.inventoryService = inventoryService;
@@ -88,18 +91,24 @@ public class CartServiceImpl implements CartService {
         validateUserId(userId);
         validateQuantity(request.getQuantity());
 
-        UUID medicineId = resolveMedicineId(request.getMedicineName());
+        UUID productId = request.getProductId();
+        if (productId == null) {
+            throw new CartValidationException("productId must never be null in Cart operations");
+        }
         UUID pharmacyId = resolvePharmacyId(request.getPharmacyName());
 
         Cart cart = getOrCreateActiveCart(userId);
 
-        MedicineResponseDto medicine = medicineService.getMedicineById(medicineId);
-        BigDecimal unitPrice = inventoryService.resolveUnitPrice(medicineId);
+        com.TenaMed.medicine.entity.Product product = productRepository.findById(productId)
+                .orElseThrow(() -> new CartValidationException("Product not found"));
+        Medicine medicine = product.getMedicine();
+
+        BigDecimal unitPrice = inventoryService.resolveUnitPrice(productId);
         if (medicine == null || unitPrice == null) {
-            throw new CartValidationException("Medicine details not found");
+            throw new CartValidationException("Product details not found");
         }
 
-        ensureStockAvailable(pharmacyId, medicineId, request.getQuantity());
+        ensureStockAvailable(pharmacyId, productId, request.getQuantity());
 
         if (medicine.isRequiresPrescription()) {
             if (request.getPrescriptionId() == null) {
@@ -110,9 +119,11 @@ public class CartServiceImpl implements CartService {
             }
         }
 
-        Optional<CartItem> existingItem = cartItemRepository.findByCartIdAndMedicineIdAndPharmacyId(
+        // We assume CartItemRepository was updated to use findByCartIdAndProductIdAndPharmacyId
+        // But for now, we'll try to keep the compilation intact. Let's assume we can change the repository.
+        Optional<CartItem> existingItem = cartItemRepository.findByCartIdAndProductIdAndPharmacyId(
                 cart.getId(),
-            medicineId,
+            productId,
             pharmacyId
         );
 
@@ -122,14 +133,14 @@ public class CartServiceImpl implements CartService {
                 throw new CartValidationException("Cannot change prescription for an existing cart item");
             }
             int updatedQty = item.getQuantity() + request.getQuantity();
-            ensureStockAvailable(item.getPharmacyId(), item.getMedicineId(), updatedQty);
+            ensureStockAvailable(item.getPharmacyId(), item.getProductId(), updatedQty);
             item.setQuantity(updatedQty);
             item.setUnitPrice(unitPrice);
             item.calculateTotalPrice();
         } else {
             CartItem item = new CartItem();
             item.setCart(cart);
-            item.setMedicineId(medicineId);
+            item.setProductId(productId);
             item.setPharmacyId(pharmacyId);
             item.setQuantity(request.getQuantity());
             item.setUnitPrice(unitPrice);
@@ -165,7 +176,7 @@ public class CartServiceImpl implements CartService {
                 .findFirst()
                 .orElseThrow(() -> new CartItemNotFoundException(itemId));
 
-        ensureStockAvailable(item.getPharmacyId(), item.getMedicineId(), request.getQuantity());
+        ensureStockAvailable(item.getPharmacyId(), item.getProductId(), request.getQuantity());
         item.setQuantity(request.getQuantity());
         item.calculateTotalPrice();
 
@@ -268,7 +279,7 @@ public class CartServiceImpl implements CartService {
             List<CartItem> items = pharmacyGroup.getValue();
 
             for (CartItem item : items) {
-                ensureStockAvailable(pharmacyId, item.getMedicineId(), item.getQuantity());
+                ensureStockAvailable(pharmacyId, item.getProductId(), item.getQuantity());
                 if (Boolean.TRUE.equals(item.getRequiresPrescription())) {
                     if (item.getPrescriptionId() == null) {
                         throw new CartValidationException("Prescription is required for checkout");
@@ -399,12 +410,7 @@ public class CartServiceImpl implements CartService {
         }
     }
 
-    private UUID resolveMedicineId(String medicineName) {
-        Medicine medicine = medicineRepository
-                .findFirstByNameIgnoreCaseOrGenericNameIgnoreCase(medicineName, medicineName)
-                .orElseThrow(() -> new CartValidationException("Medicine not found: " + medicineName));
-        return medicine.getId();
-    }
+
 
     private UUID resolvePharmacyId(String pharmacyName) {
         Pharmacy pharmacy = pharmacyRepository
@@ -424,9 +430,13 @@ public class CartServiceImpl implements CartService {
         return existingPrescriptionId.equals(requestPrescriptionId);
     }
 
-    private void ensureStockAvailable(UUID pharmacyId, UUID medicineId, int quantity) {
-        if (!inventoryService.checkAvailability(pharmacyId, medicineId, quantity)) {
-            throw new CartValidationException("Insufficient stock for medicine: " + medicineId + " at pharmacy: " + pharmacyId);
+    private void ensureStockAvailable(UUID pharmacyId, UUID productId, int quantity) {
+        if (productId == null) {
+            throw new CartValidationException("productId must never be null in Cart operations");
+        }
+        if (!inventoryService.checkAvailability(pharmacyId, productId, quantity)) {
+            org.slf4j.LoggerFactory.getLogger(CartServiceImpl.class).warn("Cart rejection event: Insufficient stock for product {} at pharmacy {} for quantity {}", productId, pharmacyId, quantity);
+            throw new CartValidationException("Insufficient stock for product: " + productId + " at pharmacy: " + pharmacyId);
         }
     }
 }

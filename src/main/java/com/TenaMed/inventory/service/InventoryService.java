@@ -15,23 +15,23 @@ public interface InventoryService {
 
     BatchResponse addBatch(AddBatchRequest request, UUID actorUserId);
 
-    InventoryResponse getInventory(UUID pharmacyId, UUID medicineId);
+    InventoryResponse getInventory(UUID pharmacyId, UUID productId);
 
-    boolean checkAvailability(UUID pharmacyId, UUID medicineId, Integer quantity);
+    boolean checkAvailability(UUID pharmacyId, UUID productId, Integer quantity);
 
-    boolean checkAvailability(UUID medicineId, Integer quantity);
+    boolean checkAvailability(UUID productId, Integer quantity);
 
-    List<UUID> findPharmacyIdsWithAvailableMedicine(UUID medicineId, Integer quantity);
+    List<UUID> findPharmacyIdsWithAvailableProduct(UUID productId, Integer quantity);
 
-    BigDecimal resolveUnitPrice(UUID medicineId);
+    BigDecimal resolveUnitPrice(UUID productId);
 
-    boolean reserveStock(UUID pharmacyId, UUID medicineId, Integer quantity);
+    boolean reserveStock(UUID pharmacyId, UUID productId, Integer quantity);
 
-    boolean reserveStock(UUID pharmacyId, UUID medicineId, Integer quantity, UUID referenceId);
+    boolean reserveStock(UUID pharmacyId, UUID productId, Integer quantity, UUID referenceId);
 
-    boolean confirmStock(UUID pharmacyId, UUID medicineId, Integer quantity, UUID referenceId);
+    boolean confirmStock(UUID pharmacyId, UUID productId, Integer quantity, UUID referenceId);
 
-    void releaseStock(UUID pharmacyId, UUID medicineId, Integer quantity);
+    void releaseStock(UUID pharmacyId, UUID productId, Integer quantity);
 
-    void releaseStock(UUID pharmacyId, UUID medicineId, Integer quantity, UUID referenceId);
+    void releaseStock(UUID pharmacyId, UUID productId, Integer quantity, UUID referenceId);
 }

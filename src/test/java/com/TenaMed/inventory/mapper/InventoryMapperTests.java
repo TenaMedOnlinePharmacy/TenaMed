@@ -19,7 +19,7 @@ class InventoryMapperTests {
     void shouldMapCreateRequestToEntity() {
         CreateInventoryRequest request = new CreateInventoryRequest();
         request.setPharmacyId(UUID.randomUUID());
-        request.setMedicineId(UUID.randomUUID());
+        request.setProductId(UUID.randomUUID());
         request.setTotalQuantity(100);
         request.setReservedQuantity(10);
         request.setReorderLevel(20);
@@ -27,7 +27,7 @@ class InventoryMapperTests {
         Inventory inventory = mapper.toEntity(request);
 
         assertEquals(request.getPharmacyId(), inventory.getPharmacyId());
-        assertEquals(request.getMedicineId(), inventory.getMedicineId());
+        assertEquals(request.getProductId(), inventory.getProductId());
         assertEquals(100, inventory.getTotalQuantity());
         assertEquals(10, inventory.getReservedQuantity());
     }
@@ -37,7 +37,7 @@ class InventoryMapperTests {
         Inventory inventory = new Inventory();
         inventory.setId(UUID.randomUUID());
         inventory.setPharmacyId(UUID.randomUUID());
-        inventory.setMedicineId(UUID.randomUUID());
+        inventory.setProductId(UUID.randomUUID());
         inventory.setTotalQuantity(80);
         inventory.setReservedQuantity(5);
         inventory.setReorderLevel(10);

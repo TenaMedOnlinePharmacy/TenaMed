@@ -41,11 +41,11 @@ class InventoryReservationConcurrencyTests {
     @Test
     void shouldReserveOnlyAvailableQuantityUnderConcurrentRequests() throws ExecutionException, InterruptedException {
         UUID pharmacyId = UUID.randomUUID();
-        UUID medicineId = UUID.randomUUID();
+        UUID productId = UUID.randomUUID();
 
         CreateInventoryRequest request = new CreateInventoryRequest();
         request.setPharmacyId(pharmacyId);
-        request.setMedicineId(medicineId);
+        request.setProductId(productId);
         request.setTotalQuantity(10);
         request.setReservedQuantity(0);
         inventoryService.createInventory(request);
@@ -53,7 +53,7 @@ class InventoryReservationConcurrencyTests {
         ExecutorService executor = Executors.newFixedThreadPool(8);
         List<Callable<Boolean>> tasks = new ArrayList<>();
         for (int i = 0; i < 20; i++) {
-            tasks.add(() -> inventoryService.reserveStock(pharmacyId, medicineId, 1, UUID.randomUUID()));
+            tasks.add(() -> inventoryService.reserveStock(pharmacyId, productId, 1, UUID.randomUUID()));
         }
 
         List<Future<Boolean>> futures = executor.invokeAll(tasks);
@@ -66,7 +66,7 @@ class InventoryReservationConcurrencyTests {
             }
         }
 
-        Inventory persisted = inventoryRepository.findByPharmacyIdAndMedicineId(pharmacyId, medicineId).orElseThrow();
+        Inventory persisted = inventoryRepository.findByPharmacyIdAndProductId(pharmacyId, productId).orElseThrow();
         assertEquals(10, successCount);
         assertEquals(10, persisted.getReservedQuantity());
         assertEquals(10, stockMovementRepository.findByInventoryId(persisted.getId()).size());

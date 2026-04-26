@@ -15,7 +15,7 @@ public class CreateInventoryRequest {
     private UUID pharmacyId;
 
     @NotNull
-    private UUID medicineId;
+    private UUID productId;
 
     @NotNull
     @Min(0)

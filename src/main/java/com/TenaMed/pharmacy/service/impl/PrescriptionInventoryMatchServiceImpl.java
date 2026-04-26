@@ -35,6 +35,7 @@ public class PrescriptionInventoryMatchServiceImpl implements PrescriptionInvent
     private final PrescriptionItemRepository prescriptionItemRepository;
     private final InventoryRepository inventoryRepository;
     private final MedicineRepository medicineRepository;
+    private final com.TenaMed.medicine.repository.ProductRepository productRepository;
     private final PharmacyRepository pharmacyRepository;
     private final BatchRepository batchRepository;
 
@@ -42,12 +43,14 @@ public class PrescriptionInventoryMatchServiceImpl implements PrescriptionInvent
                                                  PrescriptionItemRepository prescriptionItemRepository,
                                                  InventoryRepository inventoryRepository,
                                                  MedicineRepository medicineRepository,
+                                                 com.TenaMed.medicine.repository.ProductRepository productRepository,
                                                  PharmacyRepository pharmacyRepository,
                                                  BatchRepository batchRepository) {
         this.prescriptionRepository = prescriptionRepository;
         this.prescriptionItemRepository = prescriptionItemRepository;
         this.inventoryRepository = inventoryRepository;
         this.medicineRepository = medicineRepository;
+        this.productRepository = productRepository;
         this.pharmacyRepository = pharmacyRepository;
         this.batchRepository = batchRepository;
     }
@@ -68,7 +71,15 @@ public class PrescriptionInventoryMatchServiceImpl implements PrescriptionInvent
             .map(item -> item.getMedicine().getId())
             .collect(Collectors.toSet());
 
-        List<Inventory> inventories = inventoryRepository.findByMedicineIdIn(medicineIds);
+        List<com.TenaMed.medicine.entity.Product> products = productRepository.findByMedicineIdIn(medicineIds);
+        if (products.isEmpty()) {
+            return List.of();
+        }
+
+        Set<UUID> productIds = products.stream().map(com.TenaMed.medicine.entity.Product::getId).collect(Collectors.toSet());
+        Map<UUID, com.TenaMed.medicine.entity.Product> productById = products.stream().collect(Collectors.toMap(com.TenaMed.medicine.entity.Product::getId, p -> p));
+
+        List<Inventory> inventories = inventoryRepository.findByProductIdIn(productIds);
         if (inventories.isEmpty()) {
             return List.of();
         }
@@ -115,16 +126,19 @@ public class PrescriptionInventoryMatchServiceImpl implements PrescriptionInvent
             .collect(Collectors.toMap(Pharmacy::getId, pharmacy -> pharmacy));
 
         return inventories.stream()
-            .map(inventory -> toMedicinePharmacySearchResponse(inventory, medicineById, pharmacyById, minPriceByInventoryId))
+            .map(inventory -> toMedicinePharmacySearchResponse(inventory, productById, medicineById, pharmacyById, minPriceByInventoryId))
             .filter(Objects::nonNull)
             .toList();
     }
 
     private MedicinePharmacySearchResponseDto toMedicinePharmacySearchResponse(Inventory inventory,
+                                                                                Map<UUID, com.TenaMed.medicine.entity.Product> productById,
                                                                                 Map<UUID, Medicine> medicineById,
                                                                                 Map<UUID, Pharmacy> pharmacyById,
                                                                                 Map<UUID, BigDecimal> minPriceByInventoryId) {
-        Medicine medicine = medicineById.get(inventory.getMedicineId());
+        com.TenaMed.medicine.entity.Product product = productById.get(inventory.getProductId());
+        if (product == null) return null;
+        Medicine medicine = medicineById.get(product.getMedicine().getId());
         Pharmacy pharmacy = pharmacyById.get(inventory.getPharmacyId());
         BigDecimal price = minPriceByInventoryId.get(inventory.getId());
 
@@ -133,6 +147,8 @@ public class PrescriptionInventoryMatchServiceImpl implements PrescriptionInvent
         }
 
         return MedicinePharmacySearchResponseDto.builder()
+            .productId(product.getId())
+            .brandName(product.getBrandName())
             .medicineName(medicine.getName())
             .prescriptionRequired(medicine.isRequiresPrescription())
             .pharmacyLegalName(resolvePharmacyLegalName(pharmacy))
@@ -163,5 +179,85 @@ public class PrescriptionInventoryMatchServiceImpl implements PrescriptionInvent
     }
 
     private record PriceCandidate(BigDecimal price, boolean isActive) {
+    }
+
+    @Override
+    public List<com.TenaMed.pharmacy.dto.response.PrescriptionProductOptionDto> getProductOptionsForPrescriptionItem(UUID prescriptionItemId) {
+        PrescriptionItem item = prescriptionItemRepository.findById(prescriptionItemId)
+            .orElseThrow(() -> new PharmacyValidationException("Prescription item not found: " + prescriptionItemId));
+
+        UUID medicineId = item.getMedicine().getId();
+        List<com.TenaMed.medicine.entity.Product> products = productRepository.findByMedicineIdIn(Set.of(medicineId));
+        if (products.isEmpty()) {
+            return List.of();
+        }
+
+        Set<UUID> productIds = products.stream().map(com.TenaMed.medicine.entity.Product::getId).collect(Collectors.toSet());
+        Map<UUID, com.TenaMed.medicine.entity.Product> productById = products.stream().collect(Collectors.toMap(com.TenaMed.medicine.entity.Product::getId, p -> p));
+
+        List<Inventory> inventories = inventoryRepository.findByProductIdIn(productIds);
+        if (inventories.isEmpty()) {
+            return List.of();
+        }
+
+        Set<UUID> inventoryIds = inventories.stream()
+            .map(Inventory::getId)
+            .collect(Collectors.toSet());
+
+        // Get total available quantity and best price per inventory
+        Map<UUID, Integer> availableQuantityByInventoryId = new HashMap<>();
+        Map<UUID, PriceCandidate> bestPriceCandidateByInventoryId = new HashMap<>();
+
+        batchRepository.findByInventoryIdIn(inventoryIds).stream()
+            .filter(batch -> batch.getQuantity() != null && batch.getQuantity() > 0)
+            .forEach(batch -> {
+                UUID inventoryId = batch.getInventory().getId();
+                if (batch.getStatus() == BatchStatus.ACTIVE) {
+                    availableQuantityByInventoryId.merge(inventoryId, batch.getQuantity(), Integer::sum);
+                }
+
+                if (batch.getSellingPrice() != null) {
+                    PriceCandidate candidate = new PriceCandidate(
+                        batch.getSellingPrice(),
+                        batch.getStatus() == BatchStatus.ACTIVE
+                    );
+                    bestPriceCandidateByInventoryId.merge(
+                        inventoryId,
+                        candidate,
+                        this::chooseBetterPriceCandidate
+                    );
+                }
+            });
+
+        Set<UUID> pharmacyIds = inventories.stream()
+            .map(Inventory::getPharmacyId)
+            .collect(Collectors.toSet());
+
+        Map<UUID, Pharmacy> pharmacyById = pharmacyRepository.findAllById(pharmacyIds)
+            .stream()
+            .collect(Collectors.toMap(Pharmacy::getId, pharmacy -> pharmacy));
+
+        return inventories.stream()
+            .map(inventory -> {
+                com.TenaMed.medicine.entity.Product product = productById.get(inventory.getProductId());
+                Pharmacy pharmacy = pharmacyById.get(inventory.getPharmacyId());
+                if (product == null || pharmacy == null) return null;
+
+                PriceCandidate priceCandidate = bestPriceCandidateByInventoryId.get(inventory.getId());
+                BigDecimal price = priceCandidate != null ? priceCandidate.price() : BigDecimal.ZERO;
+                int availableQty = availableQuantityByInventoryId.getOrDefault(inventory.getId(), 0);
+
+                return com.TenaMed.pharmacy.dto.response.PrescriptionProductOptionDto.builder()
+                    .productId(product.getId())
+                    .brandName(product.getBrandName())
+                    .price(price)
+                    .available(availableQty > 0)
+                    .availableQuantity(availableQty)
+                    .pharmacyId(pharmacy.getId())
+                    .pharmacyName(resolvePharmacyLegalName(pharmacy))
+                    .build();
+            })
+            .filter(Objects::nonNull)
+            .toList();
     }
 }

@@ -63,7 +63,7 @@ public class OrderServiceImpl implements OrderService {
     private final BatchRepository batchRepository;
     private final DomainEventService domainEventService;
     private final UserPharmacyRepository userPharmacyRepository;
-    private final MedicineRepository medicineRepository;
+    private final com.TenaMed.medicine.repository.ProductRepository productRepository;
 
     public OrderServiceImpl(OrderRepository orderRepository,
                             OrderItemRepository orderItemRepository,
@@ -76,7 +76,7 @@ public class OrderServiceImpl implements OrderService {
                             BatchRepository batchRepository,
                             DomainEventService domainEventService,
                             UserPharmacyRepository userPharmacyRepository,
-                            MedicineRepository medicineRepository) {
+                            com.TenaMed.medicine.repository.ProductRepository productRepository) {
         this.orderRepository = orderRepository;
         this.orderItemRepository = orderItemRepository;
         this.pharmacyRepository = pharmacyRepository;
@@ -88,7 +88,7 @@ public class OrderServiceImpl implements OrderService {
         this.batchRepository = batchRepository;
         this.domainEventService = domainEventService;
         this.userPharmacyRepository = userPharmacyRepository;
-        this.medicineRepository = medicineRepository;
+        this.productRepository = productRepository;
     }
 
     @Override
@@ -184,11 +184,10 @@ public class OrderServiceImpl implements OrderService {
             throw new OrderAuthorizationException("You are not authorized to reject orders for this pharmacy");
         }
 
-        // Release reserved stock when order is rejected
         for (OrderItem item : order.getItems()) {
             inventoryService.releaseStock(
                 order.getPharmacy().getId(),
-                item.getMedicineId(),
+                item.getProductId(),
                 item.getQuantity(),
                 order.getId()
             );
@@ -268,21 +267,21 @@ public class OrderServiceImpl implements OrderService {
         Set<OrderItem> orderItems = new LinkedHashSet<>();
 
         for (CreateOrderFromCartRequest.Item itemRequest : request.getItems()) {
-            UUID medicineId = itemRequest.getMedicineId();
+            UUID productId = itemRequest.getProductId();
             Integer quantity = itemRequest.getQuantity();
 
-            if (!inventoryService.checkAvailability(selectedPharmacyId, medicineId, quantity)) {
-                throw new PharmacyValidationException("Insufficient stock for medicine " + medicineId);
+            if (!inventoryService.checkAvailability(selectedPharmacyId, productId, quantity)) {
+                throw new PharmacyValidationException("Insufficient stock for product " + productId);
             }
 
-            UUID inventoryId = inventoryRepository.findByPharmacyIdAndMedicineId(selectedPharmacyId, medicineId)
+            UUID inventoryId = inventoryRepository.findByPharmacyIdAndProductId(selectedPharmacyId, productId)
                     .map(inv -> inv.getId())
-                    .orElseThrow(() -> new PharmacyValidationException("Inventory not found for medicine " + medicineId));
+                    .orElseThrow(() -> new PharmacyValidationException("Inventory not found for product " + productId));
 
             OrderItem orderItem = new OrderItem();
             orderItem.setOrder(order);
             orderItem.setInventoryId(inventoryId);
-            orderItem.setMedicineId(medicineId);
+            orderItem.setProductId(productId);
             orderItem.setQuantity(quantity);
             orderItem.setUnitPrice(itemRequest.getUnitPrice());
             orderItems.add(orderItem);
@@ -298,9 +297,9 @@ public class OrderServiceImpl implements OrderService {
         savedOrder.getItems().addAll(savedItems);
 
         for (OrderItem orderItem : savedItems) {
-            boolean reserved = inventoryService.reserveStock(selectedPharmacyId, orderItem.getMedicineId(), orderItem.getQuantity(), savedOrder.getId());
+            boolean reserved = inventoryService.reserveStock(selectedPharmacyId, orderItem.getProductId(), orderItem.getQuantity(), savedOrder.getId());
             if (!reserved) {
-                throw new PharmacyValidationException("Unable to reserve stock for medicine " + orderItem.getMedicineId());
+                throw new PharmacyValidationException("Unable to reserve stock for product " + orderItem.getProductId());
             }
         }
 
@@ -325,9 +324,13 @@ public class OrderServiceImpl implements OrderService {
 
     private void validateItemAvailability(UUID pharmacyId, List<OrderItem> items) {
         for (OrderItem item : items) {
-            boolean available = inventoryService.checkAvailability(pharmacyId, item.getMedicineId(), item.getQuantity());
+            if (item.getProductId() == null) {
+                throw new PharmacyValidationException("productId must never be null in Order operations");
+            }
+            boolean available = inventoryService.checkAvailability(pharmacyId, item.getProductId(), item.getQuantity());
             if (!available) {
-                throw new PharmacyValidationException("Insufficient stock for medicine " + item.getMedicineId());
+                org.slf4j.LoggerFactory.getLogger(OrderServiceImpl.class).error("Stock failure: Product {} unavailable in pharmacy {} for quantity {}", item.getProductId(), pharmacyId, item.getQuantity());
+                throw new PharmacyValidationException("Insufficient stock for product " + item.getProductId());
             }
         }
     }
@@ -358,9 +361,9 @@ public class OrderServiceImpl implements OrderService {
 
         java.util.List<PharmacyOrderResponse.PharmacyOrderItemResponse> itemResponses = order.getItems().stream()
                 .map(item -> {
-                    Medicine medicine = medicineRepository.findById(item.getMedicineId()).orElse(null);
+                    com.TenaMed.medicine.entity.Product product = productRepository.findById(item.getProductId()).orElse(null);
                     return PharmacyOrderResponse.PharmacyOrderItemResponse.builder()
-                            .medicineName(medicine != null ? medicine.getName() : "Unknown Medicine")
+                            .medicineName(product != null ? product.getBrandName() : "Unknown Product")
                             .quantity(item.getQuantity())
                             .unitPrice(item.getUnitPrice())
                             .build();
@@ -381,7 +384,8 @@ public class OrderServiceImpl implements OrderService {
     }
 
     private List<OrderItem> buildOrderItems(CreateOrderRequest request) {
-        List<UUID> prescriptionItemIds = request.getPrescriptionItemIds();
+        List<CreateOrderRequest.Item> items = request.getItems();
+        List<UUID> prescriptionItemIds = items.stream().map(CreateOrderRequest.Item::getPrescriptionItemId).toList();
         List<PrescriptionItem> prescriptionItems = prescriptionItemRepository.findAllById(prescriptionItemIds);
 
         if (prescriptionItems.size() != prescriptionItemIds.size()) {
@@ -391,14 +395,17 @@ public class OrderServiceImpl implements OrderService {
         Map<UUID, PrescriptionItem> byId = prescriptionItems.stream()
             .collect(Collectors.toMap(PrescriptionItem::getId, Function.identity()));
 
-        return prescriptionItemIds.stream()
-            .map(id -> toOrderItem(byId.get(id), request))
+        return items.stream()
+            .map(item -> toOrderItem(byId.get(item.getPrescriptionItemId()), item, request))
             .toList();
     }
 
-    private OrderItem toOrderItem(PrescriptionItem prescriptionItem, CreateOrderRequest request) {
-        if (prescriptionItem == null || prescriptionItem.getMedicine() == null || prescriptionItem.getMedicine().getId() == null) {
+    private OrderItem toOrderItem(PrescriptionItem prescriptionItem, CreateOrderRequest.Item itemRequest, CreateOrderRequest request) {
+        if (prescriptionItem == null) {
             throw new PharmacyValidationException("Invalid prescription item reference");
+        }
+        if (itemRequest.getProductId() == null) {
+            throw new PharmacyValidationException("productId must never be null in Order operations");
         }
         if (prescriptionItem.getQuantity() == null || prescriptionItem.getQuantity() <= 0) {
             throw new PharmacyValidationException("Prescription item quantity must be greater than zero");
@@ -408,10 +415,19 @@ public class OrderServiceImpl implements OrderService {
             throw new PharmacyValidationException("Prescription item does not belong to the provided prescriptionId");
         }
 
-        UUID medicineId = prescriptionItem.getMedicine().getId();
-        UUID inventoryId = inventoryRepository.findByPharmacyIdAndMedicineId(request.getPharmacyId(), medicineId)
+        UUID productId = itemRequest.getProductId();
+        com.TenaMed.medicine.entity.Product product = productRepository.findById(productId)
+            .orElseThrow(() -> new PharmacyValidationException("Product not found: " + productId));
+
+        // CRITICAL: Prescription Safety Validation
+        if (!product.getMedicine().getId().equals(prescriptionItem.getMedicine().getId())) {
+            org.slf4j.LoggerFactory.getLogger(OrderServiceImpl.class).warn("Prescription mismatch rejection: Product {} (medicine {}) does not match prescribed medicine {}", productId, product.getMedicine().getId(), prescriptionItem.getMedicine().getId());
+            throw new PharmacyValidationException("Selected product does not match the prescribed medicine");
+        }
+
+        UUID inventoryId = inventoryRepository.findByPharmacyIdAndProductId(request.getPharmacyId(), productId)
             .map(inv -> inv.getId())
-            .orElseThrow(() -> new PharmacyValidationException("Inventory not found for medicine " + medicineId));
+            .orElseThrow(() -> new PharmacyValidationException("Inventory not found for product " + productId));
 
         Batch activeBatch = batchRepository
             .findByInventoryIdAndStatusOrderByExpiryDateAsc(inventoryId, BatchStatus.ACTIVE)
@@ -425,7 +441,7 @@ public class OrderServiceImpl implements OrderService {
 
         OrderItem orderItem = new OrderItem();
         orderItem.setInventoryId(inventoryId);
-        orderItem.setMedicineId(medicineId);
+        orderItem.setProductId(productId);
         orderItem.setQuantity(prescriptionItem.getQuantity());
         orderItem.setUnitPrice(activeBatch.getSellingPrice());
         return orderItem;
@@ -441,11 +457,12 @@ public class OrderServiceImpl implements OrderService {
         for (OrderItem item : order.getItems()) {
             boolean reserved = inventoryService.reserveStock(
                 order.getPharmacy().getId(),
-                item.getMedicineId(),
-                item.getQuantity()
+                item.getProductId(),
+                item.getQuantity(),
+                order.getId()
             );
             if (!reserved) {
-                throw new PharmacyValidationException("Unable to reserve stock for medicine " + item.getMedicineId());
+                throw new PharmacyValidationException("Unable to reserve stock for product " + item.getProductId());
             }
         }
     }

@@ -42,9 +42,9 @@ class InventoryControllerTests {
     void shouldCreateInventory() throws Exception {
         CreateInventoryRequest request = new CreateInventoryRequest();
         UUID pharmacyId = UUID.randomUUID();
-        UUID medicineId = UUID.randomUUID();
+        UUID productId = UUID.randomUUID();
         request.setPharmacyId(pharmacyId);
-        request.setMedicineId(medicineId);
+        request.setProductId(productId);
         request.setTotalQuantity(10);
         request.setReservedQuantity(0);
 
@@ -67,12 +67,12 @@ class InventoryControllerTests {
     @Test
     void shouldCheckAvailability() throws Exception {
         UUID pharmacyId = UUID.randomUUID();
-        UUID medicineId = UUID.randomUUID();
-        when(inventoryService.checkAvailability(pharmacyId, medicineId, 2)).thenReturn(true);
+        UUID productId = UUID.randomUUID();
+        when(inventoryService.checkAvailability(pharmacyId, productId, 2)).thenReturn(true);
 
         mockMvc.perform(get("/api/inventory/check")
                 .param("pharmacyId", pharmacyId.toString())
-                .param("medicineId", medicineId.toString())
+                .param("productId", productId.toString())
                 .param("quantity", "2"))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.available").value(true));
@@ -82,13 +82,13 @@ class InventoryControllerTests {
     void shouldReserveStock() throws Exception {
         StockActionRequest request = new StockActionRequest();
         request.setPharmacyId(UUID.randomUUID());
-        request.setMedicineId(UUID.randomUUID());
+        request.setProductId(UUID.randomUUID());
         request.setQuantity(3);
         request.setReferenceId(UUID.randomUUID());
 
         when(inventoryService.reserveStock(
             eq(request.getPharmacyId()),
-            eq(request.getMedicineId()),
+            eq(request.getProductId()),
             eq(3),
             eq(request.getReferenceId())
         )).thenReturn(true);
@@ -104,7 +104,7 @@ class InventoryControllerTests {
     void shouldReturnBadRequestOnReleaseValidationFailure() throws Exception {
         StockActionRequest request = new StockActionRequest();
         request.setPharmacyId(UUID.randomUUID());
-        request.setMedicineId(UUID.randomUUID());
+        request.setProductId(UUID.randomUUID());
         request.setQuantity(3);
 
         doThrow(new InventoryValidationException("Cannot release more than reserved quantity"))

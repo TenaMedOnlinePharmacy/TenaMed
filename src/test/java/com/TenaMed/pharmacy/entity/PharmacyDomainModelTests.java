@@ -41,7 +41,7 @@ class PharmacyDomainModelTests {
         OrderItem item = new OrderItem();
         item.setOrder(order);
         item.setInventoryId(UUID.randomUUID());
-        item.setMedicineId(UUID.randomUUID());
+        item.setProductId(UUID.randomUUID());
         item.setQuantity(2);
         item.setUnitPrice(new BigDecimal("25.00"));
 

@@ -4,7 +4,7 @@ import com.TenaMed.cart.dto.response.CartItemResponse;
 import com.TenaMed.cart.dto.response.CartResponse;
 import com.TenaMed.cart.entity.Cart;
 import com.TenaMed.cart.entity.CartItem;
-import com.TenaMed.medicine.repository.MedicineRepository;
+import com.TenaMed.medicine.repository.ProductRepository;
 import com.TenaMed.pharmacy.dto.request.CreateOrderFromCartRequest;
 import com.TenaMed.pharmacy.entity.Pharmacy;
 import com.TenaMed.pharmacy.repository.PharmacyRepository;
@@ -17,11 +17,11 @@ import java.util.UUID;
 @Component
 public class CartMapper {
 
-        private final MedicineRepository medicineRepository;
+        private final ProductRepository productRepository;
         private final PharmacyRepository pharmacyRepository;
 
-        public CartMapper(MedicineRepository medicineRepository, PharmacyRepository pharmacyRepository) {
-                this.medicineRepository = medicineRepository;
+        public CartMapper(ProductRepository productRepository, PharmacyRepository pharmacyRepository) {
+                this.productRepository = productRepository;
                 this.pharmacyRepository = pharmacyRepository;
         }
 
@@ -49,7 +49,7 @@ public class CartMapper {
     public CartItemResponse toItemResponse(CartItem item) {
         return CartItemResponse.builder()
                 .id(item.getId())
-                                .medicineName(resolveMedicineName(item.getMedicineId()))
+                                .brandName(resolveProductName(item.getProductId()))
                                 .pharmacyName(resolvePharmacyName(item.getPharmacyId()))
                 .quantity(item.getQuantity())
                 .unitPrice(item.getUnitPrice())
@@ -61,10 +61,10 @@ public class CartMapper {
                 .build();
     }
 
-        private String resolveMedicineName(UUID medicineId) {
-                return medicineRepository.findById(medicineId)
-                                .map(medicine -> medicine.getName())
-                                .orElse(medicineId.toString());
+        private String resolveProductName(UUID productId) {
+                return productRepository.findById(productId)
+                                .map(product -> product.getBrandName())
+                                .orElse(productId.toString());
         }
 
         private String resolvePharmacyName(UUID pharmacyId) {
@@ -84,7 +84,7 @@ public class CartMapper {
                 List<CreateOrderFromCartRequest.Item> items = cartItems.stream()
                                 .map(item -> {
                                         CreateOrderFromCartRequest.Item orderItem = new CreateOrderFromCartRequest.Item();
-                                        orderItem.setMedicineId(item.getMedicineId());
+                                        orderItem.setProductId(item.getProductId());
                                         orderItem.setQuantity(item.getQuantity());
                                         orderItem.setUnitPrice(item.getUnitPrice());
                                         orderItem.setPrescriptionId(item.getPrescriptionId());

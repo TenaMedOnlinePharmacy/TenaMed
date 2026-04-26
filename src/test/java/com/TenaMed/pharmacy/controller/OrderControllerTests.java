@@ -1,5 +1,6 @@
 package com.TenaMed.pharmacy.controller;
 
+import com.TenaMed.pharmacy.dto.request.AcceptOrderRequest;
 import com.TenaMed.pharmacy.dto.request.CreateOrderRequest;
 import com.TenaMed.pharmacy.dto.request.RejectOrderRequest;
 import com.TenaMed.pharmacy.dto.request.UpdatePaymentStatusRequest;
@@ -47,7 +48,10 @@ class OrderControllerTests {
     void shouldCreateOrder() throws Exception {
         CreateOrderRequest request = new CreateOrderRequest();
         request.setPharmacyId(UUID.randomUUID());
-        request.setPrescriptionItemIds(List.of(UUID.randomUUID()));
+        CreateOrderRequest.Item item = new CreateOrderRequest.Item();
+        item.setPrescriptionItemId(UUID.randomUUID());
+        item.setProductId(UUID.randomUUID());
+        request.setItems(List.of(item));
 
         AuthenticatedUserPrincipal principal = new AuthenticatedUserPrincipal(
             UUID.randomUUID(),
@@ -73,7 +77,10 @@ class OrderControllerTests {
     void shouldRejectCreateOrderWhenUnauthenticated() throws Exception {
         CreateOrderRequest request = new CreateOrderRequest();
         request.setPharmacyId(UUID.randomUUID());
-        request.setPrescriptionItemIds(List.of(UUID.randomUUID()));
+        CreateOrderRequest.Item item = new CreateOrderRequest.Item();
+        item.setPrescriptionItemId(UUID.randomUUID());
+        item.setProductId(UUID.randomUUID());
+        request.setItems(List.of(item));
 
         mockMvc.perform(post("/api/orders")
                 .contentType(MediaType.APPLICATION_JSON)
@@ -94,11 +101,13 @@ class OrderControllerTests {
             List.of(new SimpleGrantedAuthority("ROLE_OWNER")),
             true
         );
-        OrderResponse response = OrderResponse.builder().status(OrderStatus.ACCEPTED).paymentStatus(PaymentStatus.PENDING_PAYMENT).build();
-        when(orderService.acceptOrder(eq(id), eq(actorUserId), eq(StaffRole.OWNER))).thenReturn(response);
+        AcceptOrderRequest acceptRequest = new AcceptOrderRequest();
+        acceptRequest.setOrderId(id);
 
-        mockMvc.perform(post("/api/orders/{id}/accept", id)
-                .principal(new UsernamePasswordAuthenticationToken(principal, null, principal.getAuthorities())))
+        mockMvc.perform(post("/api/orders/accept")
+                .principal(new UsernamePasswordAuthenticationToken(principal, null, principal.getAuthorities()))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(acceptRequest)))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.status").value("ACCEPTED"));
     }
@@ -116,8 +125,13 @@ class OrderControllerTests {
             true
         );
 
-        mockMvc.perform(post("/api/orders/{id}/accept", id)
-                .principal(new UsernamePasswordAuthenticationToken(principal, null, principal.getAuthorities())))
+        AcceptOrderRequest acceptRequest = new AcceptOrderRequest();
+        acceptRequest.setOrderId(id);
+
+        mockMvc.perform(post("/api/orders/accept")
+                .principal(new UsernamePasswordAuthenticationToken(principal, null, principal.getAuthorities()))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(acceptRequest)))
             .andExpect(status().isForbidden())
             .andExpect(jsonPath("$.error").value("Only pharmacy owner or pharmacist can accept orders"));
     }
@@ -127,6 +141,7 @@ class OrderControllerTests {
         UUID id = UUID.randomUUID();
         UUID actorUserId = UUID.randomUUID();
         RejectOrderRequest request = new RejectOrderRequest();
+        request.setOrderId(id);
         request.setRejectionReason("Out of stock");
         AuthenticatedUserPrincipal principal = new AuthenticatedUserPrincipal(
             actorUserId,
@@ -139,7 +154,7 @@ class OrderControllerTests {
         OrderResponse response = OrderResponse.builder().status(OrderStatus.REJECTED).rejectionReason("Out of stock").build();
         when(orderService.rejectOrder(eq(id), eq("Out of stock"), eq(actorUserId), eq(StaffRole.OWNER))).thenReturn(response);
 
-        mockMvc.perform(post("/api/orders/{id}/reject", id)
+        mockMvc.perform(post("/api/orders/reject")
                 .principal(new UsernamePasswordAuthenticationToken(principal, null, principal.getAuthorities()))
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(request)))

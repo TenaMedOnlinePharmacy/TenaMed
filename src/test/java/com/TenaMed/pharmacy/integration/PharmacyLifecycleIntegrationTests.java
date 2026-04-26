@@ -4,6 +4,7 @@ import com.TenaMed.pharmacy.entity.Order;
 import com.TenaMed.pharmacy.enums.OrderStatus;
 import com.TenaMed.pharmacy.enums.PaymentStatus;
 import com.TenaMed.inventory.service.InventoryService;
+import com.TenaMed.ocr.service.SupabaseStorageService;
 import com.TenaMed.user.security.AuthenticatedUserPrincipal;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -49,6 +50,9 @@ class PharmacyLifecycleIntegrationTests {
 
     @MockitoBean
     private InventoryService inventoryService;
+
+    @MockitoBean
+    private SupabaseStorageService supabaseStorageService;
 
     @AfterEach
     void clearSecurityContext() {
@@ -105,7 +109,7 @@ class PharmacyLifecycleIntegrationTests {
             .andExpect(status().isCreated())
             .andExpect(jsonPath("$.staffRole").value("PHARMACIST"));
 
-        UUID medicineId = UUID.randomUUID();
+        UUID productId = UUID.randomUUID();
         UUID inventoryId = UUID.randomUUID();
         String createOrderBody = """
             {
@@ -114,19 +118,19 @@ class PharmacyLifecycleIntegrationTests {
               "items": [
                 {
                   "inventoryId": "%s",
-                  "medicineId": "%s",
+                  "productId": "%s",
                   "quantity": 2,
                   "unitPrice": 45.00
                 }
               ]
             }
-            """.formatted(UUID.randomUUID(), pharmacyId, inventoryId, medicineId);
+            """.formatted(UUID.randomUUID(), pharmacyId, inventoryId, productId);
 
         MvcResult createOrderResult = mockMvc.perform(post("/api/orders")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(createOrderBody))
             .andExpect(status().isCreated())
-            .andExpect(jsonPath("$.status").value("PENDING_REVIEW"))
+            .andExpect(jsonPath("$.status").value("PENDING"))
             .andReturn();
 
         UUID orderId = readUuid(createOrderResult, "id");
@@ -198,7 +202,7 @@ class PharmacyLifecycleIntegrationTests {
               "items": [
                 {
                   "inventoryId": "%s",
-                  "medicineId": "%s",
+                  "productId": "%s",
                   "quantity": 1,
                   "unitPrice": 20.00
                 }
@@ -249,7 +253,7 @@ class PharmacyLifecycleIntegrationTests {
               "items": [
                 {
                   "inventoryId": "%s",
-                  "medicineId": "%s",
+                  "productId": "%s",
                   "quantity": 1,
                   "unitPrice": 10.00
                 }

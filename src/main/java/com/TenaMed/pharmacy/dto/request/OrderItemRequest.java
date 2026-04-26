@@ -17,7 +17,7 @@ public class OrderItemRequest {
     private UUID inventoryId;
 
     @NotNull
-    private UUID medicineId;
+    private UUID productId;
 
     @NotNull
     @Min(1)

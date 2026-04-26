@@ -11,7 +11,7 @@ import java.util.UUID;
 @Builder
 public class CartItemResponse {
     UUID id;
-    String medicineName;
+    String brandName;
     String pharmacyName;
     Integer quantity;
     BigDecimal unitPrice;

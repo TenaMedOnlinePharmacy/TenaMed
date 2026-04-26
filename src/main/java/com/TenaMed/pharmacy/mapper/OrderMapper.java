@@ -32,7 +32,7 @@ public class OrderMapper {
         OrderItem item = new OrderItem();
         item.setOrder(order);
         item.setInventoryId(request.getInventoryId());
-        item.setMedicineId(request.getMedicineId());
+        item.setProductId(request.getProductId());
         item.setQuantity(request.getQuantity());
         item.setUnitPrice(request.getUnitPrice());
         return item;
@@ -63,7 +63,7 @@ public class OrderMapper {
         return OrderItemResponse.builder()
             .id(item.getId())
             .inventoryId(item.getInventoryId())
-            .medicineId(item.getMedicineId())
+            .productId(item.getProductId())
             .quantity(item.getQuantity())
             .unitPrice(item.getUnitPrice())
             .build();

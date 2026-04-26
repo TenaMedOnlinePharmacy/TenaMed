@@ -1,5 +1,6 @@
-package com.TenaMed.pharmacy.entity;
+package com.TenaMed.medicine.entity;
 
+import com.TenaMed.common.entity.BaseEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
@@ -12,15 +13,14 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-import java.math.BigDecimal;
 import java.util.UUID;
 
 @Entity
-@Table(name = "pharmacy_order_items")
+@Table(name = "products")
 @Getter
 @Setter
 @NoArgsConstructor
-public class OrderItem {
+public class Product extends BaseEntity {
 
     @Id
     @GeneratedValue
@@ -28,18 +28,15 @@ public class OrderItem {
     private UUID id;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "order_id", nullable = false)
-    private Order order;
+    @JoinColumn(name = "medicine_id", nullable = false)
+    private Medicine medicine;
 
-    @Column(name = "inventory_id", nullable = false)
-    private UUID inventoryId;
+    @Column(name = "brand_name")
+    private String brandName;
 
-    @Column(name = "product_id", nullable = false)
-    private UUID productId;
+    @Column(name = "manufacturer")
+    private String manufacturer;
 
-    @Column(name = "quantity")
-    private Integer quantity;
-
-    @Column(name = "unit_price", precision = 19, scale = 2)
-    private BigDecimal unitPrice;
+    @Column(name = "is_default", nullable = false, columnDefinition = "boolean default false")
+    private boolean isDefault = false;
 }

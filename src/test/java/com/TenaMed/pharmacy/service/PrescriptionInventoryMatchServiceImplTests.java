@@ -10,7 +10,9 @@ import com.TenaMed.inventory.repository.InventoryRepository;
 import com.TenaMed.medicine.dto.MedicinePharmacySearchResponseDto;
 import com.TenaMed.medicine.entity.Category;
 import com.TenaMed.medicine.entity.Medicine;
+import com.TenaMed.medicine.entity.Product;
 import com.TenaMed.medicine.repository.MedicineRepository;
+import com.TenaMed.medicine.repository.ProductRepository;
 import com.TenaMed.pharmacy.entity.Pharmacy;
 import com.TenaMed.pharmacy.exception.PharmacyValidationException;
 import com.TenaMed.pharmacy.repository.PharmacyRepository;
@@ -56,6 +58,9 @@ class PrescriptionInventoryMatchServiceImplTests {
     @Mock
     private BatchRepository batchRepository;
 
+    @Mock
+    private ProductRepository productRepository;
+
     @InjectMocks
     private PrescriptionInventoryMatchServiceImpl service;
 
@@ -100,10 +105,15 @@ class PrescriptionInventoryMatchServiceImplTests {
         pharmacy.setId(pharmacyId);
         pharmacy.setLegalName("City Pharmacy Ltd");
 
+        Product product = new Product();
+        product.setId(UUID.randomUUID());
+        product.setMedicine(medicine);
+        product.setBrandName("Paracetamol Brand");
+
         Inventory inventory = new Inventory();
         inventory.setId(inventoryId);
         inventory.setPharmacyId(pharmacyId);
-        inventory.setMedicineId(medicineId);
+        inventory.setProductId(product.getId());
 
         Batch batch = new Batch();
         batch.setInventory(inventory);
@@ -113,7 +123,8 @@ class PrescriptionInventoryMatchServiceImplTests {
 
         when(prescriptionRepository.findById(prescriptionId)).thenReturn(Optional.of(prescription));
         when(prescriptionItemRepository.findByPrescriptionId(prescriptionId)).thenReturn(List.of(item));
-        when(inventoryRepository.findByMedicineIdIn(anyCollection())).thenReturn(List.of(inventory));
+        when(productRepository.findByMedicineIdIn(anyCollection())).thenReturn(List.of(product));
+        when(inventoryRepository.findByProductIdIn(anyCollection())).thenReturn(List.of(inventory));
         when(batchRepository.findByInventoryIdIn(anyCollection())).thenReturn(List.of(batch));
         when(medicineRepository.findAllById(anyCollection())).thenReturn(List.of(medicine));
         when(pharmacyRepository.findAllById(anyCollection())).thenReturn(List.of(pharmacy));

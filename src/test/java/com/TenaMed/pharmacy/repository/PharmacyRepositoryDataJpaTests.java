@@ -88,7 +88,7 @@ class PharmacyRepositoryDataJpaTests {
         OrderItem orderItem = new OrderItem();
         orderItem.setOrder(savedOrder);
         orderItem.setInventoryId(UUID.randomUUID());
-        orderItem.setMedicineId(UUID.randomUUID());
+        orderItem.setProductId(UUID.randomUUID());
         orderItem.setQuantity(3);
         orderItem.setUnitPrice(new BigDecimal("40.00"));
         orderItemRepository.save(orderItem);
