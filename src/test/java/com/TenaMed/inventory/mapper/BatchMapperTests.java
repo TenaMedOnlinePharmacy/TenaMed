@@ -23,7 +23,6 @@ class BatchMapperTests {
         AddBatchRequest request = new AddBatchRequest();
         request.setBatchNumber("B-1");
         request.setQuantity(50);
-        request.setStatus(BatchStatus.ACTIVE);
 
         Batch batch = mapper.toEntity(request, inventory);
 

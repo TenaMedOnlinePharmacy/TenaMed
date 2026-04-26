@@ -1,5 +1,6 @@
 package com.TenaMed.inventory.service;
 
+import com.TenaMed.events.DomainEventService;
 import com.TenaMed.inventory.dto.AddBatchRequest;
 import com.TenaMed.inventory.dto.CreateInventoryRequest;
 import com.TenaMed.inventory.entity.Batch;
@@ -13,6 +14,9 @@ import com.TenaMed.inventory.repository.BatchRepository;
 import com.TenaMed.inventory.repository.InventoryRepository;
 import com.TenaMed.inventory.repository.StockMovementRepository;
 import com.TenaMed.inventory.service.impl.InventoryServiceImpl;
+import com.TenaMed.medicine.repository.MedicineRepository;
+import com.TenaMed.pharmacy.repository.PharmacyRepository;
+import com.TenaMed.pharmacy.repository.UserPharmacyRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -93,7 +97,7 @@ class InventoryServiceImplTests {
         pharmacy.setId(pharmacyId);
 
         com.TenaMed.medicine.entity.Medicine medicine = new com.TenaMed.medicine.entity.Medicine();
-        medicine.setId(medicineId);
+
         medicine.setName(medicineName);
 
         Inventory inventory = new Inventory();
