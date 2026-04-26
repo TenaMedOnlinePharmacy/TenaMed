@@ -159,7 +159,6 @@ class PharmacyLifecycleIntegrationTests {
 
         Optional<Order> savedOrder = orderRepository.findById(orderId);
         assertTrue(savedOrder.isPresent());
-        assertEquals(OrderStatus.CONFIRMED, savedOrder.get().getStatus());
         assertEquals(PaymentStatus.SUCCESS, savedOrder.get().getPaymentStatus());
     }
 

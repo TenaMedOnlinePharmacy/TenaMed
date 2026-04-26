@@ -19,7 +19,7 @@ public class BatchMapper {
         batch.setQuantity(request.getQuantity());
         batch.setUnitCost(request.getUnitCost());
         batch.setSellingPrice(request.getSellingPrice());
-        batch.setStatus(request.getStatus() == null ? BatchStatus.ACTIVE : request.getStatus());
+        batch.setStatus(BatchStatus.ACTIVE);
         return batch;
     }
 

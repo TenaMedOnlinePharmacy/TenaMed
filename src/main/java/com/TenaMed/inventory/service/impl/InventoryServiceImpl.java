@@ -19,6 +19,12 @@ import com.TenaMed.inventory.repository.InventoryRepository;
 import com.TenaMed.inventory.repository.StockMovementRepository;
 import com.TenaMed.inventory.service.InventoryService;
 import com.TenaMed.events.DomainEventService;
+import com.TenaMed.medicine.entity.Medicine;
+import com.TenaMed.medicine.repository.MedicineRepository;
+import com.TenaMed.pharmacy.entity.Pharmacy;
+import com.TenaMed.pharmacy.entity.UserPharmacy;
+import com.TenaMed.pharmacy.repository.PharmacyRepository;
+import com.TenaMed.pharmacy.repository.UserPharmacyRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -38,19 +44,28 @@ public class InventoryServiceImpl implements InventoryService {
     private final InventoryMapper inventoryMapper;
     private final BatchMapper batchMapper;
     private final DomainEventService domainEventService;
+    private final MedicineRepository medicineRepository;
+    private final PharmacyRepository pharmacyRepository;
+    private final UserPharmacyRepository userPharmacyRepository;
 
     public InventoryServiceImpl(InventoryRepository inventoryRepository,
                                 BatchRepository batchRepository,
                                 StockMovementRepository stockMovementRepository,
                                 InventoryMapper inventoryMapper,
                                 BatchMapper batchMapper,
-                                DomainEventService domainEventService) {
+                                DomainEventService domainEventService,
+                                MedicineRepository medicineRepository,
+                                PharmacyRepository pharmacyRepository,
+                                UserPharmacyRepository userPharmacyRepository) {
         this.inventoryRepository = inventoryRepository;
         this.batchRepository = batchRepository;
         this.stockMovementRepository = stockMovementRepository;
         this.inventoryMapper = inventoryMapper;
         this.batchMapper = batchMapper;
         this.domainEventService = domainEventService;
+        this.medicineRepository = medicineRepository;
+        this.pharmacyRepository = pharmacyRepository;
+        this.userPharmacyRepository = userPharmacyRepository;
     }
 
     @Override
@@ -75,14 +90,21 @@ public class InventoryServiceImpl implements InventoryService {
     }
 
     @Override
-    public BatchResponse addBatch(AddBatchRequest request) {
+    public BatchResponse addBatch(AddBatchRequest request, java.util.UUID actorUserId) {
         validateAddBatchRequest(request);
 
-        Inventory inventory = inventoryRepository.findById(request.getInventoryId())
-            .orElseThrow(() -> new InventoryNotFoundException(request.getInventoryId()));
+        com.TenaMed.pharmacy.entity.Pharmacy pharmacy = resolvePharmacyForActor(actorUserId);
+        com.TenaMed.medicine.entity.Medicine medicine = medicineRepository.findByNameIgnoreCase(request.getMedicineName())
+                .orElseThrow(() -> new InventoryValidationException("Medicine not found: " + request.getMedicineName()));
+
+        Inventory inventory = inventoryRepository.findByPharmacyIdAndMedicineId(pharmacy.getId(), medicine.getId())
+                .orElseGet(() -> createNewInventory(pharmacy.getId(), medicine.getId(), request.getReorderLevel()));
+
         int oldTotalQuantity = inventory.getTotalQuantity();
 
-        Batch savedBatch = batchRepository.save(batchMapper.toEntity(request, inventory));
+        Batch batch = batchMapper.toEntity(request, inventory);
+        batch.setStatus(BatchStatus.ACTIVE);
+        Batch savedBatch = batchRepository.save(batch);
 
         inventory.setTotalQuantity(inventory.getTotalQuantity() + request.getQuantity());
         inventoryRepository.save(inventory);
@@ -102,6 +124,32 @@ public class InventoryServiceImpl implements InventoryService {
         );
 
         return batchMapper.toResponse(savedBatch);
+    }
+
+    private com.TenaMed.pharmacy.entity.Pharmacy resolvePharmacyForActor(java.util.UUID actorUserId) {
+        // Try owner first
+        java.util.Optional<com.TenaMed.pharmacy.entity.Pharmacy> asOwner = pharmacyRepository.findByOwnerId(actorUserId);
+        if (asOwner.isPresent()) {
+            return asOwner.get();
+        }
+
+        // Try pharmacist
+        java.util.List<com.TenaMed.pharmacy.entity.UserPharmacy> associations = userPharmacyRepository.findByUserId(actorUserId);
+        if (associations.isEmpty()) {
+            throw new InventoryValidationException("No pharmacy association found for user");
+        }
+
+        return associations.get(0).getPharmacy();
+    }
+
+    private Inventory createNewInventory(java.util.UUID pharmacyId, java.util.UUID medicineId, Integer reorderLevel) {
+        Inventory inventory = new Inventory();
+        inventory.setPharmacyId(pharmacyId);
+        inventory.setMedicineId(medicineId);
+        inventory.setTotalQuantity(0);
+        inventory.setReservedQuantity(0);
+        inventory.setReorderLevel(reorderLevel != null ? reorderLevel : 10);
+        return inventoryRepository.save(inventory);
     }
 
     @Override

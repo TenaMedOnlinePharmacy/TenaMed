@@ -51,6 +51,18 @@ class InventoryServiceImplTests {
     @Mock
     private BatchMapper batchMapper;
 
+    @Mock
+    private DomainEventService domainEventService;
+
+    @Mock
+    private MedicineRepository medicineRepository;
+
+    @Mock
+    private PharmacyRepository pharmacyRepository;
+
+    @Mock
+    private UserPharmacyRepository userPharmacyRepository;
+
     @InjectMocks
     private InventoryServiceImpl inventoryService;
 
@@ -72,17 +84,28 @@ class InventoryServiceImplTests {
 
     @Test
     void shouldAddBatchAndIncreaseInventoryTotal() {
-        UUID inventoryId = UUID.randomUUID();
+        UUID actorUserId = UUID.randomUUID();
+        UUID pharmacyId = UUID.randomUUID();
+        UUID medicineId = UUID.randomUUID();
+        String medicineName = "Aspirin";
+
+        com.TenaMed.pharmacy.entity.Pharmacy pharmacy = new com.TenaMed.pharmacy.entity.Pharmacy();
+        pharmacy.setId(pharmacyId);
+
+        com.TenaMed.medicine.entity.Medicine medicine = new com.TenaMed.medicine.entity.Medicine();
+        medicine.setId(medicineId);
+        medicine.setName(medicineName);
 
         Inventory inventory = new Inventory();
-        inventory.setId(inventoryId);
+        inventory.setId(UUID.randomUUID());
+        inventory.setPharmacyId(pharmacyId);
+        inventory.setMedicineId(medicineId);
         inventory.setTotalQuantity(5);
         inventory.setReservedQuantity(0);
 
         AddBatchRequest request = new AddBatchRequest();
-        request.setInventoryId(inventoryId);
+        request.setMedicineName(medicineName);
         request.setQuantity(7);
-        request.setStatus(BatchStatus.ACTIVE);
 
         Batch batch = new Batch();
         batch.setId(UUID.randomUUID());
@@ -90,11 +113,13 @@ class InventoryServiceImplTests {
         batch.setQuantity(7);
         batch.setStatus(BatchStatus.ACTIVE);
 
-        when(inventoryRepository.findById(inventoryId)).thenReturn(Optional.of(inventory));
+        when(pharmacyRepository.findByOwnerId(actorUserId)).thenReturn(Optional.of(pharmacy));
+        when(medicineRepository.findByNameIgnoreCase(medicineName)).thenReturn(Optional.of(medicine));
+        when(inventoryRepository.findByPharmacyIdAndMedicineId(pharmacyId, medicineId)).thenReturn(Optional.of(inventory));
         when(batchMapper.toEntity(request, inventory)).thenReturn(batch);
         when(batchRepository.save(batch)).thenReturn(batch);
 
-        inventoryService.addBatch(request);
+        inventoryService.addBatch(request, actorUserId);
 
         assertEquals(12, inventory.getTotalQuantity());
         verify(inventoryRepository).save(inventory);

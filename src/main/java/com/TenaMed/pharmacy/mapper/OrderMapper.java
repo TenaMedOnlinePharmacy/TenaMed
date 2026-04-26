@@ -22,7 +22,7 @@ public class OrderMapper {
         order.setCustomerId(customerId);
         order.setPharmacy(pharmacy);
         order.setPrescriptionId(request.getPrescriptionId());
-        order.setStatus(OrderStatus.PENDING_REVIEW);
+        order.setStatus(OrderStatus.PENDING);
         order.setPaymentStatus(PaymentStatus.PENDING);
         order.setTotalAmount(BigDecimal.ZERO);
         return order;

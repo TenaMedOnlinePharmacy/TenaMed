@@ -110,7 +110,7 @@ public class OrderServiceImpl implements OrderService {
         validateItemAvailability(request.getPharmacyId(), derivedItems);
 
         Order order = orderMapper.toEntity(request, pharmacy, customerId);
-        order.setStatus(OrderStatus.PENDING_REVIEW);
+        order.setStatus(OrderStatus.PENDING);
         order.setTotalAmount(calculateTotal(derivedItems));
         Order savedOrder = orderRepository.save(order);
 
@@ -150,11 +150,9 @@ public class OrderServiceImpl implements OrderService {
             throw new OrderAuthorizationException("You are not authorized to accept orders for this pharmacy");
         }
 
-        reserveOrderItems(order);
-
         order.setAcceptedBy(actorUserId);
         order.setStatus(OrderStatus.ACCEPTED);
-        order.setStatus(OrderStatus.PENDING_PAYMENT);
+        order.setPaymentStatus(PaymentStatus.PENDING_PAYMENT);
         Order saved = orderRepository.save(order);
         domainEventService.publish(
             "ORDER_ACCEPTED",
@@ -186,6 +184,16 @@ public class OrderServiceImpl implements OrderService {
             throw new OrderAuthorizationException("You are not authorized to reject orders for this pharmacy");
         }
 
+        // Release reserved stock when order is rejected
+        for (OrderItem item : order.getItems()) {
+            inventoryService.releaseStock(
+                order.getPharmacy().getId(),
+                item.getMedicineId(),
+                item.getQuantity(),
+                order.getId()
+            );
+        }
+
         order.setStatus(OrderStatus.REJECTED);
         order.setRejectionReason(rejectionReason);
         Order saved = orderRepository.save(order);
@@ -209,7 +217,7 @@ public class OrderServiceImpl implements OrderService {
         String oldPaymentStatus = String.valueOf(order.getPaymentStatus());
         order.setPaymentStatus(paymentStatus);
         if (paymentStatus == PaymentStatus.SUCCESS) {
-            order.setStatus(OrderStatus.CONFIRMED);
+            order.setPaymentStatus(PaymentStatus.CONFIRMED);
         }
         if (paymentStatus == PaymentStatus.FAILED) {
             order.setStatus(OrderStatus.CANCELLED);
@@ -253,8 +261,8 @@ public class OrderServiceImpl implements OrderService {
         Order order = new Order();
         order.setCustomerId(customerId);
         order.setPharmacy(pharmacy);
-        order.setStatus(OrderStatus.PENDING_PAYMENT);
-        order.setPaymentStatus(PaymentStatus.PENDING);
+        order.setStatus(OrderStatus.ACCEPTED);
+        order.setPaymentStatus(PaymentStatus.PENDING_PAYMENT);
 
         BigDecimal total = BigDecimal.ZERO;
         Set<OrderItem> orderItems = new LinkedHashSet<>();
@@ -362,6 +370,7 @@ public class OrderServiceImpl implements OrderService {
 
         return PharmacyOrderResponse.builder()
                 .orderId(order.getId())
+                .status(order.getStatus())
                 .prescriptionImage(prescriptionImage)
                 .orderItems(itemResponses)
                 .type(prescription != null ? prescription.getType() : null)

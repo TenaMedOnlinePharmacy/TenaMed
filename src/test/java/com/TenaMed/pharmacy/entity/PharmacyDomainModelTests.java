@@ -34,7 +34,7 @@ class PharmacyDomainModelTests {
         Order order = new Order();
         order.setCustomerId(UUID.randomUUID());
         order.setPharmacy(pharmacy);
-        order.setStatus(OrderStatus.PENDING_REVIEW);
+        order.setStatus(OrderStatus.PENDING);
         order.setPaymentStatus(PaymentStatus.PENDING);
         order.setTotalAmount(new BigDecimal("50.00"));
 

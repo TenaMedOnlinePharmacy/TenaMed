@@ -3,5 +3,7 @@ package com.TenaMed.pharmacy.enums;
 public enum PaymentStatus {
     PENDING,
     SUCCESS,
-    FAILED
+    FAILED,
+    PENDING_PAYMENT,
+    CONFIRMED
 }

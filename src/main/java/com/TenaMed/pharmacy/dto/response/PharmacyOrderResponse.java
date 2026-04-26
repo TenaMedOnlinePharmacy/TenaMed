@@ -1,5 +1,6 @@
 package com.TenaMed.pharmacy.dto.response;
 
+import com.TenaMed.pharmacy.enums.OrderStatus;
 import com.TenaMed.prescription.entity.PrescriptionType;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -16,6 +17,7 @@ import java.util.UUID;
 @AllArgsConstructor
 public class PharmacyOrderResponse {
     private UUID orderId;
+    private OrderStatus status;
     private String prescriptionImage;
     private List<PharmacyOrderItemResponse> orderItems;
     private PrescriptionType type;

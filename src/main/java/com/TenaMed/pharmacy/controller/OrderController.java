@@ -73,7 +73,7 @@ public class OrderController {
     }
 
     @PostMapping("/reject")
-    public ResponseEntity<?> rejectOrder(@Valid @RequestBody RejectOrderRequest request,
+    public ResponseEntity<?> reject (@Valid @RequestBody RejectOrderRequest request,
                                          Principal principal) {
         UUID actorUserId = resolveCustomerId(principal);
         StaffRole actorRole = resolveStaffRole(principal);

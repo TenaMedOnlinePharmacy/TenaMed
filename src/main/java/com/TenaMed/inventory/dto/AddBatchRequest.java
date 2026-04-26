@@ -1,6 +1,5 @@
 package com.TenaMed.inventory.dto;
 
-import com.TenaMed.inventory.enums.BatchStatus;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
@@ -9,14 +8,13 @@ import lombok.Setter;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
-import java.util.UUID;
 
 @Getter
 @Setter
 public class AddBatchRequest {
 
     @NotNull
-    private UUID inventoryId;
+    private String medicineName;
 
     private String batchNumber;
 
@@ -34,5 +32,5 @@ public class AddBatchRequest {
     @DecimalMin("0.0")
     private BigDecimal sellingPrice;
 
-    private BatchStatus status;
+    private Integer reorderLevel;
 }

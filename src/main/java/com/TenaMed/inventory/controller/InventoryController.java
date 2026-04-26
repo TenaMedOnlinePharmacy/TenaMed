@@ -9,9 +9,12 @@ import com.TenaMed.inventory.exception.DuplicateInventoryException;
 import com.TenaMed.inventory.exception.InventoryException;
 import com.TenaMed.inventory.exception.InventoryNotFoundException;
 import com.TenaMed.inventory.service.InventoryService;
+import com.TenaMed.user.security.AuthenticatedUserPrincipal;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -19,6 +22,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.security.Principal;
 import java.util.Map;
 import java.util.UUID;
 
@@ -45,9 +49,13 @@ public class InventoryController {
     }
 
     @PostMapping("/batch")
-    public ResponseEntity<?> addBatch(@Valid @RequestBody AddBatchRequest request) {
+    public ResponseEntity<?> addBatch(@Valid @RequestBody AddBatchRequest request, Principal principal) {
+        UUID actorUserId = resolveCustomerId(principal);
+        if (actorUserId == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("error", "Authentication required"));
+        }
         try {
-            BatchResponse response = inventoryService.addBatch(request);
+            BatchResponse response = inventoryService.addBatch(request, actorUserId);
             return ResponseEntity.status(HttpStatus.CREATED).body(response);
         } catch (InventoryNotFoundException ex) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", ex.getMessage()));
@@ -109,5 +117,35 @@ public class InventoryController {
         } catch (InventoryException ex) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("error", ex.getMessage()));
         }
+    }
+ 
+    private UUID resolveCustomerId(Principal principal) {
+        AuthenticatedUserPrincipal authenticatedUserPrincipal = resolveAuthenticatedPrincipal(principal);
+        if (authenticatedUserPrincipal != null) {
+            return authenticatedUserPrincipal.getUserId();
+        }
+        return null;
+    }
+ 
+    private AuthenticatedUserPrincipal resolveAuthenticatedPrincipal(Principal principal) {
+        if (principal instanceof AuthenticatedUserPrincipal directPrincipal) {
+            return directPrincipal;
+        }
+        Authentication authentication = resolveAuthentication(principal);
+        if (authentication != null && authentication.getPrincipal() instanceof AuthenticatedUserPrincipal nestedPrincipal) {
+            return nestedPrincipal;
+        }
+        return null;
+    }
+ 
+    private Authentication resolveAuthentication(Principal principal) {
+        if (principal instanceof Authentication authentication) {
+            return authentication;
+        }
+        Authentication contextAuth = SecurityContextHolder.getContext().getAuthentication();
+        if (contextAuth != null && contextAuth.isAuthenticated()) {
+            return contextAuth;
+        }
+        return null;
     }
 }

@@ -13,7 +13,7 @@ public interface InventoryService {
 
     InventoryResponse createInventory(CreateInventoryRequest request);
 
-    BatchResponse addBatch(AddBatchRequest request);
+    BatchResponse addBatch(AddBatchRequest request, UUID actorUserId);
 
     InventoryResponse getInventory(UUID pharmacyId, UUID medicineId);
 

@@ -40,12 +40,20 @@ class InventoryServiceFlowIntegrationTests {
 
     @Autowired
     private StockMovementRepository stockMovementRepository;
+ 
+    @Autowired
+    private com.TenaMed.medicine.repository.MedicineRepository medicineRepository;
+ 
+    @Autowired
+    private com.TenaMed.pharmacy.repository.PharmacyRepository pharmacyRepository;
 
     @BeforeEach
     void clearData() {
         stockMovementRepository.deleteAll();
         batchRepository.deleteAll();
         inventoryRepository.deleteAll();
+        pharmacyRepository.deleteAll();
+        medicineRepository.deleteAll();
     }
 
     @Test
@@ -53,30 +61,35 @@ class InventoryServiceFlowIntegrationTests {
         UUID pharmacyId = UUID.randomUUID();
         UUID medicineId = UUID.randomUUID();
 
-        CreateInventoryRequest createRequest = new CreateInventoryRequest();
-        createRequest.setPharmacyId(pharmacyId);
-        createRequest.setMedicineId(medicineId);
-        createRequest.setTotalQuantity(0);
-        createRequest.setReservedQuantity(0);
+        com.TenaMed.pharmacy.entity.Pharmacy pharmacy = new com.TenaMed.pharmacy.entity.Pharmacy();
+        pharmacy.setName("Test Pharmacy");
+        pharmacy.setOwnerId(UUID.randomUUID());
+        pharmacy.setLicenseNumber("LIC-" + UUID.randomUUID());
+        pharmacy.setPhone("123456789");
+        pharmacy.setEmail("test@pharmacy.com");
+        pharmacy = pharmacyRepository.save(pharmacy);
+        UUID actorUserId = pharmacy.getOwnerId();
+        pharmacyId = pharmacy.getId();
 
-        InventoryResponse inventoryResponse = inventoryService.createInventory(createRequest);
+        com.TenaMed.medicine.entity.Medicine medicine = new com.TenaMed.medicine.entity.Medicine();
+        medicine.setName("Aspirin");
+        medicine = medicineRepository.save(medicine);
+        medicineId = medicine.getId();
 
         AddBatchRequest firstBatch = new AddBatchRequest();
-        firstBatch.setInventoryId(inventoryResponse.getId());
+        firstBatch.setMedicineName("Aspirin");
         firstBatch.setBatchNumber("B-OLD");
         firstBatch.setQuantity(5);
         firstBatch.setExpiryDate(LocalDate.now().plusDays(5));
-        firstBatch.setStatus(BatchStatus.ACTIVE);
 
         AddBatchRequest secondBatch = new AddBatchRequest();
-        secondBatch.setInventoryId(inventoryResponse.getId());
+        secondBatch.setMedicineName("Aspirin");
         secondBatch.setBatchNumber("B-NEW");
         secondBatch.setQuantity(7);
         secondBatch.setExpiryDate(LocalDate.now().plusDays(30));
-        secondBatch.setStatus(BatchStatus.ACTIVE);
 
-        BatchResponse oldBatchResponse = inventoryService.addBatch(firstBatch);
-        BatchResponse newBatchResponse = inventoryService.addBatch(secondBatch);
+        BatchResponse oldBatchResponse = inventoryService.addBatch(firstBatch, actorUserId);
+        BatchResponse newBatchResponse = inventoryService.addBatch(secondBatch, actorUserId);
 
         UUID reservationRef = UUID.randomUUID();
         boolean reserved = inventoryService.reserveStock(pharmacyId, medicineId, 6, reservationRef);

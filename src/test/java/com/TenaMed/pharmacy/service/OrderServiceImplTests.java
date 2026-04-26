@@ -110,10 +110,10 @@ class OrderServiceImplTests {
         Order mappedOrder = new Order();
         mappedOrder.setId(UUID.randomUUID());
         mappedOrder.setPharmacy(pharmacy);
-        mappedOrder.setStatus(OrderStatus.PENDING_REVIEW);
+        mappedOrder.setStatus(OrderStatus.PENDING);
         mappedOrder.setPaymentStatus(PaymentStatus.PENDING);
 
-        OrderResponse response = OrderResponse.builder().id(mappedOrder.getId()).status(OrderStatus.PENDING_REVIEW).build();
+        OrderResponse response = OrderResponse.builder().id(mappedOrder.getId()).status(OrderStatus.PENDING).build();
 
         when(pharmacyRepository.findById(pharmacyId)).thenReturn(Optional.of(pharmacy));
         when(prescriptionItemRepository.findAllById(request.getPrescriptionItemIds())).thenReturn(List.of(prescriptionItem));
@@ -133,7 +133,7 @@ class OrderServiceImplTests {
         List<OrderItem> savedItems = orderItemsCaptor.getValue();
 
         assertEquals(mappedOrder.getId(), actual.getId());
-        assertEquals(OrderStatus.PENDING_REVIEW, actual.getStatus());
+        assertEquals(OrderStatus.PENDING, actual.getStatus());
         assertEquals(sellingPrice, savedItems.getFirst().getUnitPrice());
         assertEquals(new BigDecimal("151.00"), mappedOrder.getTotalAmount());
     }
@@ -158,13 +158,13 @@ class OrderServiceImplTests {
         UUID actorId = UUID.randomUUID();
         Order order = new Order();
         order.setId(orderId);
-        order.setStatus(OrderStatus.PENDING_REVIEW);
+        order.setStatus(OrderStatus.PENDING);
         order.setItems(Set.of());
         Pharmacy pharmacy = new Pharmacy();
         pharmacy.setId(UUID.randomUUID());
         order.setPharmacy(pharmacy);
 
-        OrderResponse response = OrderResponse.builder().status(OrderStatus.PENDING_PAYMENT).acceptedBy(actorId).build();
+        OrderResponse response = OrderResponse.builder().status(OrderStatus.ACCEPTED).paymentStatus(PaymentStatus.PENDING_PAYMENT).acceptedBy(actorId).build();
 
         when(orderRepository.findById(orderId)).thenReturn(Optional.of(order));
         when(inventoryService.reserveStock(order.getPharmacy().getId(), itemMedicineId(order), 1)).thenReturn(true);
@@ -173,7 +173,8 @@ class OrderServiceImplTests {
 
         OrderResponse actual = orderService.acceptOrder(orderId, actorId, StaffRole.PHARMACIST);
 
-        assertEquals(OrderStatus.PENDING_PAYMENT, actual.getStatus());
+        assertEquals(OrderStatus.ACCEPTED, actual.getStatus());
+        assertEquals(PaymentStatus.PENDING_PAYMENT, actual.getPaymentStatus());
         assertEquals(actorId, actual.getAcceptedBy());
     }
 
@@ -203,7 +204,10 @@ class OrderServiceImplTests {
         order.setPharmacy(pharmacy);
         order.setItems(Set.of());
 
-        OrderResponse response = OrderResponse.builder().status(OrderStatus.CONFIRMED).paymentStatus(PaymentStatus.SUCCESS).build();
+        OrderResponse response = OrderResponse.builder()
+                .status(OrderStatus.ACCEPTED)
+                .paymentStatus(PaymentStatus.CONFIRMED)
+                .build();
 
         when(orderRepository.findById(orderId)).thenReturn(Optional.of(order));
         when(orderRepository.save(order)).thenReturn(order);
@@ -211,8 +215,8 @@ class OrderServiceImplTests {
 
         OrderResponse actual = orderService.updatePaymentStatus(orderId, PaymentStatus.SUCCESS);
 
-        assertEquals(OrderStatus.CONFIRMED, actual.getStatus());
-        assertEquals(PaymentStatus.SUCCESS, actual.getPaymentStatus());
+        assertEquals(OrderStatus.ACCEPTED, actual.getStatus());
+        assertEquals(PaymentStatus.CONFIRMED, actual.getPaymentStatus());
     }
 
     private CreateOrderRequest buildCreateOrderRequest(UUID pharmacyId) {

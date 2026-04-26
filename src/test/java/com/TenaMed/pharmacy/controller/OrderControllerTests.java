@@ -58,7 +58,7 @@ class OrderControllerTests {
             true
         );
 
-        OrderResponse response = OrderResponse.builder().id(UUID.randomUUID()).status(OrderStatus.PENDING_REVIEW).build();
+        OrderResponse response = OrderResponse.builder().id(UUID.randomUUID()).status(OrderStatus.PENDING).build();
         when(orderService.createOrder(any(CreateOrderRequest.class), any(UUID.class))).thenReturn(response);
 
         mockMvc.perform(post("/api/orders")
@@ -66,7 +66,7 @@ class OrderControllerTests {
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(request)))
             .andExpect(status().isCreated())
-            .andExpect(jsonPath("$.status").value("PENDING_REVIEW"));
+            .andExpect(jsonPath("$.status").value("PENDING"));
     }
 
     @Test
@@ -94,13 +94,13 @@ class OrderControllerTests {
             List.of(new SimpleGrantedAuthority("ROLE_OWNER")),
             true
         );
-        OrderResponse response = OrderResponse.builder().status(OrderStatus.PENDING_PAYMENT).build();
+        OrderResponse response = OrderResponse.builder().status(OrderStatus.ACCEPTED).paymentStatus(PaymentStatus.PENDING_PAYMENT).build();
         when(orderService.acceptOrder(eq(id), eq(actorUserId), eq(StaffRole.OWNER))).thenReturn(response);
 
         mockMvc.perform(post("/api/orders/{id}/accept", id)
                 .principal(new UsernamePasswordAuthenticationToken(principal, null, principal.getAuthorities())))
             .andExpect(status().isOk())
-            .andExpect(jsonPath("$.status").value("PENDING_PAYMENT"));
+            .andExpect(jsonPath("$.status").value("ACCEPTED"));
     }
 
     @Test
@@ -152,13 +152,13 @@ class OrderControllerTests {
         UUID id = UUID.randomUUID();
         UpdatePaymentStatusRequest request = new UpdatePaymentStatusRequest();
         request.setPaymentStatus(PaymentStatus.SUCCESS);
-        OrderResponse response = OrderResponse.builder().status(OrderStatus.CONFIRMED).paymentStatus(PaymentStatus.SUCCESS).build();
+        OrderResponse response = OrderResponse.builder().status(OrderStatus.ACCEPTED).paymentStatus(PaymentStatus.CONFIRMED).build();
         when(orderService.updatePaymentStatus(id, PaymentStatus.SUCCESS)).thenReturn(response);
 
         mockMvc.perform(post("/api/orders/{id}/payment-status", id)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(request)))
             .andExpect(status().isOk())
-            .andExpect(jsonPath("$.status").value("CONFIRMED"));
+            .andExpect(jsonPath("$.status").value("ACCEPTED"));
     }
 }

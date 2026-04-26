@@ -33,7 +33,7 @@ class OrderMapperTests {
         Order order = orderMapper.toEntity(request, pharmacy, customerId);
 
         assertEquals(customerId, order.getCustomerId());
-        assertEquals(OrderStatus.PENDING_REVIEW, order.getStatus());
+        assertEquals(OrderStatus.PENDING, order.getStatus());
         assertEquals(PaymentStatus.PENDING, order.getPaymentStatus());
         assertEquals(BigDecimal.ZERO, order.getTotalAmount());
     }
@@ -47,7 +47,7 @@ class OrderMapperTests {
         order.setId(UUID.randomUUID());
         order.setCustomerId(UUID.randomUUID());
         order.setPharmacy(pharmacy);
-        order.setStatus(OrderStatus.CONFIRMED);
+        order.setStatus(OrderStatus.ACCEPTED);
         order.setPaymentStatus(PaymentStatus.SUCCESS);
         order.setTotalAmount(new BigDecimal("120.00"));
 
@@ -65,6 +65,6 @@ class OrderMapperTests {
         assertEquals(order.getId(), response.getId());
         assertEquals(1, response.getItems().size());
         assertEquals(new BigDecimal("120.00"), response.getTotalAmount());
-        assertEquals(OrderStatus.CONFIRMED, response.getStatus());
+        assertEquals(OrderStatus.ACCEPTED, response.getStatus());
     }
 }
