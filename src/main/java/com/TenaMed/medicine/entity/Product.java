@@ -39,4 +39,7 @@ public class Product extends BaseEntity {
 
     @Column(name = "is_default", nullable = false, columnDefinition = "boolean default false")
     private boolean isDefault = false;
+
+    @Column(name = "image_url")
+    private String imageUrl;
 }

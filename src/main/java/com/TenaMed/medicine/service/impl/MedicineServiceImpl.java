@@ -249,7 +249,9 @@ public class MedicineServiceImpl implements MedicineService {
             .pharmacyLegalName(resolvePharmacyLegalName(pharmacy))
             .price(price)
             .medicineCategory(medicine.getCategory() != null ? medicine.getCategory().getName() : null)
-            .imageUrl(supabaseStorageService.resolveSignedUrl(medicine.getImageUrl()))
+            .imageUrl(supabaseStorageService.resolveSignedUrl(
+                product.getImageUrl() != null ? product.getImageUrl() : medicine.getImageUrl()
+            ))
             .indications(medicine.getIndications())
             .contraindications(medicine.getContraindications())
             .sideEffects(medicine.getSideEffects())

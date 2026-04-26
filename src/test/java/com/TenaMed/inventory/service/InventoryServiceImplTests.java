@@ -67,6 +67,9 @@ class InventoryServiceImplTests {
     @Mock
     private UserPharmacyRepository userPharmacyRepository;
 
+    @Mock
+    private com.TenaMed.ocr.service.SupabaseStorageService supabaseStorageService;
+
     @InjectMocks
     private InventoryServiceImpl inventoryService;
 
@@ -91,14 +94,12 @@ class InventoryServiceImplTests {
         UUID actorUserId = UUID.randomUUID();
         UUID pharmacyId = UUID.randomUUID();
         UUID productId = UUID.randomUUID();
-        String brandName = "Aspirin Brand";
 
         com.TenaMed.pharmacy.entity.Pharmacy pharmacy = new com.TenaMed.pharmacy.entity.Pharmacy();
         pharmacy.setId(pharmacyId);
 
         com.TenaMed.medicine.entity.Product product = new com.TenaMed.medicine.entity.Product();
         product.setId(productId);
-        product.setBrandName(brandName);
 
         Inventory inventory = new Inventory();
         inventory.setId(UUID.randomUUID());
@@ -123,11 +124,89 @@ class InventoryServiceImplTests {
         when(batchMapper.toEntity(request, inventory)).thenReturn(batch);
         when(batchRepository.save(batch)).thenReturn(batch);
 
-        inventoryService.addBatch(request, actorUserId);
+        inventoryService.addBatch(request, actorUserId, null);
 
         assertEquals(12, inventory.getTotalQuantity());
         verify(inventoryRepository).save(inventory);
         verify(stockMovementRepository).save(any());
+    }
+
+    @Test
+    void shouldAddBatchUsingBrandNameAndManufacturer() {
+        UUID actorUserId = UUID.randomUUID();
+        UUID pharmacyId = UUID.randomUUID();
+        UUID productId = UUID.randomUUID();
+        String brandName = "Aspirin Brand";
+        String manufacturer = "Pharma Corp";
+
+        com.TenaMed.pharmacy.entity.Pharmacy pharmacy = new com.TenaMed.pharmacy.entity.Pharmacy();
+        pharmacy.setId(pharmacyId);
+
+        com.TenaMed.medicine.entity.Product product = new com.TenaMed.medicine.entity.Product();
+        product.setId(productId);
+        product.setBrandName(brandName);
+        product.setManufacturer(manufacturer);
+
+        Inventory inventory = new Inventory();
+        inventory.setId(UUID.randomUUID());
+        inventory.setPharmacyId(pharmacyId);
+        inventory.setProductId(productId);
+        inventory.setTotalQuantity(0);
+
+        AddBatchRequest request = new AddBatchRequest();
+        request.setBrandName(brandName);
+        request.setManufacturer(manufacturer);
+        request.setQuantity(10);
+
+        Batch batch = new Batch();
+        batch.setId(UUID.randomUUID());
+        batch.setInventory(inventory);
+        batch.setQuantity(10);
+        batch.setStatus(BatchStatus.ACTIVE);
+
+        when(pharmacyRepository.findByOwnerId(actorUserId)).thenReturn(Optional.of(pharmacy));
+        when(productRepository.findByBrandNameAndManufacturer(brandName, manufacturer)).thenReturn(Optional.of(product));
+        when(inventoryRepository.findByPharmacyIdAndProductId(pharmacyId, productId)).thenReturn(Optional.of(inventory));
+        when(batchMapper.toEntity(request, inventory)).thenReturn(batch);
+        when(batchRepository.save(batch)).thenReturn(batch);
+
+        inventoryService.addBatch(request, actorUserId, null);
+
+        assertEquals(10, inventory.getTotalQuantity());
+        verify(inventoryRepository).save(inventory);
+    }
+
+    @Test
+    void shouldCreateInventoryIfNotFoundDuringAddBatch() {
+        UUID actorUserId = UUID.randomUUID();
+        UUID pharmacyId = UUID.randomUUID();
+        UUID productId = UUID.randomUUID();
+
+        com.TenaMed.pharmacy.entity.Pharmacy pharmacy = new com.TenaMed.pharmacy.entity.Pharmacy();
+        pharmacy.setId(pharmacyId);
+
+        com.TenaMed.medicine.entity.Product product = new com.TenaMed.medicine.entity.Product();
+        product.setId(productId);
+
+        AddBatchRequest request = new AddBatchRequest();
+        request.setProductId(productId);
+        request.setQuantity(5);
+
+        Batch batch = new Batch();
+        batch.setId(UUID.randomUUID());
+        batch.setQuantity(5);
+        batch.setStatus(BatchStatus.ACTIVE);
+
+        when(pharmacyRepository.findByOwnerId(actorUserId)).thenReturn(Optional.of(pharmacy));
+        when(productRepository.findById(productId)).thenReturn(Optional.of(product));
+        when(inventoryRepository.findByPharmacyIdAndProductId(pharmacyId, productId)).thenReturn(Optional.empty());
+        when(inventoryRepository.save(any(Inventory.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(batchMapper.toEntity(any(), any())).thenReturn(batch);
+        when(batchRepository.save(batch)).thenReturn(batch);
+
+        inventoryService.addBatch(request, actorUserId, null);
+
+        verify(inventoryRepository).save(any(Inventory.class)); // Verifies creation
     }
 
     @Test

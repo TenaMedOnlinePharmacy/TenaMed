@@ -8,4 +8,5 @@ import java.util.UUID;
 
 public interface ProductRepository extends JpaRepository<Product, UUID> {
     List<Product> findByMedicineIdIn(Collection<UUID> medicineIds);
+    java.util.Optional<Product> findByBrandNameAndManufacturer(String brandName, String manufacturer);
 }

@@ -1,10 +1,13 @@
 package com.TenaMed.inventory.controller;
 
+import com.TenaMed.inventory.dto.AddBatchRequest;
+import com.TenaMed.inventory.dto.BatchResponse;
 import com.TenaMed.inventory.dto.CreateInventoryRequest;
 import com.TenaMed.inventory.dto.InventoryResponse;
 import com.TenaMed.inventory.dto.StockActionRequest;
 import com.TenaMed.inventory.exception.InventoryValidationException;
 import com.TenaMed.inventory.service.InventoryService;
+import com.TenaMed.user.security.AuthenticatedUserPrincipal;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -62,6 +65,40 @@ class InventoryControllerTests {
                 .content(objectMapper.writeValueAsString(request)))
             .andExpect(status().isCreated())
             .andExpect(jsonPath("$.availableQuantity").value(10));
+    }
+
+    @Test
+    void shouldAddBatch() throws Exception {
+        AddBatchRequest request = new AddBatchRequest();
+        request.setBrandName("Aspirin Brand");
+        request.setManufacturer("Pharma Corp");
+        request.setQuantity(50);
+
+        BatchResponse response = BatchResponse.builder()
+            .id(UUID.randomUUID())
+            .batchNumber("B-123")
+            .quantity(50)
+            .build();
+
+        when(inventoryService.addBatch(any(AddBatchRequest.class), any(), any())).thenReturn(response);
+
+        AuthenticatedUserPrincipal principal = new AuthenticatedUserPrincipal(
+            UUID.randomUUID(),
+            UUID.randomUUID(),
+            "staff@test.com",
+            "pwd",
+            java.util.List.of(new org.springframework.security.core.authority.SimpleGrantedAuthority("ROLE_PHARMACIST")),
+            true
+        );
+
+        org.springframework.mock.web.MockMultipartFile batchPart = new org.springframework.mock.web.MockMultipartFile(
+            "batch", "", MediaType.APPLICATION_JSON_VALUE, objectMapper.writeValueAsBytes(request));
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart("/api/inventory/batch")
+                .file(batchPart)
+                .principal(new org.springframework.security.authentication.UsernamePasswordAuthenticationToken(principal, null, principal.getAuthorities())))
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.quantity").value(50));
     }
 
     @Test

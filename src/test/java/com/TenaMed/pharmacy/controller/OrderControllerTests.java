@@ -104,6 +104,9 @@ class OrderControllerTests {
         AcceptOrderRequest acceptRequest = new AcceptOrderRequest();
         acceptRequest.setOrderId(id);
 
+        OrderResponse response = OrderResponse.builder().status(OrderStatus.ACCEPTED).paymentStatus(PaymentStatus.PENDING_PAYMENT).build();
+        when(orderService.acceptOrder(eq(id), eq(actorUserId), eq(StaffRole.OWNER))).thenReturn(response);
+
         mockMvc.perform(post("/api/orders/accept")
                 .principal(new UsernamePasswordAuthenticationToken(principal, null, principal.getAuthorities()))
                 .contentType(MediaType.APPLICATION_JSON)

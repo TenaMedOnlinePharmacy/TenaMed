@@ -12,6 +12,7 @@ import com.TenaMed.inventory.service.InventoryService;
 import com.TenaMed.user.security.AuthenticatedUserPrincipal;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -48,14 +49,16 @@ public class InventoryController {
         }
     }
 
-    @PostMapping("/batch")
-    public ResponseEntity<?> addBatch(@Valid @RequestBody AddBatchRequest request, Principal principal) {
+    @PostMapping(value = "/batch", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<?> addBatch(@Valid @org.springframework.web.bind.annotation.RequestPart("batch") AddBatchRequest request,
+                                      @org.springframework.web.bind.annotation.RequestPart(value = "image", required = false) org.springframework.web.multipart.MultipartFile image,
+                                      Principal principal) {
         UUID actorUserId = resolveCustomerId(principal);
         if (actorUserId == null) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("error", "Authentication required"));
         }
         try {
-            BatchResponse response = inventoryService.addBatch(request, actorUserId);
+            BatchResponse response = inventoryService.addBatch(request, actorUserId, image);
             return ResponseEntity.status(HttpStatus.CREATED).body(response);
         } catch (InventoryNotFoundException ex) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", ex.getMessage()));

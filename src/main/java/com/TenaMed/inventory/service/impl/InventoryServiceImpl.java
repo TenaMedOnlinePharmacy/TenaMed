@@ -20,13 +20,16 @@ import com.TenaMed.inventory.repository.StockMovementRepository;
 import com.TenaMed.inventory.service.InventoryService;
 import com.TenaMed.events.DomainEventService;
 import com.TenaMed.medicine.entity.Medicine;
+import com.TenaMed.medicine.entity.Product;
 import com.TenaMed.medicine.repository.MedicineRepository;
 import com.TenaMed.pharmacy.entity.Pharmacy;
 import com.TenaMed.pharmacy.entity.UserPharmacy;
 import com.TenaMed.pharmacy.repository.PharmacyRepository;
 import com.TenaMed.pharmacy.repository.UserPharmacyRepository;
+import com.TenaMed.ocr.service.SupabaseStorageService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -48,6 +51,9 @@ public class InventoryServiceImpl implements InventoryService {
     private final com.TenaMed.medicine.repository.ProductRepository productRepository;
     private final PharmacyRepository pharmacyRepository;
     private final UserPharmacyRepository userPharmacyRepository;
+    private final SupabaseStorageService supabaseStorageService;
+
+    private static final String PRODUCT_IMAGE_FOLDER = "products";
 
     public InventoryServiceImpl(InventoryRepository inventoryRepository,
                                 BatchRepository batchRepository,
@@ -57,7 +63,8 @@ public class InventoryServiceImpl implements InventoryService {
                                 DomainEventService domainEventService,
                                 com.TenaMed.medicine.repository.ProductRepository productRepository,
                                 PharmacyRepository pharmacyRepository,
-                                UserPharmacyRepository userPharmacyRepository) {
+                                UserPharmacyRepository userPharmacyRepository,
+                                SupabaseStorageService supabaseStorageService) {
         this.inventoryRepository = inventoryRepository;
         this.batchRepository = batchRepository;
         this.stockMovementRepository = stockMovementRepository;
@@ -67,6 +74,7 @@ public class InventoryServiceImpl implements InventoryService {
         this.productRepository = productRepository;
         this.pharmacyRepository = pharmacyRepository;
         this.userPharmacyRepository = userPharmacyRepository;
+        this.supabaseStorageService = supabaseStorageService;
     }
 
     @Override
@@ -91,26 +99,29 @@ public class InventoryServiceImpl implements InventoryService {
     }
 
     @Override
-    public BatchResponse addBatch(AddBatchRequest request, java.util.UUID actorUserId) {
+    public BatchResponse addBatch(AddBatchRequest request, java.util.UUID actorUserId, MultipartFile image) {
         validateAddBatchRequest(request);
 
         com.TenaMed.pharmacy.entity.Pharmacy pharmacy = resolvePharmacyForActor(actorUserId);
-        // Assuming request now provides productId, but the previous task didn't update AddBatchRequest to productId.
-        // Let's assume AddBatchRequest will have getProductId(). I'll update it later if needed.
-        // Wait, the prompt says "Replace all medicineId usage with productId".
-        UUID productId = request.getProductId();
-        if (productId == null) {
-            throw new InventoryValidationException("productId must never be null in Inventory operations");
+        Product product;
+        if (request.getProductId() != null) {
+            product = productRepository.findById(request.getProductId())
+                .orElseThrow(() -> new InventoryValidationException("Product not found: " + request.getProductId()));
+        } else if (request.getBrandName() != null && request.getManufacturer() != null) {
+            product = productRepository.findByBrandNameAndManufacturer(request.getBrandName(), request.getManufacturer())
+                .orElseThrow(() -> new InventoryValidationException("Product not found with brand '" + request.getBrandName() + "' and manufacturer '" + request.getManufacturer() + "'"));
+        } else {
+            throw new InventoryValidationException("Either productId or both brandName and manufacturer must be provided");
         }
-        com.TenaMed.medicine.entity.Product product = productRepository.findById(productId)
-                .orElseThrow(() -> new InventoryValidationException("Product not found: " + productId));
+
+        if (image != null && !image.isEmpty()) {
+            String objectPath = supabaseStorageService.uploadAndGetObjectPath(image, PRODUCT_IMAGE_FOLDER);
+            product.setImageUrl(objectPath);
+            productRepository.save(product);
+        }
 
         Inventory inventory = inventoryRepository.findByPharmacyIdAndProductId(pharmacy.getId(), product.getId())
-                .orElseGet(() -> createNewInventory(pharmacy.getId(), product.getId(), request.getReorderLevel()));
-
-        if (inventory.getProductId() == null) {
-            throw new java.lang.AssertionError("Inventory must have a productId");
-        }
+                .orElseGet(() -> buildNewInventory(pharmacy.getId(), product.getId(), request.getReorderLevel()));
 
         int oldTotalQuantity = inventory.getTotalQuantity();
 
@@ -154,14 +165,14 @@ public class InventoryServiceImpl implements InventoryService {
         return associations.get(0).getPharmacy();
     }
 
-    private Inventory createNewInventory(java.util.UUID pharmacyId, java.util.UUID productId, Integer reorderLevel) {
+    private Inventory buildNewInventory(java.util.UUID pharmacyId, java.util.UUID productId, Integer reorderLevel) {
         Inventory inventory = new Inventory();
         inventory.setPharmacyId(pharmacyId);
         inventory.setProductId(productId);
         inventory.setTotalQuantity(0);
         inventory.setReservedQuantity(0);
         inventory.setReorderLevel(reorderLevel != null ? reorderLevel : 10);
-        return inventoryRepository.save(inventory);
+        return inventory;
     }
 
     @Override

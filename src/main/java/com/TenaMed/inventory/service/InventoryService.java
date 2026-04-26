@@ -4,6 +4,7 @@ import com.TenaMed.inventory.dto.AddBatchRequest;
 import com.TenaMed.inventory.dto.BatchResponse;
 import com.TenaMed.inventory.dto.CreateInventoryRequest;
 import com.TenaMed.inventory.dto.InventoryResponse;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -13,7 +14,7 @@ public interface InventoryService {
 
     InventoryResponse createInventory(CreateInventoryRequest request);
 
-    BatchResponse addBatch(AddBatchRequest request, UUID actorUserId);
+    BatchResponse addBatch(AddBatchRequest request, UUID actorUserId, MultipartFile image);
 
     InventoryResponse getInventory(UUID pharmacyId, UUID productId);
 

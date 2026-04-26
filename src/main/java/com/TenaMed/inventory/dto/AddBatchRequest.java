@@ -13,8 +13,9 @@ import java.time.LocalDate;
 @Setter
 public class AddBatchRequest {
 
-    @NotNull
     private java.util.UUID productId;
+    private String brandName;
+    private String manufacturer;
 
     private String batchNumber;
 
