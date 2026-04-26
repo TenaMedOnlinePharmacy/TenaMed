@@ -14,6 +14,7 @@ import java.time.LocalDate;
 public class AddBatchRequest {
 
     private java.util.UUID productId;
+    private String medicineName;
     private String brandName;
     private String manufacturer;
 

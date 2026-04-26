@@ -33,6 +33,9 @@ public class Inventory extends BaseEntity {
     @Column(name = "product_id", nullable = false)
     private UUID productId;
 
+    @Column(name = "medicine_id", nullable = false)
+    private UUID medicineId;
+
     @Column(name = "total_quantity", nullable = false)
     private Integer totalQuantity;
 

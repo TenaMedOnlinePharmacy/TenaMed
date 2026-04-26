@@ -49,6 +49,7 @@ public class InventoryServiceImpl implements InventoryService {
     private final BatchMapper batchMapper;
     private final DomainEventService domainEventService;
     private final com.TenaMed.medicine.repository.ProductRepository productRepository;
+    private final MedicineRepository medicineRepository;
     private final PharmacyRepository pharmacyRepository;
     private final UserPharmacyRepository userPharmacyRepository;
     private final SupabaseStorageService supabaseStorageService;
@@ -62,6 +63,7 @@ public class InventoryServiceImpl implements InventoryService {
                                 BatchMapper batchMapper,
                                 DomainEventService domainEventService,
                                 com.TenaMed.medicine.repository.ProductRepository productRepository,
+                                MedicineRepository medicineRepository,
                                 PharmacyRepository pharmacyRepository,
                                 UserPharmacyRepository userPharmacyRepository,
                                 SupabaseStorageService supabaseStorageService) {
@@ -72,6 +74,7 @@ public class InventoryServiceImpl implements InventoryService {
         this.batchMapper = batchMapper;
         this.domainEventService = domainEventService;
         this.productRepository = productRepository;
+        this.medicineRepository = medicineRepository;
         this.pharmacyRepository = pharmacyRepository;
         this.userPharmacyRepository = userPharmacyRepository;
         this.supabaseStorageService = supabaseStorageService;
@@ -86,7 +89,17 @@ public class InventoryServiceImpl implements InventoryService {
                 throw new DuplicateInventoryException(request.getPharmacyId(), request.getProductId());
             });
 
-        Inventory saved = inventoryRepository.save(inventoryMapper.toEntity(request));
+        Inventory toSave = inventoryMapper.toEntity(request);
+        if (toSave.getMedicineId() == null) {
+            Product product = productRepository.findById(request.getProductId())
+                .orElseThrow(() -> new InventoryValidationException("Product not found: " + request.getProductId()));
+            if (product.getMedicine() == null || product.getMedicine().getId() == null) {
+                throw new InventoryValidationException("Product has no medicine mapping: " + request.getProductId());
+            }
+            toSave.setMedicineId(product.getMedicine().getId());
+        }
+
+        Inventory saved = inventoryRepository.save(toSave);
         domainEventService.publish(
             "INVENTORY_CREATED",
             "INVENTORY",
@@ -103,16 +116,7 @@ public class InventoryServiceImpl implements InventoryService {
         validateAddBatchRequest(request);
 
         com.TenaMed.pharmacy.entity.Pharmacy pharmacy = resolvePharmacyForActor(actorUserId);
-        Product product;
-        if (request.getProductId() != null) {
-            product = productRepository.findById(request.getProductId())
-                .orElseThrow(() -> new InventoryValidationException("Product not found: " + request.getProductId()));
-        } else if (request.getBrandName() != null && request.getManufacturer() != null) {
-            product = productRepository.findByBrandNameAndManufacturer(request.getBrandName(), request.getManufacturer())
-                .orElseThrow(() -> new InventoryValidationException("Product not found with brand '" + request.getBrandName() + "' and manufacturer '" + request.getManufacturer() + "'"));
-        } else {
-            throw new InventoryValidationException("Either productId or both brandName and manufacturer must be provided");
-        }
+        Product product = resolveOrCreateProduct(request);
 
         if (image != null && !image.isEmpty()) {
             String objectPath = supabaseStorageService.uploadAndGetObjectPath(image, PRODUCT_IMAGE_FOLDER);
@@ -120,8 +124,17 @@ public class InventoryServiceImpl implements InventoryService {
             productRepository.save(product);
         }
 
+        if (product.getMedicine() == null || product.getMedicine().getId() == null) {
+            throw new InventoryValidationException("Product has no medicine mapping: " + product.getId());
+        }
+
         Inventory inventory = inventoryRepository.findByPharmacyIdAndProductId(pharmacy.getId(), product.getId())
-                .orElseGet(() -> buildNewInventory(pharmacy.getId(), product.getId(), request.getReorderLevel()));
+                .orElseGet(() -> inventoryRepository.save(buildNewInventory(
+                    pharmacy.getId(),
+                    product.getId(),
+                    product.getMedicine().getId(),
+                    request.getReorderLevel()
+                )));
 
         int oldTotalQuantity = inventory.getTotalQuantity();
 
@@ -165,14 +178,57 @@ public class InventoryServiceImpl implements InventoryService {
         return associations.get(0).getPharmacy();
     }
 
-    private Inventory buildNewInventory(java.util.UUID pharmacyId, java.util.UUID productId, Integer reorderLevel) {
+    private Inventory buildNewInventory(java.util.UUID pharmacyId, java.util.UUID productId, java.util.UUID medicineId, Integer reorderLevel) {
         Inventory inventory = new Inventory();
         inventory.setPharmacyId(pharmacyId);
         inventory.setProductId(productId);
+        inventory.setMedicineId(medicineId);
         inventory.setTotalQuantity(0);
         inventory.setReservedQuantity(0);
         inventory.setReorderLevel(reorderLevel != null ? reorderLevel : 10);
         return inventory;
+    }
+
+    private Product resolveOrCreateProduct(AddBatchRequest request) {
+        if (request.getProductId() != null) {
+            java.util.Optional<Product> byId = productRepository.findById(request.getProductId());
+            if (byId.isPresent()) {
+                return byId.get();
+            }
+        }
+
+        String medicineName = normalize(request.getMedicineName());
+        String brandName = normalize(request.getBrandName());
+        String manufacturer = normalize(request.getManufacturer());
+        if (medicineName == null || brandName == null || manufacturer == null) {
+            throw new InventoryValidationException("medicineName, brandName and manufacturer are required when productId is missing or invalid");
+        }
+
+        Medicine medicine = resolveOrCreateMedicine(medicineName);
+
+        return productRepository.findByBrandNameAndManufacturer(brandName, manufacturer)
+            .orElseGet(() -> createProduct(medicine, brandName, manufacturer));
+    }
+
+    private Product createProduct(Medicine medicine, String brandName, String manufacturer) {
+        Product product = new Product();
+        product.setBrandName(brandName);
+        product.setManufacturer(manufacturer);
+        product.setMedicine(medicine);
+        return productRepository.save(product);
+    }
+
+    private Medicine resolveOrCreateMedicine(String medicineName) {
+        return medicineRepository.findByNameIgnoreCase(medicineName)
+            .orElseThrow(() -> new InventoryValidationException("Medicine not found: " + medicineName));
+    }
+
+    private String normalize(String value) {
+        if (value == null) {
+            return null;
+        }
+        String trimmed = value.trim();
+        return trimmed.isEmpty() ? null : trimmed;
     }
 
     @Override

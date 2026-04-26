@@ -14,6 +14,7 @@ import com.TenaMed.inventory.repository.BatchRepository;
 import com.TenaMed.inventory.repository.InventoryRepository;
 import com.TenaMed.inventory.repository.StockMovementRepository;
 import com.TenaMed.inventory.service.impl.InventoryServiceImpl;
+import com.TenaMed.medicine.repository.MedicineRepository;
 import com.TenaMed.medicine.repository.ProductRepository;
 import com.TenaMed.pharmacy.repository.PharmacyRepository;
 import com.TenaMed.pharmacy.repository.UserPharmacyRepository;
@@ -62,6 +63,9 @@ class InventoryServiceImplTests {
     private ProductRepository productRepository;
 
     @Mock
+    private MedicineRepository medicineRepository;
+
+    @Mock
     private PharmacyRepository pharmacyRepository;
 
     @Mock
@@ -100,6 +104,9 @@ class InventoryServiceImplTests {
 
         com.TenaMed.medicine.entity.Product product = new com.TenaMed.medicine.entity.Product();
         product.setId(productId);
+        com.TenaMed.medicine.entity.Medicine medicine = org.mockito.Mockito.mock(com.TenaMed.medicine.entity.Medicine.class);
+        when(medicine.getId()).thenReturn(UUID.randomUUID());
+        product.setMedicine(medicine);
 
         Inventory inventory = new Inventory();
         inventory.setId(UUID.randomUUID());
@@ -110,6 +117,7 @@ class InventoryServiceImplTests {
 
         AddBatchRequest request = new AddBatchRequest();
         request.setProductId(productId);
+        request.setMedicineName("Aspirin");
         request.setQuantity(7);
 
         Batch batch = new Batch();
@@ -146,6 +154,9 @@ class InventoryServiceImplTests {
         product.setId(productId);
         product.setBrandName(brandName);
         product.setManufacturer(manufacturer);
+        com.TenaMed.medicine.entity.Medicine medicine = org.mockito.Mockito.mock(com.TenaMed.medicine.entity.Medicine.class);
+        when(medicine.getId()).thenReturn(UUID.randomUUID());
+        product.setMedicine(medicine);
 
         Inventory inventory = new Inventory();
         inventory.setId(UUID.randomUUID());
@@ -155,6 +166,7 @@ class InventoryServiceImplTests {
 
         AddBatchRequest request = new AddBatchRequest();
         request.setBrandName(brandName);
+        request.setMedicineName("Aspirin");
         request.setManufacturer(manufacturer);
         request.setQuantity(10);
 
@@ -165,6 +177,7 @@ class InventoryServiceImplTests {
         batch.setStatus(BatchStatus.ACTIVE);
 
         when(pharmacyRepository.findByOwnerId(actorUserId)).thenReturn(Optional.of(pharmacy));
+        when(medicineRepository.findByNameIgnoreCase("Aspirin")).thenReturn(Optional.of(medicine));
         when(productRepository.findByBrandNameAndManufacturer(brandName, manufacturer)).thenReturn(Optional.of(product));
         when(inventoryRepository.findByPharmacyIdAndProductId(pharmacyId, productId)).thenReturn(Optional.of(inventory));
         when(batchMapper.toEntity(request, inventory)).thenReturn(batch);
@@ -187,9 +200,13 @@ class InventoryServiceImplTests {
 
         com.TenaMed.medicine.entity.Product product = new com.TenaMed.medicine.entity.Product();
         product.setId(productId);
+        com.TenaMed.medicine.entity.Medicine medicine = org.mockito.Mockito.mock(com.TenaMed.medicine.entity.Medicine.class);
+        when(medicine.getId()).thenReturn(UUID.randomUUID());
+        product.setMedicine(medicine);
 
         AddBatchRequest request = new AddBatchRequest();
         request.setProductId(productId);
+        request.setMedicineName("Paracetamol");
         request.setQuantity(5);
 
         Batch batch = new Batch();
@@ -206,7 +223,7 @@ class InventoryServiceImplTests {
 
         inventoryService.addBatch(request, actorUserId, null);
 
-        verify(inventoryRepository).save(any(Inventory.class)); // Verifies creation
+        verify(inventoryRepository, org.mockito.Mockito.atLeastOnce()).save(any(Inventory.class));
     }
 
     @Test

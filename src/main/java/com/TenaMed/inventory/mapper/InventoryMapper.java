@@ -15,6 +15,7 @@ public class InventoryMapper {
         Inventory inventory = new Inventory();
         inventory.setPharmacyId(request.getPharmacyId());
         inventory.setProductId(request.getProductId());
+        inventory.setMedicineId(request.getMedicineId());
         inventory.setTotalQuantity(request.getTotalQuantity());
         inventory.setReservedQuantity(request.getReservedQuantity() == null ? 0 : request.getReservedQuantity());
         inventory.setReorderLevel(request.getReorderLevel());
@@ -27,6 +28,7 @@ public class InventoryMapper {
             .id(inventory.getId())
             .pharmacyId(inventory.getPharmacyId())
             .productId(inventory.getProductId())
+            .medicineId(inventory.getMedicineId())
             .totalQuantity(inventory.getTotalQuantity())
             .reservedQuantity(inventory.getReservedQuantity())
             .reorderLevel(inventory.getReorderLevel())

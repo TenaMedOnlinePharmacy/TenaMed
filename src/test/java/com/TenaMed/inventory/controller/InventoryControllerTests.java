@@ -70,6 +70,7 @@ class InventoryControllerTests {
     @Test
     void shouldAddBatch() throws Exception {
         AddBatchRequest request = new AddBatchRequest();
+        request.setMedicineName("Aspirin");
         request.setBrandName("Aspirin Brand");
         request.setManufacturer("Pharma Corp");
         request.setQuantity(50);

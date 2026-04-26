@@ -14,6 +14,7 @@ public class InventoryResponse {
     private UUID id;
     private UUID pharmacyId;
     private UUID productId;
+    private UUID medicineId;
     private Integer totalQuantity;
     private Integer reservedQuantity;
     private Integer reorderLevel;

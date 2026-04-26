@@ -88,12 +88,14 @@ class InventoryServiceFlowIntegrationTests {
 
         AddBatchRequest firstBatch = new AddBatchRequest();
         firstBatch.setProductId(productId);
+        firstBatch.setMedicineName("Aspirin");
         firstBatch.setBatchNumber("B-OLD");
         firstBatch.setQuantity(5);
         firstBatch.setExpiryDate(LocalDate.now().plusDays(5));
 
         AddBatchRequest secondBatch = new AddBatchRequest();
         secondBatch.setProductId(productId);
+        secondBatch.setMedicineName("Aspirin");
         secondBatch.setBatchNumber("B-NEW");
         secondBatch.setQuantity(7);
         secondBatch.setExpiryDate(LocalDate.now().plusDays(30));
@@ -122,6 +124,7 @@ class InventoryServiceFlowIntegrationTests {
         Inventory inventory = new Inventory();
         inventory.setPharmacyId(pharmacyId);
         inventory.setProductId(productId);
+        inventory.setMedicineId(UUID.randomUUID());
         inventory.setTotalQuantity(12);
         inventory.setReservedQuantity(0);
 
