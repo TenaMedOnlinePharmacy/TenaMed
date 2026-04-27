@@ -14,7 +14,9 @@ import com.TenaMed.user.security.CustomUserDetailsService;
 import com.TenaMed.user.security.JwtService;
 import com.TenaMed.user.security.TokenHashingService;
 import com.TenaMed.user.service.AuthService;
+import com.TenaMed.user.service.OtpService;
 import com.TenaMed.user.service.RedisSessionService;
+
 import com.TenaMed.events.DomainEventService;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
@@ -42,6 +44,7 @@ public class AuthServiceImpl implements AuthService {
     private final AccountRepository accountRepository;
     private final CustomUserDetailsService customUserDetailsService;
     private final DomainEventService domainEventService;
+    private final OtpService otpService;
 
     public AuthServiceImpl(AuthenticationManager authenticationManager,
                            JwtService jwtService,
@@ -49,7 +52,8 @@ public class AuthServiceImpl implements AuthService {
                            TokenHashingService tokenHashingService,
                            AccountRepository accountRepository,
                            CustomUserDetailsService customUserDetailsService,
-                           DomainEventService domainEventService) {
+                           DomainEventService domainEventService,
+                           OtpService otpService) {
         this.authenticationManager = authenticationManager;
         this.jwtService = jwtService;
         this.redisSessionService = redisSessionService;
@@ -57,6 +61,7 @@ public class AuthServiceImpl implements AuthService {
         this.accountRepository = accountRepository;
         this.customUserDetailsService = customUserDetailsService;
         this.domainEventService = domainEventService;
+        this.otpService = otpService;
     }
 
     @Override

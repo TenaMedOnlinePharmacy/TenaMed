@@ -124,7 +124,7 @@ class HospitalServiceImplTests {
         when(currentUserProvider.getCurrentUserId()).thenReturn(ownerId);
 
         BadRequestException ex = assertThrows(BadRequestException.class,
-                () -> hospitalService.inviteDoctor(hospitalId, "doc@example.com"));
+                () -> hospitalService.inviteDoctorForOwner(hospitalId, "doc@example.com"));
 
         assertTrue(ex.getMessage().contains("Hospital must be ACTIVE"));
         verify(invitationService, never()).createDoctorInvitation(any(), any());
@@ -148,7 +148,7 @@ class HospitalServiceImplTests {
         when(currentUserProvider.getCurrentUserId()).thenReturn(ownerId);
         when(invitationService.createDoctorInvitation(hospitalId, "doc@example.com")).thenReturn(invitation);
 
-        InvitationResponseDto actual = hospitalService.inviteDoctor(hospitalId, "doc@example.com");
+        InvitationResponseDto actual = hospitalService.inviteDoctorForOwner(hospitalId, "doc@example.com");
 
         assertEquals("doc@example.com", actual.getEmail());
         assertEquals(hospitalId, actual.getHospitalId());

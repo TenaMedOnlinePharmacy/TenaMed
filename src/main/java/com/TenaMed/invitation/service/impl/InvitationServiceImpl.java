@@ -41,8 +41,11 @@ public class InvitationServiceImpl implements InvitationService {
     private final EmailTemplateBuilder emailTemplateBuilder;
     private final DomainEventService domainEventService;
 
-    @Value("${app.invitation.base-url:http://localhost:8080/api/invitations}")
-    private String invitationBaseUrl;
+    @Value("${app.invitation.base-url.forPharmacist}")
+    private String invitationBaseUrlForPharmacist;
+
+    @Value("${app.invitation.base-url.forDoctor}")
+    private String invitationBaseUrlForDoctor;
 
     public InvitationServiceImpl(InvitationRepository invitationRepository,
                                  InvitationMapper invitationMapper,
@@ -214,14 +217,14 @@ public class InvitationServiceImpl implements InvitationService {
     }
 
     private String buildInvitationLinkForPharmacist(String token) {
-        String baseUrl = invitationBaseUrl == null ? "http://localhost:5173/register" : invitationBaseUrl.trim();
+        String baseUrl = invitationBaseUrlForPharmacist == null ? "http://localhost:5173/register" : invitationBaseUrlForPharmacist.trim();
         if (baseUrl.endsWith("/")) {
             return baseUrl +  token;
         }
         return baseUrl + "/" + token;
     }
     private String buildInvitationLinkForDoctor(String token) {
-        String baseUrl = invitationBaseUrl == null ? "http://localhost:5173/register" : invitationBaseUrl.trim();
+        String baseUrl = invitationBaseUrlForDoctor == null ? "http://localhost:5173/register/doctor" : invitationBaseUrlForDoctor.trim();
         if (baseUrl.endsWith("/")) {
             return baseUrl + token;
         }

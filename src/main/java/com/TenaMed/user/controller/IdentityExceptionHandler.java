@@ -10,6 +10,8 @@ import com.TenaMed.user.exception.RoleAlreadyAssignedException;
 import com.TenaMed.user.exception.RoleNotAssignedException;
 import com.TenaMed.user.exception.RoleNotFoundException;
 import com.TenaMed.user.exception.UserNotFoundException;
+import com.TenaMed.user.exception.OtpException;
+
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -59,6 +61,11 @@ public class IdentityExceptionHandler {
     @ExceptionHandler(AccountNotActiveException.class)
     public ResponseEntity<Map<String, String>> handleInactiveAccount(AccountNotActiveException ex) {
         return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("error", ex.getMessage()));
+    }
+
+    @ExceptionHandler(OtpException.class)
+    public ResponseEntity<Map<String, String>> handleOtpException(OtpException ex) {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("error", ex.getMessage()));
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
