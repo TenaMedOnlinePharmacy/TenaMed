@@ -1,5 +1,6 @@
 package com.TenaMed.hospital.controller;
 
+import com.TenaMed.common.security.CurrentUserProvider;
 import com.TenaMed.doctor.dto.DoctorResponseDto;
 import com.TenaMed.hospital.dto.HospitalRequestDto;
 import com.TenaMed.hospital.dto.HospitalResponseDto;
@@ -26,9 +27,12 @@ import java.util.UUID;
 public class HospitalController {
 
     private final HospitalService hospitalService;
+    private final CurrentUserProvider currentUserProvider;
 
-    public HospitalController(HospitalService hospitalService) {
+    public HospitalController(HospitalService hospitalService,
+                              CurrentUserProvider currentUserProvider) {
         this.hospitalService = hospitalService;
+        this.currentUserProvider = currentUserProvider;
     }
 
     @PostMapping("/")
@@ -58,9 +62,9 @@ public class HospitalController {
         return ResponseEntity.ok(hospitalService.getHospitalDoctors(id));
     }
 
-    @PostMapping("/{id}/invite-doctor")
-    public ResponseEntity<InvitationResponseDto> inviteDoctor(@PathVariable UUID id,
-                                                              @Valid @RequestBody DoctorInvitationRequestDto request) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(hospitalService.inviteDoctor(id, request.getEmail()));
+    @PostMapping("/invite-doctor")
+    public ResponseEntity<InvitationResponseDto> inviteDoctor(@Valid @RequestBody DoctorInvitationRequestDto request) {
+        UUID ownerId = currentUserProvider.getCurrentUserId();
+        return ResponseEntity.status(HttpStatus.CREATED).body(hospitalService.inviteDoctorForOwner(ownerId, request.getEmail()));
     }
 }

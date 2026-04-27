@@ -16,5 +16,7 @@ public interface DoctorService {
 
     DoctorResponseDto verifyDoctor(UUID doctorId);
 
+    DoctorResponseDto verifyDoctorForOwner(UUID ownerId, UUID doctorId);
+
     List<DoctorResponseDto> getDoctorsByHospital(UUID hospitalId);
 }

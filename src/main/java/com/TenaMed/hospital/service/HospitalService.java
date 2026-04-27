@@ -22,5 +22,7 @@ public interface HospitalService {
 
     List<DoctorResponseDto> getHospitalDoctors(UUID hospitalId);
 
-    InvitationResponseDto inviteDoctor(UUID hospitalId, String email);
+
+
+    InvitationResponseDto inviteDoctorForOwner(UUID ownerId, String email);
 }

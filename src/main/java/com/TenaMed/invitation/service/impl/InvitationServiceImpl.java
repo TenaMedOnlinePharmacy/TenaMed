@@ -87,7 +87,7 @@ public class InvitationServiceImpl implements InvitationService {
         Invitation saved = invitationRepository.saveAndFlush(invitation);
         InvitationResponseDto response = invitationMapper.toResponse(saved);
 
-        String invitationLink = buildInvitationLink(saved.getToken());
+        String invitationLink = buildInvitationLinkForDoctor(saved.getToken());
         String body = emailTemplateBuilder.buildDoctorInvitationEmail(hospital.getName(), invitationLink);
         emailService.sendEmail(new EmailRequest(saved.getEmail(), DOCTOR_INVITE_SUBJECT, body, true));
 
@@ -130,7 +130,7 @@ public class InvitationServiceImpl implements InvitationService {
         Invitation saved = invitationRepository.saveAndFlush(invitation);
         InvitationResponseDto response = invitationMapper.toResponse(saved);
 
-        String invitationLink = buildInvitationLink(saved.getToken());
+        String invitationLink = buildInvitationLinkForPharmacist(saved.getToken());
         String body = emailTemplateBuilder.buildPharmacistInvitationEmail(pharmacy.getName(), invitationLink);
         emailService.sendEmail(new EmailRequest(saved.getEmail(), PHARMACIST_INVITE_SUBJECT, body, true));
 
@@ -213,7 +213,14 @@ public class InvitationServiceImpl implements InvitationService {
                 .orElseThrow(() -> new ResourceNotFoundException("Invitation not found for token"));
     }
 
-    private String buildInvitationLink(String token) {
+    private String buildInvitationLinkForPharmacist(String token) {
+        String baseUrl = invitationBaseUrl == null ? "http://localhost:5173/register" : invitationBaseUrl.trim();
+        if (baseUrl.endsWith("/")) {
+            return baseUrl +  token;
+        }
+        return baseUrl + "/" + token;
+    }
+    private String buildInvitationLinkForDoctor(String token) {
         String baseUrl = invitationBaseUrl == null ? "http://localhost:5173/register" : invitationBaseUrl.trim();
         if (baseUrl.endsWith("/")) {
             return baseUrl + token;

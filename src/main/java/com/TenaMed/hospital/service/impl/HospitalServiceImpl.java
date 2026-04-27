@@ -153,23 +153,29 @@ public class HospitalServiceImpl implements HospitalService {
         return doctorService.getDoctorsByHospital(hospitalId);
     }
 
+
+
     @Override
     @Transactional
-    public InvitationResponseDto inviteDoctor(UUID hospitalId, String email) {
-        Hospital hospital = getHospitalEntityById(hospitalId);
-        assertOwnerOrAdmin(hospital);
+    public InvitationResponseDto inviteDoctorForOwner(UUID ownerId, String email) {
+        if (ownerId == null) {
+            throw new BadRequestException("ownerId is required");
+        }
+
+        Hospital hospital = hospitalRepository.findByOwnerId(ownerId)
+            .orElseThrow(() -> new ResourceNotFoundException("Hospital not found for owner: " + ownerId));
 
         if (hospital.getStatus() != HospitalStatus.ACTIVE) {
             throw new BadRequestException("Hospital must be ACTIVE before inviting doctors");
         }
 
-        InvitationResponseDto invitation = invitationService.createDoctorInvitation(hospitalId, email);
+        InvitationResponseDto invitation = invitationService.createDoctorInvitation(hospital.getId(), email);
         domainEventService.publish(
             "HOSPITAL_DOCTOR_INVITATION_REQUESTED",
             "INVITATION",
             invitation.getId(),
             "HOSPITAL",
-            hospitalId,
+            hospital.getId(),
             Map.of("email", email)
         );
         return invitation;

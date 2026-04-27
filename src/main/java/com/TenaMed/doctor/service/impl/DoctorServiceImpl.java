@@ -136,6 +136,40 @@ public class DoctorServiceImpl implements DoctorService {
     }
 
     @Override
+    @Transactional
+    public DoctorResponseDto verifyDoctorForOwner(UUID ownerId, UUID doctorId) {
+        if (ownerId == null) {
+            throw new BadRequestException("ownerId is required");
+        }
+        if (doctorId == null) {
+            throw new BadRequestException("doctorId is required");
+        }
+
+        Doctor doctor = getDoctorEntityById(doctorId);
+        Hospital ownerHospital = hospitalRepository.findByOwnerId(ownerId)
+            .orElseThrow(() -> new ResourceNotFoundException("Hospital not found for owner: " + ownerId));
+
+        if (!ownerHospital.getId().equals(doctor.getHospitalId())) {
+            throw new UnauthorizedException("You are not allowed to verify doctors outside your hospital");
+        }
+
+        doctor.setStatus(DoctorStatus.ACTIVE);
+        doctor.setVerifiedBy(ownerId);
+        Doctor saved = doctorRepository.save(doctor);
+        domainEventService.publish(
+            "DOCTOR_VERIFIED",
+            "DOCTOR",
+            saved.getId(),
+            "HOSPITAL_OWNER",
+            ownerId,
+            "HOSPITAL",
+            ownerHospital.getId(),
+            Map.of("status", saved.getStatus().name())
+        );
+        return doctorMapper.toResponse(saved);
+    }
+
+    @Override
     @Transactional(readOnly = true)
     public List<DoctorResponseDto> getDoctorsByHospital(UUID hospitalId) {
         if (hospitalId == null) {

@@ -4,6 +4,7 @@ import com.TenaMed.common.exception.BadRequestException;
 import com.TenaMed.common.security.CurrentUserProvider;
 import com.TenaMed.doctor.dto.DoctorInviteRegistrationRequestDto;
 import com.TenaMed.doctor.dto.DoctorResponseDto;
+import com.TenaMed.doctor.dto.VerifyDoctorRequestDto;
 import com.TenaMed.doctor.service.DoctorOnboardingService;
 import com.TenaMed.doctor.service.DoctorService;
 import jakarta.validation.Valid;
@@ -58,8 +59,9 @@ public class DoctorController {
         return ResponseEntity.ok(doctorService.getDoctorById(id));
     }
 
-    @PatchMapping("/{id}/verify")
-    public ResponseEntity<DoctorResponseDto> verifyDoctor(@PathVariable UUID id) {
-        return ResponseEntity.ok(doctorService.verifyDoctor(id));
+    @PatchMapping("/verify")
+    public ResponseEntity<DoctorResponseDto> verifyDoctor(@Valid @RequestBody VerifyDoctorRequestDto request) {
+        UUID ownerId = currentUserProvider.getCurrentUserId();
+        return ResponseEntity.ok(doctorService.verifyDoctorForOwner(ownerId, request.getDoctorId()));
     }
 }

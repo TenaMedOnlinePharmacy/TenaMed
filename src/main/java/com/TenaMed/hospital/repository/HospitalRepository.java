@@ -10,5 +10,7 @@ public interface HospitalRepository extends JpaRepository<Hospital, UUID> {
 
     Optional<Hospital> findByLicenseNumber(String licenseNumber);
 
+    Optional<Hospital> findByOwnerId(UUID ownerId);
+
     boolean existsByLicenseNumberIgnoreCase(String licenseNumber);
 }
