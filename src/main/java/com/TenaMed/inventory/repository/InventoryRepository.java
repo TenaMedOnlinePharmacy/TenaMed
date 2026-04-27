@@ -15,6 +15,8 @@ public interface InventoryRepository extends JpaRepository<Inventory, UUID> {
 
     List<Inventory> findByProductIdIn(Collection<UUID> productIds);
 
+    List<Inventory> findByPharmacyId(UUID pharmacyId);
+
     Optional<Inventory> findByPharmacyIdAndProductId(UUID pharmacyId, UUID productId);
 
         @Query("""

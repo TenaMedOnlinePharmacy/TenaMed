@@ -3,6 +3,7 @@ package com.TenaMed.inventory.service.impl;
 import com.TenaMed.inventory.dto.AddBatchRequest;
 import com.TenaMed.inventory.dto.BatchResponse;
 import com.TenaMed.inventory.dto.CreateInventoryRequest;
+import com.TenaMed.inventory.dto.InventoryListItemResponse;
 import com.TenaMed.inventory.dto.InventoryResponse;
 import com.TenaMed.inventory.entity.Batch;
 import com.TenaMed.inventory.entity.Inventory;
@@ -37,6 +38,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 @Service
 @Transactional
@@ -243,6 +246,57 @@ public class InventoryServiceImpl implements InventoryService {
             .toList();
 
         return inventoryMapper.toResponse(inventory, batches);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<InventoryListItemResponse> getCurrentUserInventoryList(UUID actorUserId) {
+        Pharmacy pharmacy = resolvePharmacyForActor(actorUserId);
+        List<Inventory> inventories = inventoryRepository.findByPharmacyId(pharmacy.getId());
+        if (inventories.isEmpty()) {
+            return List.of();
+        }
+
+        List<UUID> productIds = inventories.stream().map(Inventory::getProductId).distinct().toList();
+        Map<UUID, Product> productById = productRepository.findAllById(productIds).stream()
+            .collect(Collectors.toMap(Product::getId, Function.identity()));
+
+        List<UUID> medicineIds = inventories.stream().map(Inventory::getMedicineId).distinct().toList();
+        Map<UUID, Medicine> medicineById = medicineRepository.findAllById(medicineIds).stream()
+            .collect(Collectors.toMap(Medicine::getId, Function.identity()));
+
+        List<UUID> inventoryIds = inventories.stream().map(Inventory::getId).toList();
+        Map<UUID, List<Batch>> batchesByInventoryId = batchRepository.findByInventoryIdIn(inventoryIds).stream()
+            .collect(Collectors.groupingBy(batch -> batch.getInventory().getId()));
+
+        return inventories.stream().map(inventory -> {
+            Product product = productById.get(inventory.getProductId());
+            Medicine medicine = medicineById.get(inventory.getMedicineId());
+            List<InventoryListItemResponse.BatchPriceResponse> batchPrices = batchesByInventoryId
+                .getOrDefault(inventory.getId(), List.of())
+                .stream()
+                .map(batch -> InventoryListItemResponse.BatchPriceResponse.builder()
+                    .batchId(batch.getId())
+                    .unitPrice(batch.getUnitCost())
+                    .sellingPrice(batch.getSellingPrice())
+                    .build())
+                .toList();
+
+            int totalQuantity = inventory.getTotalQuantity() == null ? 0 : inventory.getTotalQuantity();
+            int reservedQuantity = inventory.getReservedQuantity() == null ? 0 : inventory.getReservedQuantity();
+
+            return InventoryListItemResponse.builder()
+                .inventoryId(inventory.getId())
+                .productId(inventory.getProductId())
+                .imageUrl(product != null ? product.getImageUrl() : null)
+                .medicineName(medicine != null ? medicine.getName() : null)
+                .totalQuantity(totalQuantity)
+                .batchPrices(batchPrices)
+                .brand(product != null ? product.getBrandName() : null)
+                .manufacturer(product != null ? product.getManufacturer() : null)
+                .remainingQuantity(totalQuantity - reservedQuantity)
+                .build();
+        }).toList();
     }
 
     @Override

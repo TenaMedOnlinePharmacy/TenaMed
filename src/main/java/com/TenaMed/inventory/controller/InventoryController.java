@@ -3,6 +3,7 @@ package com.TenaMed.inventory.controller;
 import com.TenaMed.inventory.dto.AddBatchRequest;
 import com.TenaMed.inventory.dto.BatchResponse;
 import com.TenaMed.inventory.dto.CreateInventoryRequest;
+import com.TenaMed.inventory.dto.InventoryListItemResponse;
 import com.TenaMed.inventory.dto.InventoryResponse;
 import com.TenaMed.inventory.dto.StockActionRequest;
 import com.TenaMed.inventory.exception.DuplicateInventoryException;
@@ -20,6 +21,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.security.Principal;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -70,6 +72,20 @@ public class InventoryController {
             return ResponseEntity.ok(inventoryService.getInventory(pharmacyId, productId));
         } catch (InventoryNotFoundException ex) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", ex.getMessage()));
+        }
+    }
+
+    @GetMapping("/my-list")
+    public ResponseEntity<?> getCurrentUserInventoryList(Principal principal) {
+        UUID actorUserId = resolveCustomerId(principal);
+        if (actorUserId == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("error", "Authentication required"));
+        }
+        try {
+            List<InventoryListItemResponse> response = inventoryService.getCurrentUserInventoryList(actorUserId);
+            return ResponseEntity.ok(response);
+        } catch (InventoryException ex) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("error", ex.getMessage()));
         }
     }
 

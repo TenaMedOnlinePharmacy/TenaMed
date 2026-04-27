@@ -14,11 +14,7 @@ import com.TenaMed.medicine.dto.MedicineSearchDto;
 import com.TenaMed.medicine.dto.MedicinePharmacySearchResponseDto;
 import com.TenaMed.medicine.dto.MedicineDopingRuleRequestDto;
 import com.TenaMed.medicine.dto.MedicineDopingRuleResponseDto;
-import com.TenaMed.medicine.entity.Allergen;
-import com.TenaMed.medicine.entity.Category;
-import com.TenaMed.medicine.entity.DosageForm;
-import com.TenaMed.medicine.entity.Medicine;
-import com.TenaMed.medicine.entity.MedicineAllergen;
+import com.TenaMed.medicine.entity.*;
 import com.TenaMed.medicine.exception.MedicineAlreadyExistsException;
 import com.TenaMed.medicine.exception.MedicineNotFoundException;
 import com.TenaMed.medicine.exception.MedicineValidationException;
@@ -166,13 +162,13 @@ public class MedicineServiceImpl implements MedicineService {
         Map<UUID, Medicine> medicineById = medicines.stream()
             .collect(Collectors.toMap(Medicine::getId, medicine -> medicine));
 
-        List<com.TenaMed.medicine.entity.Product> products = productRepository.findByMedicineIdIn(medicineById.keySet());
+        List<Product> products = productRepository.findByMedicineIdIn(medicineById.keySet());
         if (products.isEmpty()) {
             return List.of();
         }
 
-        Set<UUID> productIds = products.stream().map(com.TenaMed.medicine.entity.Product::getId).collect(Collectors.toSet());
-        Map<UUID, com.TenaMed.medicine.entity.Product> productById = products.stream().collect(Collectors.toMap(com.TenaMed.medicine.entity.Product::getId, p -> p));
+        Set<UUID> productIds = products.stream().map(Product::getId).collect(Collectors.toSet());
+        Map<UUID, Product> productById = products.stream().collect(Collectors.toMap(Product::getId, p -> p));
 
         List<Inventory> inventories = inventoryRepository.findByProductIdIn(productIds);
         if (inventories.isEmpty()) {
