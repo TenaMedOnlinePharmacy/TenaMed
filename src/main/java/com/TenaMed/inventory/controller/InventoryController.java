@@ -75,7 +75,7 @@ public class InventoryController {
         }
     }
 
-    @GetMapping("/my-list")
+    @GetMapping("/list")
     public ResponseEntity<?> getCurrentUserInventoryList(Principal principal) {
         UUID actorUserId = resolveCustomerId(principal);
         if (actorUserId == null) {
