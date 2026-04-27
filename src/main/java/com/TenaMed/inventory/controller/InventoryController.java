@@ -83,7 +83,7 @@ public class InventoryController {
         }
     }
 
-    @PutMapping(value = "/batch/{batchId}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PutMapping(value = "/batch/edit/{batchId}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<?> editBatch(@PathVariable UUID batchId,
                                        @Valid @RequestPart("batch") AddBatchRequest request,
                                        @RequestPart(value = "image", required = false) MultipartFile image,
@@ -134,7 +134,7 @@ public class InventoryController {
         return ResponseEntity.ok(Map.of("available", available));
     }
 
-    @DeleteMapping("/batch/{batchId}")
+    @DeleteMapping("/batch/delete/{batchId}")
     public ResponseEntity<?> deleteBatch(@PathVariable UUID batchId, Principal principal) {
         UUID actorUserId = resolveCustomerId(principal);
         if (actorUserId == null) {
