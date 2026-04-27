@@ -22,13 +22,13 @@ public class OtpController {
 
     @PostMapping("/send")
     public ResponseEntity<Map<String, String>> sendOtp(@Valid @RequestBody OtpSendRequestDto request) {
-        otpService.sendOtp(request.getIdentifier(), request.getType());
+        otpService.sendOtp(request.getEmail(), request.getType());
         return ResponseEntity.ok(Map.of("message", "OTP sent successfully"));
     }
 
     @PostMapping("/verify")
     public ResponseEntity<Map<String, String>> verifyOtp(@Valid @RequestBody OtpVerifyRequestDto request) {
-        otpService.verifyOtp(request.getIdentifier(), request.getType(), request.getOtp());
+        otpService.verifyOtp(request.getEmail(), request.getType(), request.getOtp());
         return ResponseEntity.ok(Map.of("message", "OTP verified successfully"));
     }
 }

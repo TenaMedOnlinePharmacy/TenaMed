@@ -11,8 +11,8 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 public class OtpSendRequestDto {
-    @NotBlank(message = "Identifier is required")
-    private String identifier;
+    @NotBlank(message = "Email is required")
+    private String email;
 
     @NotBlank(message = "OTP type is required")
     private String type;

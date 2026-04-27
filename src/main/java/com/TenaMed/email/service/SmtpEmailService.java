@@ -54,4 +54,13 @@ public class SmtpEmailService implements EmailService {
         helper.setText(request.getBody(), true);
         javaMailSender.send(mimeMessage);
     }
+
+    @Override
+    public void sendOtpEmail(String to, String otp) {
+        SimpleMailMessage message = new SimpleMailMessage();
+        message.setTo(to);
+        message.setSubject("Tena-Med Verification Code");
+        message.setText("Your verification code is: " + otp + ". It will expire in 5 minutes.");
+        javaMailSender.send(message);
+    }
 }
