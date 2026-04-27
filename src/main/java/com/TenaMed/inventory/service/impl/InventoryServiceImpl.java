@@ -11,6 +11,7 @@ import com.TenaMed.inventory.entity.StockMovement;
 import com.TenaMed.inventory.enums.BatchStatus;
 import com.TenaMed.inventory.enums.StockMovementType;
 import com.TenaMed.inventory.exception.DuplicateInventoryException;
+import com.TenaMed.inventory.exception.BatchNotFoundException;
 import com.TenaMed.inventory.exception.InventoryNotFoundException;
 import com.TenaMed.inventory.exception.InventoryValidationException;
 import com.TenaMed.inventory.mapper.BatchMapper;
@@ -297,6 +298,31 @@ public class InventoryServiceImpl implements InventoryService {
                 .remainingQuantity(totalQuantity - reservedQuantity)
                 .build();
         }).toList();
+    }
+
+    @Override
+    public void deleteBatch(UUID batchId, UUID actorUserId) {
+        if (batchId == null) {
+            throw new InventoryValidationException("batchId is required");
+        }
+
+        Pharmacy pharmacy = resolvePharmacyForActor(actorUserId);
+        Batch batch = batchRepository.findByIdAndInventoryPharmacyId(batchId, pharmacy.getId())
+            .orElseThrow(() -> new BatchNotFoundException(batchId));
+
+        Inventory inventory = batch.getInventory();
+        int batchQuantity = batch.getQuantity() == null ? 0 : batch.getQuantity();
+        int totalQuantity = inventory.getTotalQuantity() == null ? 0 : inventory.getTotalQuantity();
+        int reservedQuantity = inventory.getReservedQuantity() == null ? 0 : inventory.getReservedQuantity();
+        int newTotalQuantity = totalQuantity - batchQuantity;
+
+        if (newTotalQuantity < reservedQuantity) {
+            throw new InventoryValidationException("Cannot delete batch because reserved stock exceeds remaining total stock");
+        }
+
+        inventory.setTotalQuantity(newTotalQuantity);
+        inventoryRepository.save(inventory);
+        batchRepository.delete(batch);
     }
 
     @Override

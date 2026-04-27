@@ -21,6 +21,8 @@ public interface InventoryService {
 
     List<InventoryListItemResponse> getCurrentUserInventoryList(UUID actorUserId);
 
+    void deleteBatch(UUID batchId, UUID actorUserId);
+
     boolean checkAvailability(UUID pharmacyId, UUID productId, Integer quantity);
 
     boolean checkAvailability(UUID productId, Integer quantity);

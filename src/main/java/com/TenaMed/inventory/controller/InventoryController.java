@@ -7,6 +7,7 @@ import com.TenaMed.inventory.dto.InventoryListItemResponse;
 import com.TenaMed.inventory.dto.InventoryResponse;
 import com.TenaMed.inventory.dto.StockActionRequest;
 import com.TenaMed.inventory.exception.DuplicateInventoryException;
+import com.TenaMed.inventory.exception.BatchNotFoundException;
 import com.TenaMed.inventory.exception.InventoryException;
 import com.TenaMed.inventory.exception.InventoryNotFoundException;
 import com.TenaMed.inventory.service.InventoryService;
@@ -95,6 +96,22 @@ public class InventoryController {
                                                                    @RequestParam Integer quantity) {
         boolean available = inventoryService.checkAvailability(pharmacyId, productId, quantity);
         return ResponseEntity.ok(Map.of("available", available));
+    }
+
+    @DeleteMapping("/batch/{batchId}")
+    public ResponseEntity<?> deleteBatch(@PathVariable UUID batchId, Principal principal) {
+        UUID actorUserId = resolveCustomerId(principal);
+        if (actorUserId == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+        try {
+            inventoryService.deleteBatch(batchId, actorUserId);
+            return ResponseEntity.noContent().build();
+        } catch (BatchNotFoundException ex) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+        } catch (InventoryException ex) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
+        }
     }
 
     @PostMapping("/reserve")

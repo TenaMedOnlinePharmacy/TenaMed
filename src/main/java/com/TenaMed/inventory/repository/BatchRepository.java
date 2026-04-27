@@ -9,6 +9,8 @@ import java.util.UUID;
 
 public interface BatchRepository extends JpaRepository<Batch, UUID> {
 
+    java.util.Optional<Batch> findByIdAndInventoryPharmacyId(UUID id, UUID pharmacyId);
+
     List<Batch> findByInventoryIdOrderByExpiryDateAsc(UUID inventoryId);
 
     List<Batch> findByInventoryIdAndStatusOrderByExpiryDateAsc(UUID inventoryId, BatchStatus status);
