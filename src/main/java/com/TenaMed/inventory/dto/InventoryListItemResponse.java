@@ -25,6 +25,7 @@ public class InventoryListItemResponse {
     @Builder
     public static class BatchPriceResponse {
         private UUID batchId;
+        private String batchNumber;
         private BigDecimal unitPrice;
         private BigDecimal sellingPrice;
     }

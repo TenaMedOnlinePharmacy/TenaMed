@@ -1,6 +1,7 @@
 package com.TenaMed.inventory.service.impl;
 
 import com.TenaMed.inventory.dto.AddBatchRequest;
+import com.TenaMed.inventory.dto.BatchEditDetailsResponse;
 import com.TenaMed.inventory.dto.BatchResponse;
 import com.TenaMed.inventory.dto.CreateInventoryRequest;
 import com.TenaMed.inventory.dto.InventoryListItemResponse;
@@ -166,6 +167,121 @@ public class InventoryServiceImpl implements InventoryService {
         return batchMapper.toResponse(savedBatch);
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public BatchEditDetailsResponse getBatchForEdit(UUID batchId, UUID actorUserId) {
+        if (batchId == null) {
+            throw new InventoryValidationException("batchId is required");
+        }
+
+        Pharmacy pharmacy = resolvePharmacyForActor(actorUserId);
+        Batch batch = batchRepository.findByIdAndInventoryPharmacyId(batchId, pharmacy.getId())
+            .orElseThrow(() -> new BatchNotFoundException(batchId));
+
+        Inventory inventory = batch.getInventory();
+        Product product = productRepository.findById(inventory.getProductId())
+            .orElseThrow(() -> new InventoryValidationException("Product not found for batch: " + batchId));
+        Medicine medicine = product.getMedicine();
+
+        AddBatchRequest responseRequest = new AddBatchRequest();
+        responseRequest.setProductId(product.getId());
+        responseRequest.setMedicineName(medicine != null ? medicine.getName() : null);
+        responseRequest.setBrandName(product.getBrandName());
+        responseRequest.setManufacturer(product.getManufacturer());
+        responseRequest.setBatchNumber(batch.getBatchNumber());
+        responseRequest.setManufacturingDate(batch.getManufacturingDate());
+        responseRequest.setExpiryDate(batch.getExpiryDate());
+        responseRequest.setQuantity(batch.getQuantity());
+        responseRequest.setUnitCost(batch.getUnitCost());
+        responseRequest.setSellingPrice(batch.getSellingPrice());
+        responseRequest.setReorderLevel(inventory.getReorderLevel());
+
+        return BatchEditDetailsResponse.builder()
+            .batchId(batch.getId())
+            .batch(responseRequest)
+            .imageUrl(product.getImageUrl())
+            .build();
+    }
+
+    @Override
+    public BatchResponse editBatch(UUID batchId, AddBatchRequest request, UUID actorUserId, MultipartFile image) {
+        if (batchId == null) {
+            throw new InventoryValidationException("batchId is required");
+        }
+        validateAddBatchRequest(request);
+
+        Pharmacy pharmacy = resolvePharmacyForActor(actorUserId);
+        Batch batch = batchRepository.findByIdAndInventoryPharmacyId(batchId, pharmacy.getId())
+            .orElseThrow(() -> new BatchNotFoundException(batchId));
+
+        Inventory currentInventory = batch.getInventory();
+        Product product = resolveOrCreateProduct(request);
+
+        if (image != null && !image.isEmpty()) {
+            String objectPath = supabaseStorageService.uploadAndGetObjectPath(image, PRODUCT_IMAGE_FOLDER);
+            product.setImageUrl(supabaseStorageService.resolveSignedUrl(objectPath));
+            productRepository.save(product);
+        }
+
+        if (product.getMedicine() == null || product.getMedicine().getId() == null) {
+            throw new InventoryValidationException("Product has no medicine mapping: " + product.getId());
+        }
+
+        Inventory targetInventory = inventoryRepository.findByPharmacyIdAndProductId(pharmacy.getId(), product.getId())
+            .orElseGet(() -> inventoryRepository.save(buildNewInventory(
+                pharmacy.getId(),
+                product.getId(),
+                product.getMedicine().getId(),
+                request.getReorderLevel()
+            )));
+
+        int previousQuantity = batch.getQuantity() == null ? 0 : batch.getQuantity();
+        int updatedQuantity = request.getQuantity() == null ? 0 : request.getQuantity();
+
+        if (currentInventory.getId().equals(targetInventory.getId())) {
+            int totalQuantity = currentInventory.getTotalQuantity() == null ? 0 : currentInventory.getTotalQuantity();
+            int reservedQuantity = currentInventory.getReservedQuantity() == null ? 0 : currentInventory.getReservedQuantity();
+            int newTotalQuantity = totalQuantity - previousQuantity + updatedQuantity;
+            if (newTotalQuantity < reservedQuantity) {
+                throw new InventoryValidationException("Cannot reduce batch quantity below reserved stock");
+            }
+            currentInventory.setTotalQuantity(newTotalQuantity);
+            if (request.getReorderLevel() != null) {
+                currentInventory.setReorderLevel(request.getReorderLevel());
+            }
+            inventoryRepository.save(currentInventory);
+        } else {
+            int oldTotal = currentInventory.getTotalQuantity() == null ? 0 : currentInventory.getTotalQuantity();
+            int oldReserved = currentInventory.getReservedQuantity() == null ? 0 : currentInventory.getReservedQuantity();
+            int newOldTotal = oldTotal - previousQuantity;
+            if (newOldTotal < oldReserved) {
+                throw new InventoryValidationException("Cannot move batch because reserved stock exceeds remaining stock");
+            }
+            currentInventory.setTotalQuantity(newOldTotal);
+            inventoryRepository.save(currentInventory);
+
+            int targetTotal = targetInventory.getTotalQuantity() == null ? 0 : targetInventory.getTotalQuantity();
+            targetInventory.setTotalQuantity(targetTotal + updatedQuantity);
+            if (request.getReorderLevel() != null) {
+                targetInventory.setReorderLevel(request.getReorderLevel());
+            }
+            inventoryRepository.save(targetInventory);
+
+            batch.setInventory(targetInventory);
+        }
+
+        batch.setBatchNumber(request.getBatchNumber());
+        batch.setManufacturingDate(request.getManufacturingDate());
+        batch.setExpiryDate(request.getExpiryDate());
+        batch.setQuantity(updatedQuantity);
+        batch.setUnitCost(request.getUnitCost());
+        batch.setSellingPrice(request.getSellingPrice());
+        batch.setStatus(BatchStatus.ACTIVE);
+
+        Batch savedBatch = batchRepository.save(batch);
+        return batchMapper.toResponse(savedBatch);
+    }
+
     private com.TenaMed.pharmacy.entity.Pharmacy resolvePharmacyForActor(java.util.UUID actorUserId) {
         // Try owner first
         java.util.Optional<com.TenaMed.pharmacy.entity.Pharmacy> asOwner = pharmacyRepository.findByOwnerId(actorUserId);
@@ -278,6 +394,7 @@ public class InventoryServiceImpl implements InventoryService {
                 .stream()
                 .map(batch -> InventoryListItemResponse.BatchPriceResponse.builder()
                     .batchId(batch.getId())
+                    .batchNumber(batch.getBatchNumber())
                     .unitPrice(batch.getUnitCost())
                     .sellingPrice(batch.getSellingPrice())
                     .build())

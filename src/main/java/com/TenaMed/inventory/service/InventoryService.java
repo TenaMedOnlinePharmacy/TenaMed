@@ -1,6 +1,7 @@
 package com.TenaMed.inventory.service;
 
 import com.TenaMed.inventory.dto.AddBatchRequest;
+import com.TenaMed.inventory.dto.BatchEditDetailsResponse;
 import com.TenaMed.inventory.dto.BatchResponse;
 import com.TenaMed.inventory.dto.CreateInventoryRequest;
 import com.TenaMed.inventory.dto.InventoryListItemResponse;
@@ -16,6 +17,10 @@ public interface InventoryService {
     InventoryResponse createInventory(CreateInventoryRequest request);
 
     BatchResponse addBatch(AddBatchRequest request, UUID actorUserId, MultipartFile image);
+
+    BatchEditDetailsResponse getBatchForEdit(UUID batchId, UUID actorUserId);
+
+    BatchResponse editBatch(UUID batchId, AddBatchRequest request, UUID actorUserId, MultipartFile image);
 
     InventoryResponse getInventory(UUID pharmacyId, UUID productId);
 

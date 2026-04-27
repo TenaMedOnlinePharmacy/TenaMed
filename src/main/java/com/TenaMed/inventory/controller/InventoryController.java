@@ -1,6 +1,7 @@
 package com.TenaMed.inventory.controller;
 
 import com.TenaMed.inventory.dto.AddBatchRequest;
+import com.TenaMed.inventory.dto.BatchEditDetailsResponse;
 import com.TenaMed.inventory.dto.BatchResponse;
 import com.TenaMed.inventory.dto.CreateInventoryRequest;
 import com.TenaMed.inventory.dto.InventoryListItemResponse;
@@ -60,6 +61,41 @@ public class InventoryController {
             BatchResponse response = inventoryService.addBatch(request, actorUserId, image);
             return ResponseEntity.status(HttpStatus.CREATED).body(response);
         } catch (InventoryNotFoundException ex) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", ex.getMessage()));
+        } catch (InventoryException ex) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("error", ex.getMessage()));
+        }
+    }
+
+    @GetMapping("/batch/{batchId}")
+    public ResponseEntity<?> getBatchForEdit(@PathVariable UUID batchId, Principal principal) {
+        UUID actorUserId = resolveCustomerId(principal);
+        if (actorUserId == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("error", "Authentication required"));
+        }
+        try {
+            BatchEditDetailsResponse response = inventoryService.getBatchForEdit(batchId, actorUserId);
+            return ResponseEntity.ok(response);
+        } catch (BatchNotFoundException ex) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", ex.getMessage()));
+        } catch (InventoryException ex) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("error", ex.getMessage()));
+        }
+    }
+
+    @PutMapping(value = "/batch/{batchId}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<?> editBatch(@PathVariable UUID batchId,
+                                       @Valid @RequestPart("batch") AddBatchRequest request,
+                                       @RequestPart(value = "image", required = false) MultipartFile image,
+                                       Principal principal) {
+        UUID actorUserId = resolveCustomerId(principal);
+        if (actorUserId == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("error", "Authentication required"));
+        }
+        try {
+            BatchResponse response = inventoryService.editBatch(batchId, request, actorUserId, image);
+            return ResponseEntity.ok(response);
+        } catch (BatchNotFoundException ex) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", ex.getMessage()));
         } catch (InventoryException ex) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("error", ex.getMessage()));
