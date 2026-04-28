@@ -15,6 +15,8 @@ public interface PrescriptionRepository extends JpaRepository<Prescription, UUID
 
     Optional<Prescription> findById(UUID id);
 
+    boolean existsByUniqueCode(String uniqueCode);
+
     @Modifying
     @Transactional
     @Query("""
