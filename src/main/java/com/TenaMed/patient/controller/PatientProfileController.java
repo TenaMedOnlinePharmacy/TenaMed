@@ -1,5 +1,7 @@
 package com.TenaMed.patient.controller;
 
+import com.TenaMed.doctor.entity.Doctor;
+import com.TenaMed.doctor.repository.DoctorRepository;
 import com.TenaMed.patient.dto.CreateProfileDto;
 import com.TenaMed.patient.dto.CreatePatientDto;
 import com.TenaMed.patient.dto.PatientProfileResponse;
@@ -10,6 +12,7 @@ import com.TenaMed.patient.service.PatientService;
 import com.TenaMed.prescription.repository.PrescriptionRepository;
 import com.TenaMed.user.security.AuthenticatedUserPrincipal;
 import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -25,25 +28,20 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.security.Principal;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Random;
 import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/patient")
+@RequiredArgsConstructor
 public class PatientProfileController {
 
     private final PatientService patientService;
     private final HospitalRepository hospitalRepository;
+    private final DoctorRepository doctorRepository;
     private final PrescriptionRepository prescriptionRepository;
     private final Random random = new Random();
-
-    public PatientProfileController(PatientService patientService,
-                                    HospitalRepository hospitalRepository,
-                                    PrescriptionRepository prescriptionRepository) {
-        this.patientService = patientService;
-        this.hospitalRepository = hospitalRepository;
-        this.prescriptionRepository = prescriptionRepository;
-    }
 
     @PostMapping("/profile")
     public ResponseEntity<?> createProfile(Principal principal,
@@ -120,8 +118,13 @@ public class PatientProfileController {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("error", "Authentication required"));
         }
 
-        Hospital hospital = hospitalRepository.findByOwnerId(userId)
-            .orElseThrow(() -> new IllegalArgumentException("Hospital not found for current user"));
+        Optional<Doctor> doctor = doctorRepository.findByUserId(userId);
+        Hospital hospital;
+        if (doctor.isPresent()) {
+           hospital = hospitalRepository.findById(doctor.get().getHospitalId()).get();
+        }else{
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("error", "Doctor not found"));
+        }
         String codePrefix = buildHospitalPrefix(hospital.getName());
         String code = generateUniquePrescriptionCode(codePrefix);
         return ResponseEntity.ok(Map.of("uniqueCode", code));

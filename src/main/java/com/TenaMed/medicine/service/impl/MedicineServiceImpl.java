@@ -234,6 +234,7 @@ public class MedicineServiceImpl implements MedicineService {
             .findByNameContainingIgnoreCaseOrGenericNameContainingIgnoreCase(normalizedKeyword, normalizedKeyword)
             .stream()
             .map(medicine -> MedicineNameCategoryResponseDto.builder()
+                .medicineId(medicine.getId())
                 .name(medicine.getName())
                 .category(medicine.getCategory() != null ? medicine.getCategory().getName() : null)
                 .build())
