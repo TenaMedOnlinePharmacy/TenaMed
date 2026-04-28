@@ -6,6 +6,7 @@ import com.TenaMed.medicine.dto.MedicineSearchDto;
 import com.TenaMed.medicine.dto.MedicinePharmacySearchResponseDto;
 import com.TenaMed.medicine.dto.MedicineDopingRuleRequestDto;
 import com.TenaMed.medicine.dto.MedicineDopingRuleResponseDto;
+import com.TenaMed.medicine.dto.MedicineNameCategoryResponseDto;
 import com.TenaMed.medicine.exception.MedicineAlreadyExistsException;
 import com.TenaMed.medicine.exception.MedicineNotFoundException;
 import com.TenaMed.medicine.exception.MedicineValidationException;
@@ -75,6 +76,11 @@ public class MedicineController {
     public ResponseEntity<List<MedicinePharmacySearchResponseDto>> searchMedicines(
             @ModelAttribute MedicineSearchDto searchDto) {
         return ResponseEntity.ok(medicineService.searchMedicines(searchDto));
+    }
+
+    @GetMapping("/search/name-category")
+    public ResponseEntity<List<MedicineNameCategoryResponseDto>> searchMedicineNameCategory(@RequestParam String keyword) {
+        return ResponseEntity.ok(medicineService.searchMedicineNamesByKeyword(keyword));
     }
 
     @PutMapping("/{id}")

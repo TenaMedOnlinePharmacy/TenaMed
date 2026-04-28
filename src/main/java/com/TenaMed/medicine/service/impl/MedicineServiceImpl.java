@@ -14,6 +14,7 @@ import com.TenaMed.medicine.dto.MedicineSearchDto;
 import com.TenaMed.medicine.dto.MedicinePharmacySearchResponseDto;
 import com.TenaMed.medicine.dto.MedicineDopingRuleRequestDto;
 import com.TenaMed.medicine.dto.MedicineDopingRuleResponseDto;
+import com.TenaMed.medicine.dto.MedicineNameCategoryResponseDto;
 import com.TenaMed.medicine.entity.*;
 import com.TenaMed.medicine.exception.MedicineAlreadyExistsException;
 import com.TenaMed.medicine.exception.MedicineNotFoundException;
@@ -219,6 +220,23 @@ public class MedicineServiceImpl implements MedicineService {
                 .comparing(MedicinePharmacySearchResponseDto::getMedicineName, String.CASE_INSENSITIVE_ORDER)
                 .thenComparing(MedicinePharmacySearchResponseDto::getPrice)
             )
+            .toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<MedicineNameCategoryResponseDto> searchMedicineNamesByKeyword(String keyword) {
+        if (keyword == null || keyword.trim().isEmpty()) {
+            return List.of();
+        }
+        String normalizedKeyword = keyword.trim();
+        return medicineRepository
+            .findByNameContainingIgnoreCaseOrGenericNameContainingIgnoreCase(normalizedKeyword, normalizedKeyword)
+            .stream()
+            .map(medicine -> MedicineNameCategoryResponseDto.builder()
+                .name(medicine.getName())
+                .category(medicine.getCategory() != null ? medicine.getCategory().getName() : null)
+                .build())
             .toList();
     }
 

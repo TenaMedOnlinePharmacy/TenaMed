@@ -4,7 +4,10 @@ import com.TenaMed.patient.dto.CreateProfileDto;
 import com.TenaMed.patient.dto.CreatePatientDto;
 import com.TenaMed.patient.dto.PatientProfileResponse;
 import com.TenaMed.patient.dto.UpdateProfileDto;
+import com.TenaMed.hospital.entity.Hospital;
+import com.TenaMed.hospital.repository.HospitalRepository;
 import com.TenaMed.patient.service.PatientService;
+import com.TenaMed.prescription.repository.PrescriptionRepository;
 import com.TenaMed.user.security.AuthenticatedUserPrincipal;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
@@ -22,6 +25,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.security.Principal;
 import java.util.Map;
+import java.util.Random;
 import java.util.UUID;
 
 @RestController
@@ -29,9 +33,16 @@ import java.util.UUID;
 public class PatientProfileController {
 
     private final PatientService patientService;
+    private final HospitalRepository hospitalRepository;
+    private final PrescriptionRepository prescriptionRepository;
+    private final Random random = new Random();
 
-    public PatientProfileController(PatientService patientService) {
+    public PatientProfileController(PatientService patientService,
+                                    HospitalRepository hospitalRepository,
+                                    PrescriptionRepository prescriptionRepository) {
         this.patientService = patientService;
+        this.hospitalRepository = hospitalRepository;
+        this.prescriptionRepository = prescriptionRepository;
     }
 
     @PostMapping("/profile")
@@ -102,6 +113,20 @@ public class PatientProfileController {
         return ResponseEntity.noContent().build();
     }
 
+    @PostMapping("/generate-unique-code")
+    public ResponseEntity<?> generateUniqueCode(Principal principal) {
+        UUID userId = resolveUserId(principal);
+        if (userId == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("error", "Authentication required"));
+        }
+
+        Hospital hospital = hospitalRepository.findByOwnerId(userId)
+            .orElseThrow(() -> new IllegalArgumentException("Hospital not found for current user"));
+        String codePrefix = buildHospitalPrefix(hospital.getName());
+        String code = generateUniquePrescriptionCode(codePrefix);
+        return ResponseEntity.ok(Map.of("uniqueCode", code));
+    }
+
     private UUID resolveUserId(Principal principal) {
         AuthenticatedUserPrincipal authenticatedUserPrincipal = resolveAuthenticatedPrincipal(principal);
         if (authenticatedUserPrincipal != null) {
@@ -130,5 +155,27 @@ public class PatientProfileController {
             return contextAuth;
         }
         return null;
+    }
+
+    private String buildHospitalPrefix(String hospitalName) {
+        if (hospitalName == null || hospitalName.trim().isEmpty()) {
+            return "HS";
+        }
+        String normalized = hospitalName.trim().replaceAll("\\s+", "");
+        if (normalized.length() >= 2) {
+            return normalized.substring(0, 2).toUpperCase();
+        }
+        return (normalized + "X").toUpperCase();
+    }
+
+    private String generateUniquePrescriptionCode(String prefix) {
+        for (int i = 0; i < 100; i++) {
+            int digits = random.nextInt(1_000_000);
+            String code = prefix + "-" + String.format("%06d", digits);
+            if (!prescriptionRepository.existsByUniqueCode(code)) {
+                return code;
+            }
+        }
+        throw new IllegalStateException("Unable to generate unique code, please try again");
     }
 }

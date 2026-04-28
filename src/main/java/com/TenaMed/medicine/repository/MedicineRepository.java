@@ -7,6 +7,7 @@ import org.springframework.stereotype.Repository;
 
 import java.util.Optional;
 import java.util.UUID;
+import java.util.List;
 
 @Repository
 public interface MedicineRepository extends JpaRepository<Medicine, UUID>,
@@ -17,4 +18,6 @@ public interface MedicineRepository extends JpaRepository<Medicine, UUID>,
     Optional<Medicine> findByNameIgnoreCase(String name);
 
     Optional<Medicine> findFirstByNameIgnoreCaseOrGenericNameIgnoreCase(String name, String genericName);
+
+    List<Medicine> findByNameContainingIgnoreCaseOrGenericNameContainingIgnoreCase(String nameKeyword, String genericNameKeyword);
 }
