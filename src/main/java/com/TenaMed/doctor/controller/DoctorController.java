@@ -2,18 +2,28 @@ package com.TenaMed.doctor.controller;
 
 import com.TenaMed.common.exception.BadRequestException;
 import com.TenaMed.common.exception.UnauthorizedException;
+import com.TenaMed.common.exception.ResourceNotFoundException;
 import com.TenaMed.common.security.CurrentUserProvider;
 import com.TenaMed.doctor.dto.CreateDoctorPrescriptionRequestDto;
 import com.TenaMed.doctor.dto.CreateDoctorPrescriptionResponseDto;
 import com.TenaMed.doctor.dto.DoctorInviteRegistrationRequestDto;
+import com.TenaMed.doctor.dto.DoctorAssignedPrescriptionResponseDto;
+import com.TenaMed.doctor.dto.EditDoctorPrescriptionItemsRequestDto;
 import com.TenaMed.doctor.dto.DoctorResponseDto;
+import com.TenaMed.doctor.dto.DoctorAssignedPrescriptionItemResponseDto;
 import com.TenaMed.doctor.dto.VerifyDoctorRequestDto;
 import com.TenaMed.doctor.entity.DoctorStatus;
 import com.TenaMed.doctor.service.DoctorOnboardingService;
 import com.TenaMed.doctor.service.DoctorService;
 import com.TenaMed.patient.dto.CreatePatientDto;
 import com.TenaMed.patient.dto.PatientDto;
+import com.TenaMed.patient.entity.Patient;
+import com.TenaMed.patient.repository.PatientRepository;
 import com.TenaMed.patient.service.PatientService;
+import com.TenaMed.Normalization.entity.PrescriptionItem;
+import com.TenaMed.Normalization.repository.PrescriptionItemRepository;
+import com.TenaMed.medicine.repository.MedicineRepository;
+import com.TenaMed.prescription.repository.PrescriptionRepository;
 import com.TenaMed.prescription.entity.Prescription;
 import com.TenaMed.prescription.service.PrescriptionService;
 import jakarta.validation.Valid;
@@ -27,8 +37,11 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.UUID;
+import java.util.List;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/doctors")
@@ -39,17 +52,29 @@ public class DoctorController {
     private final CurrentUserProvider currentUserProvider;
     private final PatientService patientService;
     private final PrescriptionService prescriptionService;
+    private final PatientRepository patientRepository;
+    private final PrescriptionRepository prescriptionRepository;
+    private final PrescriptionItemRepository prescriptionItemRepository;
+    private final MedicineRepository medicineRepository;
 
     public DoctorController(DoctorService doctorService,
                             DoctorOnboardingService doctorOnboardingService,
                             CurrentUserProvider currentUserProvider,
                             PatientService patientService,
-                            PrescriptionService prescriptionService) {
+                            PrescriptionService prescriptionService,
+                            PatientRepository patientRepository,
+                            PrescriptionRepository prescriptionRepository,
+                            PrescriptionItemRepository prescriptionItemRepository,
+                            MedicineRepository medicineRepository) {
         this.doctorService = doctorService;
         this.doctorOnboardingService = doctorOnboardingService;
         this.currentUserProvider = currentUserProvider;
         this.patientService = patientService;
         this.prescriptionService = prescriptionService;
+        this.patientRepository = patientRepository;
+        this.prescriptionRepository = prescriptionRepository;
+        this.prescriptionItemRepository = prescriptionItemRepository;
+        this.medicineRepository = medicineRepository;
     }
 
     @PostMapping("/create")
@@ -117,5 +142,86 @@ public class DoctorController {
             .expiryDate(prescription.getExpiryDate())
             .build();
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
+
+    @GetMapping("/prescriptions")
+    @Transactional(readOnly = true)
+    public ResponseEntity<List<DoctorAssignedPrescriptionResponseDto>> getPrescriptionsAssignedToDoctor() {
+        if (!currentUserProvider.hasRole("DOCTOR")) {
+            throw new UnauthorizedException("Doctor role is required");
+        }
+
+        UUID doctorId = currentUserProvider.getCurrentUserId();
+        List<Prescription> prescriptions = prescriptionRepository.findByDoctorId(doctorId);
+
+        List<DoctorAssignedPrescriptionResponseDto> response = prescriptions.stream()
+            .map(this::toDoctorAssignedPrescriptionResponseDto)
+            .collect(Collectors.toList());
+
+        return ResponseEntity.ok(response);
+    }
+
+    @PatchMapping("/prescriptions/{prescriptionId}")
+    @Transactional
+    public ResponseEntity<DoctorAssignedPrescriptionResponseDto> editDoctorPrescriptionItems(
+        @PathVariable UUID prescriptionId,
+        @Valid @RequestBody EditDoctorPrescriptionItemsRequestDto request
+    ) {
+        if (!currentUserProvider.hasRole("DOCTOR")) {
+            throw new UnauthorizedException("Doctor role is required");
+        }
+        if (request == null || request.getItems() == null || request.getItems().isEmpty()) {
+            throw new BadRequestException("items are required");
+        }
+
+        UUID doctorId = currentUserProvider.getCurrentUserId();
+        Prescription prescription = prescriptionRepository.findByIdAndDoctorId(prescriptionId, doctorId)
+            .orElseThrow(() -> new ResourceNotFoundException("Prescription not found: " + prescriptionId));
+
+        prescriptionItemRepository.deleteByPrescriptionId(prescriptionId);
+
+        List<PrescriptionItem> itemsToSave = request.getItems().stream().map(item -> {
+            var medicine = medicineRepository.findById(item.getMedicineId())
+                .orElseThrow(() -> new ResourceNotFoundException("Medicine not found: " + item.getMedicineId()));
+
+            PrescriptionItem prescriptionItem = new PrescriptionItem();
+            prescriptionItem.setPrescription(prescription);
+            prescriptionItem.setMedicine(medicine);
+            prescriptionItem.setQuantity(item.getQuantity());
+            prescriptionItem.setForm(item.getForm());
+            prescriptionItem.setInstructions(item.getInstruction());
+            prescriptionItem.setStrength(item.getStrength());
+            return prescriptionItem;
+        }).collect(Collectors.toList());
+
+        prescriptionItemRepository.saveAll(itemsToSave);
+        DoctorAssignedPrescriptionResponseDto updated = toDoctorAssignedPrescriptionResponseDto(prescription);
+        return ResponseEntity.ok(updated);
+    }
+
+    private DoctorAssignedPrescriptionResponseDto toDoctorAssignedPrescriptionResponseDto(Prescription prescription) {
+        String patientFullName = null;
+        if (prescription.getPatientId() != null) {
+            Patient patient = patientRepository.findById(prescription.getPatientId()).orElse(null);
+            patientFullName = patient != null ? patient.getFullName() : null;
+        }
+
+        List<PrescriptionItem> prescriptionItems = prescriptionItemRepository.findByPrescriptionId(prescription.getId());
+        List<DoctorAssignedPrescriptionItemResponseDto> items = prescriptionItems.stream()
+            .map(item -> new DoctorAssignedPrescriptionItemResponseDto(
+                item.getQuantity(),
+                item.getMedicine() != null ? item.getMedicine().getName() : null,
+                item.getForm(),
+                item.getInstructions(),
+                item.getStrength()
+            ))
+            .collect(Collectors.toList());
+
+        return new DoctorAssignedPrescriptionResponseDto(
+            prescription.getId(),
+            prescription.getUniqueCode(),
+            patientFullName,
+            items
+        );
     }
 }
