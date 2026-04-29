@@ -13,6 +13,7 @@ import com.TenaMed.doctor.dto.DoctorResponseDto;
 import com.TenaMed.doctor.dto.DoctorAssignedPrescriptionItemResponseDto;
 import com.TenaMed.doctor.dto.VerifyDoctorRequestDto;
 import com.TenaMed.doctor.entity.DoctorStatus;
+import com.TenaMed.doctor.repository.DoctorRepository;
 import com.TenaMed.doctor.service.DoctorOnboardingService;
 import com.TenaMed.doctor.service.DoctorService;
 import com.TenaMed.patient.dto.CreatePatientDto;
@@ -27,6 +28,7 @@ import com.TenaMed.prescription.repository.PrescriptionRepository;
 import com.TenaMed.prescription.entity.Prescription;
 import com.TenaMed.prescription.service.PrescriptionService;
 import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -44,10 +46,12 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 @RestController
+@RequiredArgsConstructor
 @RequestMapping("/api/doctors")
 public class DoctorController {
 
     private final DoctorService doctorService;
+    private final DoctorRepository doctorRepository;
     private final DoctorOnboardingService doctorOnboardingService;
     private final CurrentUserProvider currentUserProvider;
     private final PatientService patientService;
@@ -57,25 +61,7 @@ public class DoctorController {
     private final PrescriptionItemRepository prescriptionItemRepository;
     private final MedicineRepository medicineRepository;
 
-    public DoctorController(DoctorService doctorService,
-                            DoctorOnboardingService doctorOnboardingService,
-                            CurrentUserProvider currentUserProvider,
-                            PatientService patientService,
-                            PrescriptionService prescriptionService,
-                            PatientRepository patientRepository,
-                            PrescriptionRepository prescriptionRepository,
-                            PrescriptionItemRepository prescriptionItemRepository,
-                            MedicineRepository medicineRepository) {
-        this.doctorService = doctorService;
-        this.doctorOnboardingService = doctorOnboardingService;
-        this.currentUserProvider = currentUserProvider;
-        this.patientService = patientService;
-        this.prescriptionService = prescriptionService;
-        this.patientRepository = patientRepository;
-        this.prescriptionRepository = prescriptionRepository;
-        this.prescriptionItemRepository = prescriptionItemRepository;
-        this.medicineRepository = medicineRepository;
-    }
+
 
     @PostMapping("/create")
     public ResponseEntity<DoctorResponseDto> createDoctorFromInvite(@RequestParam("token") String token,
@@ -110,7 +96,6 @@ public class DoctorController {
         if (!currentUserProvider.hasRole("DOCTOR")) {
             throw new UnauthorizedException("Doctor role is required");
         }
-
         UUID currentUserId = currentUserProvider.getCurrentUserId();
         DoctorResponseDto doctor = doctorService.getMyProfile(currentUserId);
         if (doctor.getStatus() != DoctorStatus.ACTIVE) {
@@ -151,7 +136,8 @@ public class DoctorController {
             throw new UnauthorizedException("Doctor role is required");
         }
 
-        UUID doctorId = currentUserProvider.getCurrentUserId();
+        UUID userID = currentUserProvider.getCurrentUserId();
+        UUID doctorId = doctorRepository.getDoctorByUserId(userID).getId();
         List<Prescription> prescriptions = prescriptionRepository.findByDoctorId(doctorId);
 
         List<DoctorAssignedPrescriptionResponseDto> response = prescriptions.stream()
@@ -209,6 +195,7 @@ public class DoctorController {
         List<PrescriptionItem> prescriptionItems = prescriptionItemRepository.findByPrescriptionId(prescription.getId());
         List<DoctorAssignedPrescriptionItemResponseDto> items = prescriptionItems.stream()
             .map(item -> new DoctorAssignedPrescriptionItemResponseDto(
+                item.getMedicine() != null ? item.getMedicine().getId() : null,
                 item.getQuantity(),
                 item.getMedicine() != null ? item.getMedicine().getName() : null,
                 item.getForm(),
@@ -221,7 +208,9 @@ public class DoctorController {
             prescription.getId(),
             prescription.getUniqueCode(),
             patientFullName,
+            prescription.getExpiryDate(),
             items
         );
+
     }
 }
