@@ -11,6 +11,10 @@ import com.TenaMed.prescription.entity.Prescription;
 import com.TenaMed.prescription.entity.PrescriptionType;
 import com.TenaMed.prescription.repository.PrescriptionRepository;
 import com.TenaMed.prescription.service.PrescriptionService;
+import com.TenaMed.prescription.dto.PrescriptionResponseDto;
+import com.TenaMed.prescription.dto.PrescriptionItemResponseDto;
+import com.TenaMed.patient.repository.PatientRepository;
+import com.TenaMed.Normalization.repository.PrescriptionItemRepository;
 import com.TenaMed.events.DomainEventService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -30,15 +34,21 @@ public class PrescriptionServiceImpl implements PrescriptionService {
     private final MedicineRepository medicineRepository;
     private final PrescriptionItemService prescriptionItemService;
     private final DomainEventService domainEventService;
+    private final PatientRepository patientRepository;
+    private final PrescriptionItemRepository prescriptionItemRepository;
 
     public PrescriptionServiceImpl(PrescriptionRepository prescriptionRepository,
                                    MedicineRepository medicineRepository,
                                    PrescriptionItemService prescriptionItemService,
-                                   DomainEventService domainEventService) {
+                                   DomainEventService domainEventService,
+                                   PatientRepository patientRepository,
+                                   PrescriptionItemRepository prescriptionItemRepository) {
         this.prescriptionRepository = prescriptionRepository;
         this.medicineRepository = medicineRepository;
         this.prescriptionItemService = prescriptionItemService;
         this.domainEventService = domainEventService;
+        this.patientRepository = patientRepository;
+        this.prescriptionItemRepository = prescriptionItemRepository;
     }
 
     @Override
@@ -195,6 +205,37 @@ public class PrescriptionServiceImpl implements PrescriptionService {
             Map.of("patientId", patientId.toString(), "type", String.valueOf(type))
         );
         return saved;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PrescriptionResponseDto getPrescriptionDetails(String uniqueCode, String phone) {
+        patientRepository.findByUniqueCodeAndPhone(uniqueCode, phone)
+                .orElseThrow(() -> new ResourceNotFoundException("Patient not found with the provided unique code and phone number"));
+
+        Prescription prescription = prescriptionRepository.findByUniqueCode(uniqueCode)
+                .orElseThrow(() -> new ResourceNotFoundException("Prescription not found with the provided unique code"));
+
+        List<PrescriptionItem> items = prescriptionItemRepository.findByPrescriptionId(prescription.getId());
+
+        List<PrescriptionItemResponseDto> itemDtos = items.stream()
+                .map(item -> PrescriptionItemResponseDto.builder()
+                        .prescriptionItemId(item.getId())
+                        .medicineId(item.getMedicine().getId())
+                        .name(item.getMedicine().getName())
+                        .quantity(item.getQuantity())
+                        .from(item.getForm())
+                        .instruction(item.getInstructions())
+                        .strength(item.getStrength())
+                        .build())
+                .toList();
+
+        return PrescriptionResponseDto.builder()
+                .prescriptionId(prescription.getId())
+                .maximumRefillAllowed(prescription.getMaxRefillsAllowed())
+                .refillUsed(prescription.getRefillsUsed())
+                .items(itemDtos)
+                .build();
     }
 
     private LocalDate parseToLocalDate(String value) {

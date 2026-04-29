@@ -27,4 +27,6 @@ public interface PrescriptionService {
                                           Boolean highRisk,
                                           com.TenaMed.prescription.entity.PrescriptionType type,
                                           List<DoctorPrescriptionItemRequestDto> items);
+
+    com.TenaMed.prescription.dto.PrescriptionResponseDto getPrescriptionDetails(String uniqueCode, String phone);
 }
