@@ -7,11 +7,15 @@ import com.TenaMed.medicine.dto.MedicinePharmacySearchResponseDto;
 import com.TenaMed.medicine.dto.MedicineDopingRuleRequestDto;
 import com.TenaMed.medicine.dto.MedicineDopingRuleResponseDto;
 import com.TenaMed.medicine.dto.MedicineNameCategoryResponseDto;
+import com.TenaMed.medicine.entity.Medicine;
+import com.TenaMed.medicine.entity.Product;
 import com.TenaMed.medicine.exception.MedicineAlreadyExistsException;
 import com.TenaMed.medicine.exception.MedicineNotFoundException;
 import com.TenaMed.medicine.exception.MedicineValidationException;
+import com.TenaMed.medicine.repository.ProductRepository;
 import com.TenaMed.medicine.service.MedicineService;
 import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -20,17 +24,17 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/medicines")
+@RequiredArgsConstructor
 public class MedicineController {
 
     private final MedicineService medicineService;
+    private final ProductRepository productRepository;
 
-    public MedicineController(MedicineService medicineService) {
-        this.medicineService = medicineService;
-    }
 
     @PostMapping(consumes = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<?> createMedicine(@Valid @RequestBody MedicineRequestDto requestDto) {
@@ -60,7 +64,14 @@ public class MedicineController {
     @GetMapping("/{id}")
     public ResponseEntity<?> getMedicineById(@PathVariable UUID id) {
         try {
-            MedicineResponseDto response = medicineService.getMedicineById(id);
+           Optional<Product>  product = productRepository.findById(id);
+            MedicineResponseDto response;
+           if(product.isPresent()) {
+               UUID medicineId = product.get().getMedicine().getId();
+               response = medicineService.getMedicineById(medicineId);
+           }else{
+               return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", "Medicine not found"));
+           }
             return ResponseEntity.ok(response);
         } catch (MedicineNotFoundException e) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", e.getMessage()));
