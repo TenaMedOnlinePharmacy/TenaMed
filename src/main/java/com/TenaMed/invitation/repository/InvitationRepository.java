@@ -1,6 +1,7 @@
 package com.TenaMed.invitation.repository;
 
 import com.TenaMed.invitation.entity.Invitation;
+import com.TenaMed.invitation.entity.InvitationStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.Optional;

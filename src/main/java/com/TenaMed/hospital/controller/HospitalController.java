@@ -4,10 +4,14 @@ import com.TenaMed.common.security.CurrentUserProvider;
 import com.TenaMed.doctor.dto.DoctorResponseDto;
 import com.TenaMed.hospital.dto.HospitalRequestDto;
 import com.TenaMed.hospital.dto.HospitalResponseDto;
+import com.TenaMed.hospital.dto.HospitalStatisticsDto;
+import com.TenaMed.hospital.entity.Hospital;
+import com.TenaMed.hospital.repository.HospitalRepository;
 import com.TenaMed.hospital.service.HospitalService;
 import com.TenaMed.invitation.dto.DoctorInvitationRequestDto;
 import com.TenaMed.invitation.dto.InvitationResponseDto;
 import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -20,20 +24,17 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/hospitals")
+@RequiredArgsConstructor
 public class HospitalController {
 
     private final HospitalService hospitalService;
     private final CurrentUserProvider currentUserProvider;
-
-    public HospitalController(HospitalService hospitalService,
-                              CurrentUserProvider currentUserProvider) {
-        this.hospitalService = hospitalService;
-        this.currentUserProvider = currentUserProvider;
-    }
+    private final HospitalRepository hospitalRepository;
 
     @PostMapping("/")
     public ResponseEntity<HospitalResponseDto> createHospital(@Valid @RequestBody HospitalRequestDto dto) {
@@ -68,9 +69,10 @@ public class HospitalController {
         return ResponseEntity.status(HttpStatus.CREATED).body(hospitalService.inviteDoctorForOwner(ownerId, request.getEmail()));
     }
 
-    @GetMapping("/{id}/statistics")
-    public ResponseEntity<HospitalStatisticsDto> getHospitalStatistics(@PathVariable UUID id) {
+    @GetMapping("/statistics")
+    public ResponseEntity<HospitalStatisticsDto> getHospitalStatistics() {
         UUID ownerId = currentUserProvider.getCurrentUserId();
-        return ResponseEntity.ok(hospitalService.getHospitalStatistics(id, ownerId));
+        Optional<Hospital> hospital = hospitalRepository.findByOwnerId(ownerId);
+        return hospital.map(value -> ResponseEntity.ok(hospitalService.getHospitalStatistics(value.getId(), ownerId))).orElseGet(() -> ResponseEntity.notFound().build());
     }
 }

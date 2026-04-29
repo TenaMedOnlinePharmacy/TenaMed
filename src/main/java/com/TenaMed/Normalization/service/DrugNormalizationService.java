@@ -3,6 +3,7 @@ package com.TenaMed.Normalization.service;
 import com.TenaMed.Normalization.model.InputMedicine;
 import com.TenaMed.Normalization.model.MatchType;
 import com.TenaMed.Normalization.model.NormalizedMedicine;
+import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.text.similarity.JaroWinklerSimilarity;
 import org.springframework.beans.factory.annotation.Value;
@@ -25,9 +26,10 @@ public class DrugNormalizationService {
 
     private final double fuzzyAcceptanceThreshold;
     private final double ambiguityDelta;
-    private final Map<String, String> standardByNormalized;
-    private final Map<String, String> synonymsByNormalized;
-    private final Map<String, String> fuzzyCandidatesByNormalized;
+    private final DrugLookupService drugLookupService;
+    private Map<String, String> standardByNormalized = Map.of();
+    private Map<String, String> synonymsByNormalized = Map.of();
+    private Map<String, String> fuzzyCandidatesByNormalized = Map.of();
     private final JaroWinklerSimilarity similarity;
 
     public DrugNormalizationService(
@@ -35,22 +37,37 @@ public class DrugNormalizationService {
             @Value("${normalization.fuzzy.acceptance-threshold}") double fuzzyAcceptanceThreshold,
             @Value("${normalization.fuzzy.ambiguity-delta:0.02}") double ambiguityDelta
     ) {
+        this.drugLookupService = drugLookupService;
         this.fuzzyAcceptanceThreshold = Math.max(0.70, fuzzyAcceptanceThreshold);
         this.ambiguityDelta = ambiguityDelta;
         this.similarity = new JaroWinklerSimilarity();
+    }
 
-        Map<String, String> standardLookup = buildStandardLookup(drugLookupService.getStandardDrugNames());
-        this.standardByNormalized = Map.copyOf(standardLookup);
+    @PostConstruct
+    public void initialize() {
+        log.info("Automatic drug normalization initialization is currently disabled.");
+/*
+        log.info("Initializing drug normalization lookup maps...");
+        try {
+            Map<String, String> standardLookup = buildStandardLookup(drugLookupService.getStandardDrugNames());
+            this.standardByNormalized = Map.copyOf(standardLookup);
 
-        Map<String, String> synonymLookup = buildNormalizedSynonymLookup(
-            drugLookupService.getSynonymMappings(),
-            standardLookup
-        );
-        this.synonymsByNormalized = Map.copyOf(synonymLookup);
+            Map<String, String> synonymLookup = buildNormalizedSynonymLookup(
+                drugLookupService.getSynonymMappings(),
+                standardLookup
+            );
+            this.synonymsByNormalized = Map.copyOf(synonymLookup);
 
-        Map<String, String> fuzzyLookup = new LinkedHashMap<>(standardLookup);
-        synonymLookup.forEach(fuzzyLookup::putIfAbsent);
-        this.fuzzyCandidatesByNormalized = Map.copyOf(fuzzyLookup);
+            Map<String, String> fuzzyLookup = new LinkedHashMap<>(standardLookup);
+            synonymLookup.forEach(fuzzyLookup::putIfAbsent);
+            this.fuzzyCandidatesByNormalized = Map.copyOf(fuzzyLookup);
+            log.info("Drug normalization lookup maps initialized successfully.");
+        } catch (Exception e) {
+            log.error("Failed to initialize drug normalization lookup maps: {}", e.getMessage(), e);
+            // We don't rethrow to allow the application to start, 
+            // but normalization will return UNKNOWN until initialized.
+        }
+*/
     }
 
     public NormalizedMedicine normalize(InputMedicine input) {

@@ -21,8 +21,6 @@ public interface PrescriptionRepository extends JpaRepository<Prescription, UUID
 
     boolean existsByUniqueCode(String uniqueCode);
 
-    Optional<Prescription> findByUniqueCode(String uniqueCode);
-
     @Modifying
     @Transactional
     @Query("""
@@ -144,5 +142,7 @@ public interface PrescriptionRepository extends JpaRepository<Prescription, UUID
             @Param("profileId") UUID profileId
     );
 
-    long countByHospitalId(UUID hospitalId);
+    Long countByHospitalId(UUID hospitalId);
+
+    Optional<Object> findByUniqueCode(String uniqueCode);
 }

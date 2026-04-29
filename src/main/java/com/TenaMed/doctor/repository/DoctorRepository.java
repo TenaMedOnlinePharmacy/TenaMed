@@ -1,6 +1,7 @@
 package com.TenaMed.doctor.repository;
 
 import com.TenaMed.doctor.entity.Doctor;
+import com.TenaMed.doctor.entity.DoctorStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;

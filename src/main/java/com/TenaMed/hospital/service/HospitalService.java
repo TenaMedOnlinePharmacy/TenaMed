@@ -3,6 +3,7 @@ package com.TenaMed.hospital.service;
 import com.TenaMed.doctor.dto.DoctorResponseDto;
 import com.TenaMed.hospital.dto.HospitalRequestDto;
 import com.TenaMed.hospital.dto.HospitalResponseDto;
+import com.TenaMed.hospital.dto.HospitalStatisticsDto;
 import com.TenaMed.invitation.dto.InvitationResponseDto;
 
 import java.util.List;
@@ -22,9 +23,7 @@ public interface HospitalService {
 
     List<DoctorResponseDto> getHospitalDoctors(UUID hospitalId);
 
-
-
     InvitationResponseDto inviteDoctorForOwner(UUID ownerId, String email);
 
-   HospitalStatisticsDto getHospitalStatistics(UUID hospitalId, UUID ownerId);
+    HospitalStatisticsDto getHospitalStatistics(UUID hospitalId, UUID ownerId);
 }

@@ -6,8 +6,11 @@ import com.TenaMed.common.exception.UnauthorizedException;
 import com.TenaMed.common.security.CurrentUserProvider;
 import com.TenaMed.doctor.dto.DoctorResponseDto;
 import com.TenaMed.doctor.service.DoctorService;
+import com.TenaMed.doctor.repository.DoctorRepository;
+import com.TenaMed.doctor.entity.DoctorStatus;
 import com.TenaMed.hospital.dto.HospitalRequestDto;
 import com.TenaMed.hospital.dto.HospitalResponseDto;
+import com.TenaMed.hospital.dto.HospitalStatisticsDto;
 import com.TenaMed.hospital.entity.Hospital;
 import com.TenaMed.hospital.entity.HospitalStatus;
 import com.TenaMed.hospital.mapper.HospitalMapper;
@@ -17,10 +20,7 @@ import com.TenaMed.invitation.dto.InvitationResponseDto;
 import com.TenaMed.invitation.service.InvitationService;
 import com.TenaMed.invitation.entity.InvitationStatus;
 import com.TenaMed.invitation.repository.InvitationRepository;
-import com.TenaMed.doctor.repository.DoctorRepository;
-import com.TenaMed.doctor.entity.DoctorStatus;
 import com.TenaMed.prescription.repository.PrescriptionRepository;
-import com.TenaMed.hospital.dto.HospitalStatisticsDto;
 import com.TenaMed.events.DomainEventService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -167,8 +167,6 @@ public class HospitalServiceImpl implements HospitalService {
         getHospitalEntityById(hospitalId);
         return doctorService.getDoctorsByHospital(hospitalId);
     }
-
-
 
     @Override
     @Transactional

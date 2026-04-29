@@ -213,7 +213,7 @@ public class PrescriptionServiceImpl implements PrescriptionService {
         patientRepository.findByUniqueCodeAndPhone(uniqueCode, phone)
                 .orElseThrow(() -> new ResourceNotFoundException("Patient not found with the provided unique code and phone number"));
 
-        Prescription prescription = prescriptionRepository.findByUniqueCode(uniqueCode)
+        Prescription prescription = (Prescription) prescriptionRepository.findByUniqueCode(uniqueCode)
                 .orElseThrow(() -> new ResourceNotFoundException("Prescription not found with the provided unique code"));
 
         List<PrescriptionItem> items = prescriptionItemRepository.findByPrescriptionId(prescription.getId());
