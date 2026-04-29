@@ -160,7 +160,8 @@ public class DoctorController {
             throw new BadRequestException("items are required");
         }
 
-        UUID doctorId = currentUserProvider.getCurrentUserId();
+        UUID userId = currentUserProvider.getCurrentUserId();
+        UUID doctorId = doctorRepository.getDoctorByUserId(userId).getId();
         Prescription prescription = prescriptionRepository.findByIdAndDoctorId(prescriptionId, doctorId)
             .orElseThrow(() -> new ResourceNotFoundException("Prescription not found: " + prescriptionId));
 

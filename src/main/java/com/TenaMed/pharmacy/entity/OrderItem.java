@@ -37,6 +37,11 @@ public class OrderItem {
     @Column(name = "product_id", nullable = false)
     private UUID productId;
 
+
+    @Column(name = "medicine_id", nullable = false)
+    private UUID medicineId;
+
+
     @Column(name = "quantity")
     private Integer quantity;
 

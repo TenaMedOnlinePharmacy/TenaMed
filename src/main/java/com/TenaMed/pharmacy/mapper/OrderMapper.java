@@ -33,10 +33,12 @@ public class OrderMapper {
         item.setOrder(order);
         item.setInventoryId(request.getInventoryId());
         item.setProductId(request.getProductId());
+        item.setMedicineId(request.getMedicineId()); // Assuming it's added to OrderItemRequest
         item.setQuantity(request.getQuantity());
         item.setUnitPrice(request.getUnitPrice());
         return item;
     }
+
 
     public OrderResponse toResponse(Order order) {
         List<OrderItemResponse> items = order.getItems().stream()
@@ -64,9 +66,11 @@ public class OrderMapper {
             .id(item.getId())
             .inventoryId(item.getInventoryId())
             .productId(item.getProductId())
+            .medicineId(item.getMedicineId())
             .quantity(item.getQuantity())
             .unitPrice(item.getUnitPrice())
             .build();
+
     }
 
 }

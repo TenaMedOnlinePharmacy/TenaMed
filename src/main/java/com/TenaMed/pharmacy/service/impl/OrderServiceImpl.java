@@ -282,9 +282,15 @@ public class OrderServiceImpl implements OrderService {
             orderItem.setOrder(order);
             orderItem.setInventoryId(inventoryId);
             orderItem.setProductId(productId);
+            
+            com.TenaMed.medicine.entity.Product product = productRepository.findById(productId)
+                    .orElseThrow(() -> new PharmacyValidationException("Product not found: " + productId));
+            orderItem.setMedicineId(product.getMedicine().getId());
+
             orderItem.setQuantity(quantity);
             orderItem.setUnitPrice(itemRequest.getUnitPrice());
             orderItems.add(orderItem);
+
 
             total = total.add(itemRequest.getUnitPrice().multiply(BigDecimal.valueOf(quantity)));
         }
@@ -442,8 +448,10 @@ public class OrderServiceImpl implements OrderService {
         OrderItem orderItem = new OrderItem();
         orderItem.setInventoryId(inventoryId);
         orderItem.setProductId(productId);
+        orderItem.setMedicineId(product.getMedicine().getId());
         orderItem.setQuantity(prescriptionItem.getQuantity());
         orderItem.setUnitPrice(activeBatch.getSellingPrice());
+
         return orderItem;
     }
 

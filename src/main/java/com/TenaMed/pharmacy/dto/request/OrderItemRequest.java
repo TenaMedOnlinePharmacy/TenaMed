@@ -20,6 +20,10 @@ public class OrderItemRequest {
     private UUID productId;
 
     @NotNull
+    private UUID medicineId;
+
+
+    @NotNull
     @Min(1)
     private Integer quantity;
 

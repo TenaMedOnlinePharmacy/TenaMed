@@ -13,6 +13,8 @@ public class OrderItemResponse {
     private UUID id;
     private UUID inventoryId;
     private UUID productId;
+    private UUID medicineId;
+
     private Integer quantity;
     private BigDecimal unitPrice;
 }
