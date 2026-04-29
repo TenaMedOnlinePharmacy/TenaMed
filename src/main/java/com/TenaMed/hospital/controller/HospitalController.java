@@ -67,4 +67,10 @@ public class HospitalController {
         UUID ownerId = currentUserProvider.getCurrentUserId();
         return ResponseEntity.status(HttpStatus.CREATED).body(hospitalService.inviteDoctorForOwner(ownerId, request.getEmail()));
     }
+
+    @GetMapping("/{id}/statistics")
+    public ResponseEntity<HospitalStatisticsDto> getHospitalStatistics(@PathVariable UUID id) {
+        UUID ownerId = currentUserProvider.getCurrentUserId();
+        return ResponseEntity.ok(hospitalService.getHospitalStatistics(id, ownerId));
+    }
 }

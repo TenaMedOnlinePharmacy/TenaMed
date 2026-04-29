@@ -18,4 +18,8 @@ public interface DoctorRepository extends JpaRepository<Doctor, UUID> {
     boolean existsByLicenseNumberIgnoreCase(String licenseNumber);
 
     Doctor getDoctorByUserId(UUID userID);
+
+    long countByHospitalId(UUID hospitalId);
+
+    long countByHospitalIdAndStatus(UUID hospitalId, DoctorStatus status);
 }

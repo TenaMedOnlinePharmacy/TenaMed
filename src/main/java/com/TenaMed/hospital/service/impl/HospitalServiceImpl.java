@@ -15,6 +15,12 @@ import com.TenaMed.hospital.repository.HospitalRepository;
 import com.TenaMed.hospital.service.HospitalService;
 import com.TenaMed.invitation.dto.InvitationResponseDto;
 import com.TenaMed.invitation.service.InvitationService;
+import com.TenaMed.invitation.entity.InvitationStatus;
+import com.TenaMed.invitation.repository.InvitationRepository;
+import com.TenaMed.doctor.repository.DoctorRepository;
+import com.TenaMed.doctor.entity.DoctorStatus;
+import com.TenaMed.prescription.repository.PrescriptionRepository;
+import com.TenaMed.hospital.dto.HospitalStatisticsDto;
 import com.TenaMed.events.DomainEventService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -32,19 +38,28 @@ public class HospitalServiceImpl implements HospitalService {
     private final InvitationService invitationService;
     private final CurrentUserProvider currentUserProvider;
     private final DomainEventService domainEventService;
+    private final DoctorRepository doctorRepository;
+    private final InvitationRepository invitationRepository;
+    private final PrescriptionRepository prescriptionRepository;
 
     public HospitalServiceImpl(HospitalRepository hospitalRepository,
                                HospitalMapper hospitalMapper,
                                DoctorService doctorService,
                                InvitationService invitationService,
                                CurrentUserProvider currentUserProvider,
-                               DomainEventService domainEventService) {
+                               DomainEventService domainEventService,
+                               DoctorRepository doctorRepository,
+                               InvitationRepository invitationRepository,
+                               PrescriptionRepository prescriptionRepository) {
         this.hospitalRepository = hospitalRepository;
         this.hospitalMapper = hospitalMapper;
         this.doctorService = doctorService;
         this.invitationService = invitationService;
         this.currentUserProvider = currentUserProvider;
         this.domainEventService = domainEventService;
+        this.doctorRepository = doctorRepository;
+        this.invitationRepository = invitationRepository;
+        this.prescriptionRepository = prescriptionRepository;
     }
 
     @Override
@@ -179,6 +194,24 @@ public class HospitalServiceImpl implements HospitalService {
             Map.of("email", email)
         );
         return invitation;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public HospitalStatisticsDto getHospitalStatistics(UUID hospitalId, UUID ownerId) {
+        Hospital hospital = getHospitalEntityById(hospitalId);
+
+        if (!hospital.getOwnerId().equals(ownerId) && !currentUserProvider.hasRole("ADMIN")) {
+            throw new UnauthorizedException("You are not the owner of this hospital");
+        }
+
+        return HospitalStatisticsDto.builder()
+                .totalDoctors(doctorRepository.countByHospitalId(hospitalId))
+                .verifiedDoctors(doctorRepository.countByHospitalIdAndStatus(hospitalId, DoctorStatus.ACTIVE))
+                .unverifiedDoctors(doctorRepository.countByHospitalIdAndStatus(hospitalId, DoctorStatus.PENDING))
+                .invitedDoctors(invitationRepository.countByHospitalIdAndStatus(hospitalId, InvitationStatus.PENDING))
+                .totalPrescriptions(prescriptionRepository.countByHospitalId(hospitalId))
+                .build();
     }
 
     private Hospital getHospitalEntityById(UUID hospitalId) {

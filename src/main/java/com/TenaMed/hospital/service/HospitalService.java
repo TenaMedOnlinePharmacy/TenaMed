@@ -25,4 +25,6 @@ public interface HospitalService {
 
 
     InvitationResponseDto inviteDoctorForOwner(UUID ownerId, String email);
+
+   HospitalStatisticsDto getHospitalStatistics(UUID hospitalId, UUID ownerId);
 }

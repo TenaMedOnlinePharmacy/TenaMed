@@ -143,4 +143,6 @@ public interface PrescriptionRepository extends JpaRepository<Prescription, UUID
             @Param("patientId") UUID patientId,
             @Param("profileId") UUID profileId
     );
+
+    long countByHospitalId(UUID hospitalId);
 }
