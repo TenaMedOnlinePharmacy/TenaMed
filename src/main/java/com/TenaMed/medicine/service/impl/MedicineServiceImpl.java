@@ -26,6 +26,7 @@ import com.TenaMed.medicine.repository.DosageFormRepository;
 import com.TenaMed.medicine.repository.MedicineAllergenRepository;
 import com.TenaMed.medicine.repository.MedicineRepository;
 import com.TenaMed.medicine.service.MedicineService;
+import com.TenaMed.medicine.service.ProductImageService;
 import com.TenaMed.medicine.specification.MedicineSpecification;
 import com.TenaMed.medicine.validator.MedicineValidator;
 import com.TenaMed.ocr.service.SupabaseStorageService;
@@ -69,6 +70,7 @@ public class MedicineServiceImpl implements MedicineService {
     private final MedicineMapper medicineMapper;
     private final MedicineValidator medicineValidator;
     private final DomainEventService domainEventService;
+    private final ProductImageService productImageService;
 
     public MedicineServiceImpl(MedicineRepository medicineRepository,
                                CategoryRepository categoryRepository,
@@ -83,7 +85,8 @@ public class MedicineServiceImpl implements MedicineService {
                                SupabaseStorageService supabaseStorageService,
                                MedicineMapper medicineMapper,
                                MedicineValidator medicineValidator,
-                               DomainEventService domainEventService) {
+                               DomainEventService domainEventService,
+                               ProductImageService productImageService) {
         this.medicineRepository = medicineRepository;
         this.categoryRepository = categoryRepository;
         this.dosageFormRepository = dosageFormRepository;
@@ -98,6 +101,7 @@ public class MedicineServiceImpl implements MedicineService {
         this.medicineMapper = medicineMapper;
         this.medicineValidator = medicineValidator;
         this.domainEventService = domainEventService;
+        this.productImageService = productImageService;
     }
 
     @Override
@@ -264,10 +268,7 @@ public class MedicineServiceImpl implements MedicineService {
             .pharmacyLegalName(resolvePharmacyLegalName(pharmacy))
             .price(price)
             .medicineCategory(medicine.getCategory() != null ? medicine.getCategory().getName() : null)
-//            .imageUrl(supabaseStorageService.resolveSignedUrl(
-//                product.getImageUrl() != null ? product.getImageUrl() : medicine.getImageUrl()
-//            ))
-            .imageUrl(product.getImageUrl() != null ? product.getImageUrl() : medicine.getImageUrl())
+            .imageUrl(productImageService.resolveProductImage(product.getId(), inventory.getPharmacyId()))
             .indications(medicine.getIndications())
             .contraindications(medicine.getContraindications())
             .sideEffects(medicine.getSideEffects())

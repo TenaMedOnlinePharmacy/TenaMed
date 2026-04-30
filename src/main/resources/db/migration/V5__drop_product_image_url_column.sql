@@ -1,0 +1,1 @@
+-- Phase 6: Drop legacy image_url column from products table.

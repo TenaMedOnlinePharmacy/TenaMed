@@ -25,6 +25,7 @@ import com.TenaMed.events.DomainEventService;
 import com.TenaMed.medicine.entity.Medicine;
 import com.TenaMed.medicine.entity.Product;
 import com.TenaMed.medicine.repository.MedicineRepository;
+import com.TenaMed.medicine.service.ProductImageService;
 import com.TenaMed.pharmacy.entity.Pharmacy;
 import com.TenaMed.pharmacy.entity.UserPharmacy;
 import com.TenaMed.pharmacy.repository.PharmacyRepository;
@@ -58,6 +59,7 @@ public class InventoryServiceImpl implements InventoryService {
     private final PharmacyRepository pharmacyRepository;
     private final UserPharmacyRepository userPharmacyRepository;
     private final SupabaseStorageService supabaseStorageService;
+    private final ProductImageService productImageService;
 
     private static final String PRODUCT_IMAGE_FOLDER = "products";
 
@@ -71,7 +73,8 @@ public class InventoryServiceImpl implements InventoryService {
                                 MedicineRepository medicineRepository,
                                 PharmacyRepository pharmacyRepository,
                                 UserPharmacyRepository userPharmacyRepository,
-                                SupabaseStorageService supabaseStorageService) {
+                                SupabaseStorageService supabaseStorageService,
+                                ProductImageService productImageService) {
         this.inventoryRepository = inventoryRepository;
         this.batchRepository = batchRepository;
         this.stockMovementRepository = stockMovementRepository;
@@ -83,6 +86,7 @@ public class InventoryServiceImpl implements InventoryService {
         this.pharmacyRepository = pharmacyRepository;
         this.userPharmacyRepository = userPharmacyRepository;
         this.supabaseStorageService = supabaseStorageService;
+        this.productImageService = productImageService;
     }
 
     @Override
@@ -125,9 +129,7 @@ public class InventoryServiceImpl implements InventoryService {
 
         if (image != null && !image.isEmpty()) {
             String objectPath = supabaseStorageService.uploadAndGetObjectPath(image, PRODUCT_IMAGE_FOLDER);
-//            product.setImageUrl(supabaseStorageService.resolveSignedUrl(objectPath));
-            product.setImageUrl(objectPath);
-            productRepository.save(product);
+            productImageService.savePharmacyImage(product.getId(), pharmacy.getId(), objectPath);
         }
 
         if (product.getMedicine() == null || product.getMedicine().getId() == null) {
@@ -200,7 +202,7 @@ public class InventoryServiceImpl implements InventoryService {
         return BatchEditDetailsResponse.builder()
             .batchId(batch.getId())
             .batch(responseRequest)
-            .imageUrl(product.getImageUrl())
+            .imageUrl(productImageService.resolveProductImage(product.getId(), pharmacy.getId()))
             .build();
     }
 
@@ -220,9 +222,7 @@ public class InventoryServiceImpl implements InventoryService {
 
         if (image != null && !image.isEmpty()) {
             String objectPath = supabaseStorageService.uploadAndGetObjectPath(image, PRODUCT_IMAGE_FOLDER);
-//            product.setImageUrl(supabaseStorageService.resolveSignedUrl(objectPath));
-            product.setImageUrl(objectPath);
-            productRepository.save(product);
+            productImageService.savePharmacyImage(product.getId(), pharmacy.getId(), objectPath);
         }
 
         if (product.getMedicine() == null || product.getMedicine().getId() == null) {
@@ -408,7 +408,7 @@ public class InventoryServiceImpl implements InventoryService {
             return InventoryListItemResponse.builder()
                 .inventoryId(inventory.getId())
                 .productId(inventory.getProductId())
-                .imageUrl(product != null ? product.getImageUrl() : null)
+                .imageUrl(product != null ? productImageService.resolveProductImage(product.getId(), pharmacy.getId()) : null)
                 .medicineName(medicine != null ? medicine.getName() : null)
                 .totalQuantity(totalQuantity)
                 .batchPrices(batchPrices)

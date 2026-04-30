@@ -13,6 +13,7 @@ import com.TenaMed.pharmacy.entity.Pharmacy;
 import com.TenaMed.pharmacy.exception.PharmacyValidationException;
 import com.TenaMed.pharmacy.repository.PharmacyRepository;
 import com.TenaMed.pharmacy.service.PrescriptionInventoryMatchService;
+import com.TenaMed.medicine.service.ProductImageService;
 import com.TenaMed.prescription.repository.PrescriptionRepository;
 import com.TenaMed.ocr.service.SupabaseStorageService;
 import org.springframework.stereotype.Service;
@@ -40,6 +41,7 @@ public class PrescriptionInventoryMatchServiceImpl implements PrescriptionInvent
     private final PharmacyRepository pharmacyRepository;
     private final BatchRepository batchRepository;
     private final SupabaseStorageService supabaseStorageService;
+    private final ProductImageService productImageService;
 
     public PrescriptionInventoryMatchServiceImpl(PrescriptionRepository prescriptionRepository,
                                                  PrescriptionItemRepository prescriptionItemRepository,
@@ -48,7 +50,8 @@ public class PrescriptionInventoryMatchServiceImpl implements PrescriptionInvent
                                                  com.TenaMed.medicine.repository.ProductRepository productRepository,
                                                  PharmacyRepository pharmacyRepository,
                                                  BatchRepository batchRepository,
-                                                 SupabaseStorageService supabaseStorageService) {
+                                                 SupabaseStorageService supabaseStorageService,
+                                                 ProductImageService productImageService) {
         this.prescriptionRepository = prescriptionRepository;
         this.prescriptionItemRepository = prescriptionItemRepository;
         this.inventoryRepository = inventoryRepository;
@@ -57,6 +60,7 @@ public class PrescriptionInventoryMatchServiceImpl implements PrescriptionInvent
         this.pharmacyRepository = pharmacyRepository;
         this.batchRepository = batchRepository;
         this.supabaseStorageService = supabaseStorageService;
+        this.productImageService = productImageService;
     }
 
     @Override
@@ -158,10 +162,7 @@ public class PrescriptionInventoryMatchServiceImpl implements PrescriptionInvent
             .pharmacyLegalName(resolvePharmacyLegalName(pharmacy))
             .price(price)
             .medicineCategory(medicine.getCategory() != null ? medicine.getCategory().getName() : null)
-//            .imageUrl(supabaseStorageService.resolveSignedUrl(
-//                product.getImageUrl() != null ? product.getImageUrl() : medicine.getImageUrl()
-//            ))
-            .imageUrl(product.getImageUrl() != null ? product.getImageUrl() : medicine.getImageUrl())
+            .imageUrl(productImageService.resolveProductImage(product.getId(), inventory.getPharmacyId()))
             .indications(medicine.getIndications())
             .contraindications(medicine.getContraindications())
             .sideEffects(medicine.getSideEffects())
