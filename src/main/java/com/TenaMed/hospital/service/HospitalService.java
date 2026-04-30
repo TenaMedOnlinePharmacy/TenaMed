@@ -1,7 +1,10 @@
 package com.TenaMed.hospital.service;
 
 import com.TenaMed.doctor.dto.DoctorResponseDto;
+import com.TenaMed.doctor.entity.DoctorStatus;
+import com.TenaMed.hospital.dto.HospitalDoctorResponseDto;
 import com.TenaMed.hospital.dto.HospitalRequestDto;
+
 import com.TenaMed.hospital.dto.HospitalResponseDto;
 import com.TenaMed.hospital.dto.HospitalStatisticsDto;
 import com.TenaMed.invitation.dto.InvitationResponseDto;
@@ -26,4 +29,10 @@ public interface HospitalService {
     InvitationResponseDto inviteDoctorForOwner(UUID ownerId, String email);
 
     HospitalStatisticsDto getHospitalStatistics(UUID hospitalId, UUID ownerId);
+
+    List<HospitalDoctorResponseDto> getHospitalDoctorsByStatus(UUID hospitalId, List<DoctorStatus> statuses);
+
+    void acceptDoctor(UUID doctorId, UUID ownerId);
+
+    void rejectDoctor(UUID doctorId, UUID ownerId);
 }

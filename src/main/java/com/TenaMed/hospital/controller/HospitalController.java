@@ -2,6 +2,8 @@ package com.TenaMed.hospital.controller;
 
 import com.TenaMed.common.security.CurrentUserProvider;
 import com.TenaMed.doctor.dto.DoctorResponseDto;
+import com.TenaMed.doctor.entity.DoctorStatus;
+import com.TenaMed.hospital.dto.HospitalDoctorResponseDto;
 import com.TenaMed.hospital.dto.HospitalRequestDto;
 import com.TenaMed.hospital.dto.HospitalResponseDto;
 import com.TenaMed.hospital.dto.HospitalStatisticsDto;
@@ -74,5 +76,27 @@ public class HospitalController {
         UUID ownerId = currentUserProvider.getCurrentUserId();
         Optional<Hospital> hospital = hospitalRepository.findByOwnerId(ownerId);
         return hospital.map(value -> ResponseEntity.ok(hospitalService.getHospitalStatistics(value.getId(), ownerId))).orElseGet(() -> ResponseEntity.notFound().build());
+    }
+
+    @GetMapping("/doctors/management")
+    public ResponseEntity<List<HospitalDoctorResponseDto>> getHospitalDoctorsForManagement() {
+        UUID ownerId = currentUserProvider.getCurrentUserId();
+        Optional<Hospital> hospital = hospitalRepository.findByOwnerId(ownerId);
+        return hospital.map(value -> ResponseEntity.ok(hospitalService.getHospitalDoctorsByStatus(value.getId(), List.of(DoctorStatus.ACTIVE, DoctorStatus.PENDING))))
+                .orElseGet(() -> ResponseEntity.notFound().build());
+    }
+
+    @PatchMapping("/doctors/{doctorId}/accept")
+    public ResponseEntity<Void> acceptDoctor(@PathVariable UUID doctorId) {
+        UUID ownerId = currentUserProvider.getCurrentUserId();
+        hospitalService.acceptDoctor(doctorId, ownerId);
+        return ResponseEntity.ok().build();
+    }
+
+    @PatchMapping("/doctors/{doctorId}/reject")
+    public ResponseEntity<Void> rejectDoctor(@PathVariable UUID doctorId) {
+        UUID ownerId = currentUserProvider.getCurrentUserId();
+        hospitalService.rejectDoctor(doctorId, ownerId);
+        return ResponseEntity.ok().build();
     }
 }

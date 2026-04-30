@@ -41,6 +41,7 @@ public class HospitalServiceImpl implements HospitalService {
     private final DoctorRepository doctorRepository;
     private final InvitationRepository invitationRepository;
     private final PrescriptionRepository prescriptionRepository;
+    private final com.TenaMed.user.repository.UserRepository userRepository;
 
     public HospitalServiceImpl(HospitalRepository hospitalRepository,
                                HospitalMapper hospitalMapper,
@@ -50,7 +51,8 @@ public class HospitalServiceImpl implements HospitalService {
                                DomainEventService domainEventService,
                                DoctorRepository doctorRepository,
                                InvitationRepository invitationRepository,
-                               PrescriptionRepository prescriptionRepository) {
+                               PrescriptionRepository prescriptionRepository,
+                               com.TenaMed.user.repository.UserRepository userRepository) {
         this.hospitalRepository = hospitalRepository;
         this.hospitalMapper = hospitalMapper;
         this.doctorService = doctorService;
@@ -60,6 +62,71 @@ public class HospitalServiceImpl implements HospitalService {
         this.doctorRepository = doctorRepository;
         this.invitationRepository = invitationRepository;
         this.prescriptionRepository = prescriptionRepository;
+        this.userRepository = userRepository;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<com.TenaMed.hospital.dto.HospitalDoctorResponseDto> getHospitalDoctorsByStatus(UUID hospitalId, List<DoctorStatus> statuses) {
+        getHospitalEntityById(hospitalId);
+        List<com.TenaMed.doctor.entity.Doctor> doctors = doctorRepository.findByHospitalIdAndStatusIn(hospitalId, statuses);
+        
+        List<UUID> userIds = doctors.stream().map(com.TenaMed.doctor.entity.Doctor::getUserId).toList();
+        Map<UUID, com.TenaMed.user.entity.User> userMap = userRepository.findAllById(userIds).stream()
+                .collect(java.util.stream.Collectors.toMap(com.TenaMed.user.entity.User::getId, u -> u));
+
+        return doctors.stream().map(d -> {
+            com.TenaMed.user.entity.User user = userMap.get(d.getUserId());
+            String name = user != null ? user.getFirstName() + " " + user.getLastName() : "Unknown";
+            return com.TenaMed.hospital.dto.HospitalDoctorResponseDto.builder()
+                    .doctorId(d.getId())
+                    .name(name)
+                    .specialization(d.getSpecialization())
+                    .licenseNumber(d.getLicenseNumber())
+                    .status(d.getStatus())
+                    .build();
+        }).toList();
+    }
+
+    @Override
+    @Transactional
+    public void acceptDoctor(UUID doctorId, UUID ownerId) {
+        updateDoctorStatus(doctorId, ownerId, DoctorStatus.ACTIVE);
+    }
+
+    @Override
+    @Transactional
+    public void rejectDoctor(UUID doctorId, UUID ownerId) {
+        updateDoctorStatus(doctorId, ownerId, DoctorStatus.REJECTED);
+    }
+
+    private void updateDoctorStatus(UUID doctorId, UUID ownerId, DoctorStatus newStatus) {
+        com.TenaMed.doctor.entity.Doctor doctor = doctorRepository.findById(doctorId)
+                .orElseThrow(() -> new ResourceNotFoundException("Doctor not found: " + doctorId));
+
+        Hospital hospital = hospitalRepository.findById(doctor.getHospitalId())
+                .orElseThrow(() -> new ResourceNotFoundException("Hospital not found: " + doctor.getHospitalId()));
+
+        if (!hospital.getOwnerId().equals(ownerId) && !currentUserProvider.hasRole("ADMIN")) {
+            throw new UnauthorizedException("You are not authorized to manage doctors for this hospital");
+        }
+
+        doctor.setStatus(newStatus);
+        if (newStatus == DoctorStatus.ACTIVE) {
+            doctor.setVerifiedBy(currentUserProvider.getCurrentUserId());
+        }
+        doctorRepository.save(doctor);
+        
+        domainEventService.publish(
+            "DOCTOR_STATUS_UPDATED",
+            "DOCTOR",
+            doctor.getId(),
+            "HOSPITAL_OWNER",
+            ownerId,
+            "DOCTOR",
+            doctor.getId(),
+            Map.of("status", newStatus.name())
+        );
     }
 
     @Override

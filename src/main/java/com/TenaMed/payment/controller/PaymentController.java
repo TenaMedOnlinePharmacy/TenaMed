@@ -57,7 +57,6 @@ public class PaymentController {
     }
 
     @RequestMapping(value = "/webhook", method = {RequestMethod.POST, RequestMethod.GET})
-    //this methode response must be saved in database
         public ResponseEntity<PaymentWebhookResponse> webhook(
             @RequestBody(required = false) String payload,
             @RequestParam(required = false) String tx_ref

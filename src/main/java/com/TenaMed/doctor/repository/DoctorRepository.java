@@ -23,4 +23,6 @@ public interface DoctorRepository extends JpaRepository<Doctor, UUID> {
     long countByHospitalId(UUID hospitalId);
 
     long countByHospitalIdAndStatus(UUID hospitalId, DoctorStatus status);
+
+    List<Doctor> findByHospitalIdAndStatusIn(UUID hospitalId, List<DoctorStatus> statuses);
 }
