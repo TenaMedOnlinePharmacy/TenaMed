@@ -22,4 +22,8 @@ public class AthleteValidationService {
             throw new ForbiddenException("Access denied: athlete profile is required");
         }
     }
+    @Transactional(readOnly = true)
+    public boolean isAthlete(UUID userId) {
+        return userId != null && athleteProfileRepository.existsByUserId(userId);
+    }
 }
