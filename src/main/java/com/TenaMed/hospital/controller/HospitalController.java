@@ -80,6 +80,7 @@ public class HospitalController {
 
     @GetMapping("/doctors/management")
     public ResponseEntity<List<HospitalDoctorResponseDto>> getHospitalDoctorsForManagement() {
+        System.out.println("here");
         UUID ownerId = currentUserProvider.getCurrentUserId();
         Optional<Hospital> hospital = hospitalRepository.findByOwnerId(ownerId);
         return hospital.map(value -> ResponseEntity.ok(hospitalService.getHospitalDoctorsByStatus(value.getId(), List.of(DoctorStatus.ACTIVE, DoctorStatus.PENDING))))

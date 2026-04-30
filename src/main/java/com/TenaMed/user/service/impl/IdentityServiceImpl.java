@@ -1,5 +1,7 @@
 package com.TenaMed.user.service.impl;
 
+import com.TenaMed.antidoping.entity.AthleteProfile;
+import com.TenaMed.antidoping.repository.AthleteProfileRepository;
 import com.TenaMed.user.dto.LoginRequestDto;
 import com.TenaMed.user.dto.LoginResponseDto;
 import com.TenaMed.user.dto.RegisterRequestDto;
@@ -25,6 +27,7 @@ import com.TenaMed.user.repository.UserRepository;
 import com.TenaMed.user.repository.UserRoleRepository;
 import com.TenaMed.user.service.IdentityService;
 import com.TenaMed.events.DomainEventService;
+import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -44,6 +47,7 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 @Service
+@RequiredArgsConstructor
 @Transactional
 public class IdentityServiceImpl implements IdentityService {
 
@@ -57,25 +61,10 @@ public class IdentityServiceImpl implements IdentityService {
     private final PasswordEncoder passwordEncoder;
     private final IdentityMapper identityMapper;
     private final DomainEventService domainEventService;
-
+    private final AthleteProfileRepository athleteProfileRepository;
     @Value("${user.default-roles:" + DEFAULT_ROLES_FALLBACK + "}")
     private String defaultRolesCsv;
 
-    public IdentityServiceImpl(AccountRepository accountRepository,
-                               UserRepository userRepository,
-                               RoleRepository roleRepository,
-                               UserRoleRepository userRoleRepository,
-                               PasswordEncoder passwordEncoder,
-                               IdentityMapper identityMapper,
-                               DomainEventService domainEventService) {
-        this.accountRepository = accountRepository;
-        this.userRepository = userRepository;
-        this.roleRepository = roleRepository;
-        this.userRoleRepository = userRoleRepository;
-        this.passwordEncoder = passwordEncoder;
-        this.identityMapper = identityMapper;
-        this.domainEventService = domainEventService;
-    }
 
     @Override
     public RegisterResponseDto register(RegisterRequestDto requestDto) {
@@ -114,6 +103,12 @@ public class IdentityServiceImpl implements IdentityService {
         }
 
         User savedUser = userRepository.save(user);
+        if(requestDto.isAthlete()){
+            AthleteProfile profile = new AthleteProfile();
+            profile.setUserId(savedUser.getId());
+            athleteProfileRepository.save(profile);
+        }
+
         Map<String, Object> registerMetadata = new HashMap<>();
         registerMetadata.put("email", normalizedEmail);
         if (savedAccount.getId() != null) {

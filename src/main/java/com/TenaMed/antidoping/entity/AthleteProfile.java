@@ -1,9 +1,6 @@
 package com.TenaMed.antidoping.entity;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.Id;
-import jakarta.persistence.Table;
+import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -20,7 +17,11 @@ import java.util.UUID;
 public class AthleteProfile {
 
     @Id
-    @Column(name = "user_id", nullable = false, updatable = false)
+    @GeneratedValue
+    @Column(nullable = false, updatable = false)
+    private UUID id;
+
+    @Column(name = "user_id", nullable = false)
     private UUID userId;
 
     @Column(name = "advisor_enabled", nullable = false)
