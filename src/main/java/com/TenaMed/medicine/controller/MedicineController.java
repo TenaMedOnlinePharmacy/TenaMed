@@ -64,8 +64,17 @@ public class MedicineController {
     @GetMapping("/{id}")
     public ResponseEntity<?> getMedicineById(@PathVariable UUID id) {
         try {
-            MedicineResponseDto response = medicineService.getMedicineById(id);
-            return ResponseEntity.ok(response);
+            Optional<Product> product = productRepository.findById(id);
+            if (product.isPresent()) {
+                UUID medcineID = product.get().getMedicine().getId();
+
+                MedicineResponseDto response = medicineService.getMedicineById(medcineID);
+
+                return ResponseEntity.ok(response);
+            }
+            else {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+            }
         } catch (MedicineNotFoundException e) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", e.getMessage()));
         }

@@ -108,6 +108,7 @@ public class OrderController {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("error", "Authentication required"));
         }
         try {
+
             return ResponseEntity.ok(orderService.getPharmacyOrders(ownerId));
         } catch (PharmacyException ex) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("error", ex.getMessage()));

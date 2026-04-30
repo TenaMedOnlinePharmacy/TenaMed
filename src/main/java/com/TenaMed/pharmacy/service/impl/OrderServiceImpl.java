@@ -40,11 +40,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.UUID;
+import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -343,18 +339,14 @@ public class OrderServiceImpl implements OrderService {
 
     @Override
     public java.util.List<PharmacyOrderResponse> getPharmacyOrders(UUID ownerId) {
-        java.util.List<UserPharmacy> userPharmacies = userPharmacyRepository.findByUserId(ownerId);
-        if (userPharmacies.isEmpty()) {
+        Optional<Pharmacy> pharmacy = pharmacyRepository.findByOwnerId(ownerId);
+        if (pharmacy.isEmpty()) {
             throw new PharmacyNotFoundException("No pharmacy found for the given owner");
         }
 
-        java.util.List<UUID> pharmacyIds = userPharmacies.stream()
-                .map(up -> up.getPharmacy().getId())
-                .toList();
 
-        java.util.List<Order> orders = pharmacyIds.stream()
-                .flatMap(pid -> orderRepository.findByPharmacyId(pid).stream())
-                .toList();
+        java.util.List<Order> orders = orderRepository.findByPharmacyId(pharmacy.get().getId());
+
 
         return orders.stream().map(this::mapToPharmacyOrderResponse).toList();
     }
@@ -363,8 +355,9 @@ public class OrderServiceImpl implements OrderService {
         Prescription prescription = null;
         if (order.getPrescriptionId() != null) {
             prescription = prescriptionService.getPrescription(order.getPrescriptionId());
-        }
 
+        }
+        System.out.println( "pres"+prescription);
         java.util.List<PharmacyOrderResponse.PharmacyOrderItemResponse> itemResponses = order.getItems().stream()
                 .map(item -> {
                     com.TenaMed.medicine.entity.Product product = productRepository.findById(item.getProductId()).orElse(null);

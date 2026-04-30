@@ -3,9 +3,11 @@ package com.TenaMed.pharmacy.service;
 import com.TenaMed.pharmacy.dto.request.CreateOrderRequest;
 import com.TenaMed.pharmacy.dto.request.CreateOrderFromCartRequest;
 import com.TenaMed.pharmacy.dto.response.OrderResponse;
+import com.TenaMed.pharmacy.dto.response.PharmacyOrderResponse;
 import com.TenaMed.pharmacy.enums.PaymentStatus;
 import com.TenaMed.pharmacy.enums.StaffRole;
 
+import java.util.List;
 import java.util.UUID;
 
 public interface OrderService {
@@ -20,5 +22,5 @@ public interface OrderService {
 
     OrderResponse createOrderFromCart(UUID customerId, CreateOrderFromCartRequest request);
 
-    java.util.List<com.TenaMed.pharmacy.dto.response.PharmacyOrderResponse> getPharmacyOrders(java.util.UUID ownerId);
+List<PharmacyOrderResponse> getPharmacyOrders(UUID ownerId);
 }

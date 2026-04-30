@@ -123,7 +123,6 @@ class PrescriptionInventoryMatchServiceImplTests {
 
         when(prescriptionRepository.findById(prescriptionId)).thenReturn(Optional.of(prescription));
         when(prescriptionItemRepository.findByPrescriptionId(prescriptionId)).thenReturn(List.of(item));
-        when(productRepository.findByMedicineIdIn(anyCollection())).thenReturn(List.of(product));
         when(inventoryRepository.findByProductIdIn(anyCollection())).thenReturn(List.of(inventory));
         when(batchRepository.findByInventoryIdIn(anyCollection())).thenReturn(List.of(batch));
         when(medicineRepository.findAllById(anyCollection())).thenReturn(List.of(medicine));
