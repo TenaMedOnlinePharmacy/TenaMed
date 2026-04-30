@@ -264,9 +264,10 @@ public class MedicineServiceImpl implements MedicineService {
             .pharmacyLegalName(resolvePharmacyLegalName(pharmacy))
             .price(price)
             .medicineCategory(medicine.getCategory() != null ? medicine.getCategory().getName() : null)
-            .imageUrl(supabaseStorageService.resolveSignedUrl(
-                product.getImageUrl() != null ? product.getImageUrl() : medicine.getImageUrl()
-            ))
+//            .imageUrl(supabaseStorageService.resolveSignedUrl(
+//                product.getImageUrl() != null ? product.getImageUrl() : medicine.getImageUrl()
+//            ))
+            .imageUrl(product.getImageUrl() != null ? product.getImageUrl() : medicine.getImageUrl())
             .indications(medicine.getIndications())
             .contraindications(medicine.getContraindications())
             .sideEffects(medicine.getSideEffects())
@@ -455,7 +456,7 @@ public class MedicineServiceImpl implements MedicineService {
 
     private MedicineResponseDto toResponseDtoWithDopingRuleIds(Medicine medicine) {
         MedicineResponseDto response = medicineMapper.toResponseDto(medicine);
-        response.setImageUrl(supabaseStorageService.resolveSignedUrl(response.getImageUrl()));
+//        response.setImageUrl(supabaseStorageService.resolveSignedUrl(response.getImageUrl()));
         response.setDopingRuleIds(
                 medicineDopingRuleRepository.findAllByMedicineId(medicine.getId())
                         .stream()

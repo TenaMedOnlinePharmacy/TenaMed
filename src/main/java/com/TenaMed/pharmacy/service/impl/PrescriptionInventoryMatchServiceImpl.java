@@ -158,9 +158,10 @@ public class PrescriptionInventoryMatchServiceImpl implements PrescriptionInvent
             .pharmacyLegalName(resolvePharmacyLegalName(pharmacy))
             .price(price)
             .medicineCategory(medicine.getCategory() != null ? medicine.getCategory().getName() : null)
-            .imageUrl(supabaseStorageService.resolveSignedUrl(
-                product.getImageUrl() != null ? product.getImageUrl() : medicine.getImageUrl()
-            ))
+//            .imageUrl(supabaseStorageService.resolveSignedUrl(
+//                product.getImageUrl() != null ? product.getImageUrl() : medicine.getImageUrl()
+//            ))
+            .imageUrl(product.getImageUrl() != null ? product.getImageUrl() : medicine.getImageUrl())
             .indications(medicine.getIndications())
             .contraindications(medicine.getContraindications())
             .sideEffects(medicine.getSideEffects())

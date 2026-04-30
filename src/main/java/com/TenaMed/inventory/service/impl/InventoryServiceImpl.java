@@ -125,7 +125,8 @@ public class InventoryServiceImpl implements InventoryService {
 
         if (image != null && !image.isEmpty()) {
             String objectPath = supabaseStorageService.uploadAndGetObjectPath(image, PRODUCT_IMAGE_FOLDER);
-            product.setImageUrl(supabaseStorageService.resolveSignedUrl(objectPath));
+//            product.setImageUrl(supabaseStorageService.resolveSignedUrl(objectPath));
+            product.setImageUrl(objectPath);
             productRepository.save(product);
         }
 
@@ -219,7 +220,8 @@ public class InventoryServiceImpl implements InventoryService {
 
         if (image != null && !image.isEmpty()) {
             String objectPath = supabaseStorageService.uploadAndGetObjectPath(image, PRODUCT_IMAGE_FOLDER);
-            product.setImageUrl(supabaseStorageService.resolveSignedUrl(objectPath));
+//            product.setImageUrl(supabaseStorageService.resolveSignedUrl(objectPath));
+            product.setImageUrl(objectPath);
             productRepository.save(product);
         }
 
