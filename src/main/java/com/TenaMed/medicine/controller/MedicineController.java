@@ -64,19 +64,28 @@ public class MedicineController {
     @GetMapping("/{id}")
     public ResponseEntity<?> getMedicineById(@PathVariable UUID id) {
         try {
-           Optional<Product>  product = productRepository.findById(id);
-            MedicineResponseDto response;
-           if(product.isPresent()) {
-               UUID medicineId = product.get().getMedicine().getId();
-               response = medicineService.getMedicineById(medicineId);
-           }else{
-               return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", "Medicine not found"));
-           }
+            MedicineResponseDto response = medicineService.getMedicineById(id);
             return ResponseEntity.ok(response);
         } catch (MedicineNotFoundException e) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", e.getMessage()));
         }
     }
+
+    @GetMapping("/{id}/{pharmacyId}")
+    public ResponseEntity<?> getMedicineById(@PathVariable UUID id, @PathVariable UUID pharmacyId) {
+        try {
+            Product product = productRepository.findById(id)
+                    .orElseThrow(() -> new MedicineNotFoundException("Product not found with id: " + id));
+            
+            UUID medicineId = product.getMedicine().getId();
+            MedicineResponseDto response = medicineService.getMedicineById(medicineId, pharmacyId);
+            
+            return ResponseEntity.ok(response);
+        } catch (MedicineNotFoundException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", e.getMessage()));
+        }
+    }
+
 
     @GetMapping
     public ResponseEntity<List<MedicineResponseDto>> getAllMedicines() {

@@ -136,9 +136,15 @@ public class MedicineServiceImpl implements MedicineService {
     @Override
     @Transactional(readOnly = true)
     public MedicineResponseDto getMedicineById(UUID id) {
+        return getMedicineById(id, null);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public MedicineResponseDto getMedicineById(UUID id, UUID pharmacyId) {
         Medicine medicine = medicineRepository.findById(id)
                 .orElseThrow(() -> new MedicineNotFoundException(id));
-        return toResponseDtoWithDopingRuleIds(medicine);
+        return toResponseDtoWithDopingRuleIds(medicine, pharmacyId);
     }
 
     @Override
@@ -456,7 +462,11 @@ public class MedicineServiceImpl implements MedicineService {
     }
 
     private MedicineResponseDto toResponseDtoWithDopingRuleIds(Medicine medicine) {
-        MedicineResponseDto response = medicineMapper.toResponseDto(medicine);
+        return toResponseDtoWithDopingRuleIds(medicine, null);
+    }
+
+    private MedicineResponseDto toResponseDtoWithDopingRuleIds(Medicine medicine, UUID pharmacyId) {
+        MedicineResponseDto response = medicineMapper.toResponseDto(medicine, pharmacyId);
 //        response.setImageUrl(supabaseStorageService.resolveSignedUrl(response.getImageUrl()));
         response.setDopingRuleIds(
                 medicineDopingRuleRepository.findAllByMedicineId(medicine.getId())

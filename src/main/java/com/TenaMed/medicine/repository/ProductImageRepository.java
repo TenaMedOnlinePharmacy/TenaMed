@@ -26,4 +26,8 @@ public interface ProductImageRepository extends JpaRepository<ProductImage, UUID
     List<ProductImage> findByProductIdsAndPharmacyId(@Param("productIds") Collection<UUID> productIds, @Param("pharmacyId") UUID pharmacyId);
 
     void deleteByProductIdAndPharmacyId(UUID productId, UUID pharmacyId);
+
+    Optional<ProductImage> findFirstByProductIdAndIsPrimaryFalse(UUID productId);
+
+    ProductImage findByProductIdAndPharmacyId(UUID id, UUID productId);
 }

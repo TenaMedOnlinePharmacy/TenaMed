@@ -3,12 +3,24 @@ package com.TenaMed.medicine.mapper;
 import com.TenaMed.medicine.dto.MedicineRequestDto;
 import com.TenaMed.medicine.dto.MedicineResponseDto;
 import com.TenaMed.medicine.entity.Medicine;
+import com.TenaMed.medicine.entity.Product;
+import com.TenaMed.medicine.entity.ProductImage;
+import com.TenaMed.medicine.repository.ProductImageRepository;
+import com.TenaMed.medicine.repository.ProductRepository;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
 
+@RequiredArgsConstructor
 @Component
 public class MedicineMapper {
+
+    private final ProductRepository productRepository;
+    private final ProductImageRepository productImageRepository;
+
 
     public Medicine toEntity(MedicineRequestDto dto) {
         Medicine medicine = new Medicine();
@@ -17,6 +29,17 @@ public class MedicineMapper {
     }
 
     public MedicineResponseDto toResponseDto(Medicine medicine) {
+        return toResponseDto(medicine, null);
+    }
+
+    public MedicineResponseDto toResponseDto(Medicine medicine, UUID pharmacyId) {
+        String imageUrl = productRepository.findFirstByMedicineId(medicine.getId())
+                .flatMap(product -> productImageRepository.findByProductIdAndPharmacyIdAndIsPrimaryTrue(product.getId(), pharmacyId)
+                        .map(ProductImage::getImageUrl)
+                        .or(() -> productImageRepository.findFirstByProductIdAndIsPrimaryFalse(product.getId())
+                                .map(ProductImage::getImageUrl)))
+                .orElse(null);
+
         return MedicineResponseDto.builder()
                 .id(medicine.getId())
                 .name(medicine.getName())
@@ -35,8 +58,7 @@ public class MedicineMapper {
                 .sideEffects(medicine.getSideEffects())
                 .dosageInstructions(medicine.getDosageInstructions())
                 .pregnancyCategory(medicine.getPregnancyCategory())
-                // TODO: Phase 6 cleanup — migrate to ProductImageService resolver
-                .imageUrl(medicine.getImageUrl())
+                .imageUrl(imageUrl)
                 .allergenIds(medicine.getMedicineAllergens().stream()
                     .map(link -> link.getAllergen().getId())
                     .toList())

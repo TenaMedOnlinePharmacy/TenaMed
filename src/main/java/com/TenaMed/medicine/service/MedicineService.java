@@ -7,9 +7,11 @@ import com.TenaMed.medicine.dto.MedicinePharmacySearchResponseDto;
 import com.TenaMed.medicine.dto.MedicineDopingRuleRequestDto;
 import com.TenaMed.medicine.dto.MedicineDopingRuleResponseDto;
 import com.TenaMed.medicine.dto.MedicineNameCategoryResponseDto;
+import com.TenaMed.medicine.entity.Product;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 public interface MedicineService {
@@ -19,6 +21,8 @@ public interface MedicineService {
     MedicineResponseDto createMedicine(MedicineRequestDto requestDto, MultipartFile image);
 
     MedicineResponseDto getMedicineById(UUID id);
+
+    MedicineResponseDto getMedicineById(UUID id, UUID pharmacyId);
 
     List<MedicineResponseDto> getAllMedicines();
 

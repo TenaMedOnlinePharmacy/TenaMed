@@ -121,14 +121,14 @@ public class InventoryServiceImpl implements InventoryService {
     }
 
     @Override
-    public BatchResponse addBatch(AddBatchRequest request, java.util.UUID actorUserId, MultipartFile image) {
+    public BatchResponse addBatch(AddBatchRequest request, UUID actorUserId, MultipartFile image) {
         validateAddBatchRequest(request);
 
         com.TenaMed.pharmacy.entity.Pharmacy pharmacy = resolvePharmacyForActor(actorUserId);
         Product product = resolveOrCreateProduct(request);
 
         if (image != null && !image.isEmpty()) {
-            String objectPath = supabaseStorageService.uploadAndGetObjectPath(image, PRODUCT_IMAGE_FOLDER);
+            String objectPath = supabaseStorageService.uploadAndGetSignedUrl(image, PRODUCT_IMAGE_FOLDER);
             productImageService.savePharmacyImage(product.getId(), pharmacy.getId(), objectPath);
         }
 
