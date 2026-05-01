@@ -92,12 +92,104 @@ public class PharmacyServiceImpl implements PharmacyService {
 
         Pharmacy pharmacy = pharmacyRepository.findById(pharmacyId)
             .orElseThrow(() -> new PharmacyNotFoundException(pharmacyId));
+            
+        if (pharmacy.getStatus() == PharmacyStatus.VERIFIED) {
+            throw new PharmacyValidationException("Pharmacy is already VERIFIED");
+        }
+        
         pharmacy.setStatus(PharmacyStatus.VERIFIED);
         pharmacy.setVerifiedBy(principal.getUserId());
         pharmacy.setVerifiedAt(LocalDateTime.now());
         Pharmacy saved = pharmacyRepository.save(pharmacy);
         domainEventService.publish(
             "PHARMACY_VERIFIED",
+            "PHARMACY",
+            saved.getId(),
+            "ADMIN",
+            principal.getUserId(),
+            "PHARMACY",
+            saved.getId(),
+            Map.of("status", saved.getStatus().name())
+        );
+        return pharmacyMapper.toResponse(saved);
+    }
+
+    @Override
+    public PharmacyResponse rejectPharmacy(UUID pharmacyId) {
+        AuthenticatedUserPrincipal principal = authenticatedPrincipal();
+        if (principal.getAuthorities().stream().noneMatch(a -> "ROLE_ADMIN".equals(a.getAuthority()))) {
+            throw new PharmacyValidationException("Only admin users can reject pharmacies");
+        }
+
+        Pharmacy pharmacy = pharmacyRepository.findById(pharmacyId)
+            .orElseThrow(() -> new PharmacyNotFoundException(pharmacyId));
+            
+        if (pharmacy.getStatus() == PharmacyStatus.REJECTED) {
+            throw new PharmacyValidationException("Pharmacy is already REJECTED");
+        }
+        
+        pharmacy.setStatus(PharmacyStatus.REJECTED);
+        Pharmacy saved = pharmacyRepository.save(pharmacy);
+        domainEventService.publish(
+            "PHARMACY_REJECTED",
+            "PHARMACY",
+            saved.getId(),
+            "ADMIN",
+            principal.getUserId(),
+            "PHARMACY",
+            saved.getId(),
+            Map.of("status", saved.getStatus().name())
+        );
+        return pharmacyMapper.toResponse(saved);
+    }
+
+    @Override
+    public PharmacyResponse suspendPharmacy(UUID pharmacyId) {
+        AuthenticatedUserPrincipal principal = authenticatedPrincipal();
+        if (principal.getAuthorities().stream().noneMatch(a -> "ROLE_ADMIN".equals(a.getAuthority()))) {
+            throw new PharmacyValidationException("Only admin users can suspend pharmacies");
+        }
+
+        Pharmacy pharmacy = pharmacyRepository.findById(pharmacyId)
+            .orElseThrow(() -> new PharmacyNotFoundException(pharmacyId));
+            
+        if (pharmacy.getStatus() == PharmacyStatus.SUSPENDED) {
+            throw new PharmacyValidationException("Pharmacy is already SUSPENDED");
+        }
+        
+        pharmacy.setStatus(PharmacyStatus.SUSPENDED);
+        Pharmacy saved = pharmacyRepository.save(pharmacy);
+        domainEventService.publish(
+            "PHARMACY_SUSPENDED",
+            "PHARMACY",
+            saved.getId(),
+            "ADMIN",
+            principal.getUserId(),
+            "PHARMACY",
+            saved.getId(),
+            Map.of("status", saved.getStatus().name())
+        );
+        return pharmacyMapper.toResponse(saved);
+    }
+
+    @Override
+    public PharmacyResponse unsuspendPharmacy(UUID pharmacyId) {
+        AuthenticatedUserPrincipal principal = authenticatedPrincipal();
+        if (principal.getAuthorities().stream().noneMatch(a -> "ROLE_ADMIN".equals(a.getAuthority()))) {
+            throw new PharmacyValidationException("Only admin users can unsuspend pharmacies");
+        }
+
+        Pharmacy pharmacy = pharmacyRepository.findById(pharmacyId)
+            .orElseThrow(() -> new PharmacyNotFoundException(pharmacyId));
+            
+        if (pharmacy.getStatus() != PharmacyStatus.SUSPENDED) {
+            throw new PharmacyValidationException("Pharmacy is not SUSPENDED");
+        }
+        
+        pharmacy.setStatus(PharmacyStatus.VERIFIED);
+        Pharmacy saved = pharmacyRepository.save(pharmacy);
+        domainEventService.publish(
+            "PHARMACY_UNSUSPENDED",
             "PHARMACY",
             saved.getId(),
             "ADMIN",

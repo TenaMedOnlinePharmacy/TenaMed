@@ -12,6 +12,12 @@ public interface PharmacyService {
 
     PharmacyResponse verifyPharmacy(UUID pharmacyId);
 
+    PharmacyResponse rejectPharmacy(UUID pharmacyId);
+
+    PharmacyResponse suspendPharmacy(UUID pharmacyId);
+
+    PharmacyResponse unsuspendPharmacy(UUID pharmacyId);
+
     PharmacyResponse getPharmacy(UUID pharmacyId);
 
     InvitationResponseDto invitePharmacist(UUID pharmacyId, String email);

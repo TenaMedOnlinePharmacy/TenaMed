@@ -57,14 +57,6 @@ public class PharmacyController {
         }
     }
 
-    @PostMapping("/{id}/verify")
-    public ResponseEntity<?> verifyPharmacy(@PathVariable UUID id) {
-        try {
-            return ResponseEntity.ok(pharmacyService.verifyPharmacy(id));
-        } catch (PharmacyException ex) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("error", ex.getMessage()));
-        }
-    }
 
     @PostMapping("/invite-pharmacist")
     public ResponseEntity<?> invitePharmacist(@Valid @RequestBody PharmacistInvitationRequestDto request) {
