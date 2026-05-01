@@ -7,7 +7,12 @@ import com.TenaMed.hospital.repository.HospitalRepository;
 import com.TenaMed.medicine.repository.ProductRepository;
 import com.TenaMed.pharmacy.repository.OrderRepository;
 import com.TenaMed.prescription.repository.PrescriptionRepository;
+import com.TenaMed.audit.repository.AuditLogRepository;
+import com.TenaMed.audit.entity.AuditLog;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import com.tenamed.admin.dto.OcrStatsResponse;
+import com.TenaMed.prescription.entity.Prescription;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -21,6 +26,7 @@ public class AdminService {
     private final ProductRepository productRepository;
     private final OrderRepository orderRepository;
     private final PrescriptionRepository prescriptionRepository;
+    private final AuditLogRepository auditLogRepository;
 
     public DashboardResponse getDashboard() {
         DashboardResponse response = new DashboardResponse();
@@ -40,5 +46,13 @@ public class AdminService {
         response.setPassedCount(prescriptionRepository.countByOcrSuccess(true));
         response.setFailedCount(prescriptionRepository.countByOcrSuccess(false));
         return response;
+    }
+
+    public Page<AuditLog> getAuditLogs(Pageable pageable) {
+        return auditLogRepository.findAll(pageable);
+    }
+
+    public Page<Prescription> getPrescriptions(String status, Boolean highRisk, Pageable pageable) {
+        return prescriptionRepository.findByStatusAndHighRisk(status, highRisk, pageable);
     }
 }

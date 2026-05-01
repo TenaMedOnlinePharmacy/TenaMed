@@ -152,4 +152,12 @@ public interface PrescriptionRepository extends JpaRepository<Prescription, UUID
 
     @Query("SELECT AVG(p.confidenceScore) FROM Prescription p WHERE p.confidenceScore IS NOT NULL")
     Double getAverageOcrConfidence();
+
+    @Query("SELECT p FROM Prescription p WHERE " +
+           "(:status IS NULL OR p.status = :status) AND " +
+           "(:highRisk IS NULL OR p.highRisk = :highRisk)")
+    org.springframework.data.domain.Page<Prescription> findByStatusAndHighRisk(
+            @Param("status") String status, 
+            @Param("highRisk") Boolean highRisk, 
+            org.springframework.data.domain.Pageable pageable);
 }

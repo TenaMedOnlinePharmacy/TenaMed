@@ -5,6 +5,12 @@ import com.TenaMed.hospital.service.HospitalService;
 import com.tenamed.admin.service.AdminService;
 import com.tenamed.admin.dto.DashboardResponse;
 import com.tenamed.admin.dto.OcrStatsResponse;
+import com.TenaMed.audit.entity.AuditLog;
+import com.TenaMed.prescription.entity.Prescription;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.web.PageableDefault;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -12,6 +18,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.Map;
@@ -35,6 +42,20 @@ public class AdminController {
     @GetMapping("/ocr/stats")
     public ResponseEntity<OcrStatsResponse> getOcrStats() {
         return ResponseEntity.ok(adminService.getOcrStats());
+    }
+
+    @GetMapping("/audit-logs")
+    public ResponseEntity<Page<AuditLog>> getAuditLogs(
+            @PageableDefault(sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable) {
+        return ResponseEntity.ok(adminService.getAuditLogs(pageable));
+    }
+
+    @GetMapping("/prescriptions")
+    public ResponseEntity<Page<Prescription>> getPrescriptions(
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false) Boolean highRisk,
+            @PageableDefault(sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable) {
+        return ResponseEntity.ok(adminService.getPrescriptions(status, highRisk, pageable));
     }
 
     @PostMapping("/pharmacies/{id}/approve")
