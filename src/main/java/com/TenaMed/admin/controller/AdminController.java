@@ -4,6 +4,7 @@ import com.TenaMed.pharmacy.service.PharmacyService;
 import com.TenaMed.hospital.service.HospitalService;
 import com.tenamed.admin.service.AdminService;
 import com.tenamed.admin.dto.DashboardResponse;
+import com.tenamed.admin.dto.OcrStatsResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -29,6 +30,11 @@ public class AdminController {
     @GetMapping("/dashboard")
     public ResponseEntity<DashboardResponse> getDashboard() {
         return ResponseEntity.ok(adminService.getDashboard());
+    }
+
+    @GetMapping("/ocr/stats")
+    public ResponseEntity<OcrStatsResponse> getOcrStats() {
+        return ResponseEntity.ok(adminService.getOcrStats());
     }
 
     @PostMapping("/pharmacies/{id}/approve")

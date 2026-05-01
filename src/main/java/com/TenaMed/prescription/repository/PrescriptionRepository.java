@@ -145,4 +145,11 @@ public interface PrescriptionRepository extends JpaRepository<Prescription, UUID
     Long countByHospitalId(UUID hospitalId);
 
     Optional<Object> findByUniqueCode(String uniqueCode);
+
+    long countByOcrSuccessIsNotNull();
+
+    long countByOcrSuccess(Boolean ocrSuccess);
+
+    @Query("SELECT AVG(p.confidenceScore) FROM Prescription p WHERE p.confidenceScore IS NOT NULL")
+    Double getAverageOcrConfidence();
 }
