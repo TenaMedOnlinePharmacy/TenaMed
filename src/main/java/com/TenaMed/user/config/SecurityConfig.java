@@ -7,6 +7,7 @@ import com.TenaMed.user.security.TokenHashingService;
 import com.TenaMed.user.service.RedisSessionService;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
@@ -25,6 +26,7 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import java.util.List;
 
 @Configuration
+@EnableMethodSecurity
 public class SecurityConfig {
 
     @Bean
@@ -47,7 +49,7 @@ public class SecurityConfig {
                     .requestMatchers(HttpMethod.POST, "/api/auth/register", "/api/auth/register-hospital-owner", "/api/auth/register-pharmacist", "/api/auth/login", "/api/auth/refresh","/api/auth/register-athlete").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/identity/register", "/api/identity/login").permitAll()
                     .requestMatchers("/api/payments/webhook").permitAll()
-                        .requestMatchers("/api/admin/**").hasRole("ADMIN")
+                        .requestMatchers("/admin/**", "/api/admin/**").hasRole("ADMIN")
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
