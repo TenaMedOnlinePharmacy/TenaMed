@@ -1,6 +1,7 @@
-package com.tenamed.admin.service;
+package com.TenaMed.admin.service;
 
-import com.tenamed.admin.dto.DashboardResponse;
+import com.TenaMed.admin.dto.DashboardResponse;
+import com.TenaMed.admin.dto.OcrStatsResponse;
 import com.TenaMed.user.repository.UserRepository;
 import com.TenaMed.pharmacy.repository.PharmacyRepository;
 import com.TenaMed.hospital.repository.HospitalRepository;
@@ -11,7 +12,6 @@ import com.TenaMed.audit.repository.AuditLogRepository;
 import com.TenaMed.audit.entity.AuditLog;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-import com.tenamed.admin.dto.OcrStatsResponse;
 import com.TenaMed.prescription.entity.Prescription;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;

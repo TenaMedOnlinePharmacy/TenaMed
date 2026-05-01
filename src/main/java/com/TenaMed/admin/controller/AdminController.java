@@ -1,10 +1,10 @@
 package com.TenaMed.admin.controller;
 
+import com.TenaMed.admin.dto.DashboardResponse;
+import com.TenaMed.admin.dto.OcrStatsResponse;
+import com.TenaMed.admin.service.AdminService;
 import com.TenaMed.pharmacy.service.PharmacyService;
 import com.TenaMed.hospital.service.HospitalService;
-import com.tenamed.admin.service.AdminService;
-import com.tenamed.admin.dto.DashboardResponse;
-import com.tenamed.admin.dto.OcrStatsResponse;
 import com.TenaMed.audit.entity.AuditLog;
 import com.TenaMed.prescription.entity.Prescription;
 import org.springframework.data.domain.Page;

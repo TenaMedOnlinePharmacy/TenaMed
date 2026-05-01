@@ -1,4 +1,4 @@
-package com.tenamed.admin.dto;
+package com.TenaMed.admin.dto;
 
 import lombok.Data;
 
