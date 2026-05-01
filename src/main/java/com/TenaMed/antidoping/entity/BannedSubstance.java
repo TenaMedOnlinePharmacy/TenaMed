@@ -13,12 +13,16 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 import java.util.UUID;
+import jakarta.persistence.PrePersist;
+import jakarta.persistence.PreUpdate;
+import com.TenaMed.antidoping.util.TextNormalizer;
 
 @Entity
 @Table(
     name = "banned_substances",
     indexes = {
-        @Index(name = "idx_banned_substances_ingredient_name", columnList = "ingredient_name")
+        @Index(name = "idx_banned_substances_ingredient_name", columnList = "ingredient_name"),
+        @Index(name = "idx_banned_substances_normalized_name", columnList = "normalized_name")
     }
 )
 @Getter
@@ -46,4 +50,15 @@ public class BannedSubstance {
 
     @Column(name = "ruleset_year", nullable = false)
     private Integer rulesetYear;
+
+    @Column(name = "normalized_name", length = 255)
+    private String normalizedName;
+
+    @PrePersist
+    @PreUpdate
+    public void prePersistOrUpdate() {
+        if (this.ingredientName != null) {
+            this.normalizedName = TextNormalizer.normalize(this.ingredientName);
+        }
+    }
 }

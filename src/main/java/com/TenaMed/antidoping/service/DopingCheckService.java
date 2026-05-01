@@ -5,7 +5,9 @@ import com.TenaMed.antidoping.entity.BannedSubstanceStatus;
 import com.TenaMed.antidoping.entity.MedicineDopingRuleStatus;
 import com.TenaMed.antidoping.repository.BannedSubstanceRepository;
 import com.TenaMed.antidoping.service.dto.DopingCheckResult;
+import com.TenaMed.antidoping.util.TextNormalizer;
 import com.TenaMed.events.DomainEventService;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -16,24 +18,31 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+@Slf4j
 @Service
 public class DopingCheckService {
 
     private final IngredientResolverService ingredientResolverService;
     private final BannedSubstanceRepository bannedSubstanceRepository;
     private final DomainEventService domainEventService;
+    private final IngredientAliasService ingredientAliasService;
 
     public DopingCheckService(IngredientResolverService ingredientResolverService,
                               BannedSubstanceRepository bannedSubstanceRepository,
-                              DomainEventService domainEventService) {
+                              DomainEventService domainEventService,
+                              IngredientAliasService ingredientAliasService) {
         this.ingredientResolverService = ingredientResolverService;
         this.bannedSubstanceRepository = bannedSubstanceRepository;
         this.domainEventService = domainEventService;
+        this.ingredientAliasService = ingredientAliasService;
     }
 
     @Transactional
     public DopingCheckResult checkMedicine(String medicineName) {
+        log.info("Medicine: {}", medicineName);
         List<String> ingredients = ingredientResolverService.resolveIngredients(medicineName);
+        log.info("Ingredients: {}", ingredients);
+
         if (ingredients.isEmpty()) {
             return DopingCheckResult.builder()
                     .status(MedicineDopingRuleStatus.UNKNOWN)
@@ -42,7 +51,25 @@ public class DopingCheckService {
                     .build();
         }
 
-        List<BannedSubstance> matched = bannedSubstanceRepository.findByIngredientNameInIgnoreCase(ingredients);
+        List<BannedSubstance> matched = new ArrayList<>();
+        for (String ingredient : ingredients) {
+            String canonical = ingredientAliasService.resolveCanonical(ingredient);
+            String normalized = TextNormalizer.normalize(canonical);
+
+            if (normalized == null || normalized.isBlank()) {
+                continue;
+            }
+
+            List<BannedSubstance> exactMatches = bannedSubstanceRepository.findByNormalizedName(normalized);
+            if (!exactMatches.isEmpty()) {
+                matched.addAll(exactMatches);
+            } else {
+                List<BannedSubstance> partialMatches = bannedSubstanceRepository.findByNormalizedNameLike(normalized);
+                matched.addAll(partialMatches);
+            }
+        }
+
+        log.info("Matched substances: {}", matched.size());
         if (matched.isEmpty()) {
             return DopingCheckResult.builder()
                     .status(MedicineDopingRuleStatus.SAFE)

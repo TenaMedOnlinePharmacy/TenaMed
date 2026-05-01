@@ -76,7 +76,7 @@ public class RxNormClient {
             RxNormRelatedResponseDto response = webClient.get()
                     .uri(uriBuilder -> uriBuilder
                             .path("/REST/rxcui/{rxcui}/related.json")
-                            .queryParam("tty", "IN")
+                            .queryParam("tty", "IN+PIN+MIN")
                             .build(rxcui.trim()))
                     .retrieve()
                     .onStatus(HttpStatusCode::isError, clientResponse ->

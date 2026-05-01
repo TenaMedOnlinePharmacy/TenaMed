@@ -32,7 +32,6 @@ public class RegisterRequestDto {
 
     private Map<String, Object> address;
 
-    private boolean isAthlete;
 
     @NotEmpty
     private Set<@NotBlank String> roleNames;

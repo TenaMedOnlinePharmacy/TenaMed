@@ -103,11 +103,7 @@ public class IdentityServiceImpl implements IdentityService {
         }
 
         User savedUser = userRepository.save(user);
-        if(requestDto.isAthlete()){
-            AthleteProfile profile = new AthleteProfile();
-            profile.setUserId(savedUser.getId());
-            athleteProfileRepository.save(profile);
-        }
+
 
         Map<String, Object> registerMetadata = new HashMap<>();
         registerMetadata.put("email", normalizedEmail);
