@@ -1,9 +1,12 @@
 package com.tenamed.admin.controller;
 
 import com.TenaMed.pharmacy.service.PharmacyService;
+import com.tenamed.admin.service.AdminService;
+import com.tenamed.admin.dto.DashboardResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -19,6 +22,12 @@ import java.util.UUID;
 public class AdminController {
 
     private final PharmacyService pharmacyService;
+    private final AdminService adminService;
+
+    @GetMapping("/dashboard")
+    public ResponseEntity<DashboardResponse> getDashboard() {
+        return ResponseEntity.ok(adminService.getDashboard());
+    }
 
     @PostMapping("/pharmacies/{id}/approve")
     public ResponseEntity<?> approvePharmacy(@PathVariable UUID id) {
