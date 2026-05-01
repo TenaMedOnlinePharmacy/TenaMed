@@ -24,6 +24,12 @@ public interface HospitalService {
 
     HospitalResponseDto verifyHospital(UUID hospitalId);
 
+    HospitalResponseDto rejectHospital(UUID hospitalId);
+
+    HospitalResponseDto suspendHospital(UUID hospitalId);
+
+    HospitalResponseDto unsuspendHospital(UUID hospitalId);
+
     List<DoctorResponseDto> getHospitalDoctors(UUID hospitalId);
 
     InvitationResponseDto inviteDoctorForOwner(UUID ownerId, String email);

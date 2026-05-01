@@ -20,11 +20,11 @@ import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/admin/users")
-public class AdminController {
+public class UserAdminController {
 
     private final IdentityService identityService;
 
-    public AdminController(IdentityService identityService) {
+    public UserAdminController(IdentityService identityService) {
         this.identityService = identityService;
     }
 

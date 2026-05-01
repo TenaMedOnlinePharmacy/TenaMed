@@ -1,6 +1,7 @@
-package com.tenamed.admin.controller;
+package com.TenaMed.admin.controller;
 
 import com.TenaMed.pharmacy.service.PharmacyService;
+import com.TenaMed.hospital.service.HospitalService;
 import com.tenamed.admin.service.AdminService;
 import com.tenamed.admin.dto.DashboardResponse;
 import lombok.RequiredArgsConstructor;
@@ -23,6 +24,7 @@ public class AdminController {
 
     private final PharmacyService pharmacyService;
     private final AdminService adminService;
+    private final HospitalService hospitalService;
 
     @GetMapping("/dashboard")
     public ResponseEntity<DashboardResponse> getDashboard() {
@@ -52,4 +54,29 @@ public class AdminController {
         pharmacyService.unsuspendPharmacy(id);
         return ResponseEntity.ok(Map.of("message", "Pharmacy unsuspended successfully"));
     }
+
+    @PostMapping("/hospitals/{id}/approve")
+    public ResponseEntity<?> approveHospital(@PathVariable UUID id) {
+        hospitalService.verifyHospital(id);
+        return ResponseEntity.ok(Map.of("message", "Hospital approved successfully"));
+    }
+
+    @PostMapping("/hospitals/{id}/reject")
+    public ResponseEntity<?> rejectHospital(@PathVariable UUID id) {
+        hospitalService.rejectHospital(id);
+        return ResponseEntity.ok(Map.of("message", "Hospital rejected successfully"));
+    }
+
+    @PostMapping("/hospitals/{id}/suspend")
+    public ResponseEntity<?> suspendHospital(@PathVariable UUID id) {
+        hospitalService.suspendHospital(id);
+        return ResponseEntity.ok(Map.of("message", "Hospital suspended successfully"));
+    }
+
+    @PostMapping("/hospitals/{id}/unsuspend")
+    public ResponseEntity<?> unsuspendHospital(@PathVariable UUID id) {
+        hospitalService.unsuspendHospital(id);
+        return ResponseEntity.ok(Map.of("message", "Hospital unsuspended successfully"));
+    }
+
 }

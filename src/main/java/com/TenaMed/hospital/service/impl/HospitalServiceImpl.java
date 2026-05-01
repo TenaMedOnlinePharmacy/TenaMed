@@ -211,12 +211,90 @@ public class HospitalServiceImpl implements HospitalService {
         assertAdmin();
 
         Hospital hospital = getHospitalEntityById(hospitalId);
+        if (hospital.getStatus() == HospitalStatus.ACTIVE) {
+            throw new BadRequestException("Hospital is already ACTIVE");
+        }
         hospital.setStatus(HospitalStatus.ACTIVE);
         hospital.setVerifiedBy(currentUserProvider.getCurrentUserId());
 
         Hospital saved = hospitalRepository.save(hospital);
         domainEventService.publish(
             "HOSPITAL_VERIFIED",
+            "HOSPITAL",
+            saved.getId(),
+            "ADMIN",
+            currentUserProvider.getCurrentUserId(),
+            "HOSPITAL",
+            saved.getId(),
+            Map.of("status", saved.getStatus().name())
+        );
+        return hospitalMapper.toResponse(saved);
+    }
+
+    @Override
+    @Transactional
+    public HospitalResponseDto rejectHospital(UUID hospitalId) {
+        assertAdmin();
+        Hospital hospital = getHospitalEntityById(hospitalId);
+        
+        if (hospital.getStatus() == HospitalStatus.REJECTED) {
+            throw new BadRequestException("Hospital is already REJECTED");
+        }
+        
+        hospital.setStatus(HospitalStatus.REJECTED);
+        Hospital saved = hospitalRepository.save(hospital);
+        domainEventService.publish(
+            "HOSPITAL_REJECTED",
+            "HOSPITAL",
+            saved.getId(),
+            "ADMIN",
+            currentUserProvider.getCurrentUserId(),
+            "HOSPITAL",
+            saved.getId(),
+            Map.of("status", saved.getStatus().name())
+        );
+        return hospitalMapper.toResponse(saved);
+    }
+
+    @Override
+    @Transactional
+    public HospitalResponseDto suspendHospital(UUID hospitalId) {
+        assertAdmin();
+        Hospital hospital = getHospitalEntityById(hospitalId);
+        
+        if (hospital.getStatus() == HospitalStatus.SUSPENDED) {
+            throw new BadRequestException("Hospital is already SUSPENDED");
+        }
+        
+        hospital.setStatus(HospitalStatus.SUSPENDED);
+        Hospital saved = hospitalRepository.save(hospital);
+        domainEventService.publish(
+            "HOSPITAL_SUSPENDED",
+            "HOSPITAL",
+            saved.getId(),
+            "ADMIN",
+            currentUserProvider.getCurrentUserId(),
+            "HOSPITAL",
+            saved.getId(),
+            Map.of("status", saved.getStatus().name())
+        );
+        return hospitalMapper.toResponse(saved);
+    }
+
+    @Override
+    @Transactional
+    public HospitalResponseDto unsuspendHospital(UUID hospitalId) {
+        assertAdmin();
+        Hospital hospital = getHospitalEntityById(hospitalId);
+        
+        if (hospital.getStatus() != HospitalStatus.SUSPENDED) {
+            throw new BadRequestException("Hospital is not SUSPENDED");
+        }
+        
+        hospital.setStatus(HospitalStatus.ACTIVE);
+        Hospital saved = hospitalRepository.save(hospital);
+        domainEventService.publish(
+            "HOSPITAL_UNSUSPENDED",
             "HOSPITAL",
             saved.getId(),
             "ADMIN",

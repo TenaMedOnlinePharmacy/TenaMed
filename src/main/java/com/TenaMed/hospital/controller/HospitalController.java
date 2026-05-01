@@ -55,10 +55,6 @@ public class HospitalController {
         return ResponseEntity.ok(hospitalService.updateHospital(id, dto));
     }
 
-    @PatchMapping("/{id}/verify")
-    public ResponseEntity<HospitalResponseDto> verifyHospital(@PathVariable UUID id) {
-        return ResponseEntity.ok(hospitalService.verifyHospital(id));
-    }
 
     @GetMapping("/{id}/doctors")
     public ResponseEntity<List<DoctorResponseDto>> getHospitalDoctors(@PathVariable UUID id) {
