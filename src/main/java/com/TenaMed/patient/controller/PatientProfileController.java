@@ -65,6 +65,16 @@ public class PatientProfileController {
         return ResponseEntity.ok(patientService.getProfileByUserId(userId));
     }
 
+    @GetMapping("/profiles")
+    public ResponseEntity<java.util.List<PatientProfileResponse>> listProfiles(Principal principal) {
+        UUID userId = resolveUserId(principal);
+        if (userId == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+
+        return ResponseEntity.ok(patientService.getProfilesByUserId(userId));
+    }
+
     @PutMapping("/profile")
     public ResponseEntity<?> updateProfile(Principal principal,
                                            @Valid @RequestBody UpdateProfileDto dto) {

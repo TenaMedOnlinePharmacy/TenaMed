@@ -32,4 +32,6 @@ public interface PatientService {
     void deleteTemporaryPatient(UUID patientId);
 
     List<PatientProfileResponse.AllergyItem> getAllergies(UUID userId);
+
+    List<PatientProfileResponse> getProfilesByUserId(UUID userId);
 }

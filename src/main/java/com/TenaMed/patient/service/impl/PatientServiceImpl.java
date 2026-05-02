@@ -342,6 +342,18 @@ public class PatientServiceImpl implements PatientService {
         return response.getAllergies();
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public List<PatientProfileResponse> getProfilesByUserId(UUID userId) {
+        validateUserId(userId);
+        return patientProfileRepository.findAllByUserId(userId).stream()
+                .map(profile -> {
+                    List<CustomerAllergy> allergies = customerAllergyRepository.findByProfile_Id(profile.getId());
+                    return patientMapper.toProfileResponse(profile, allergies);
+                })
+                .collect(java.util.stream.Collectors.toList());
+    }
+
     private PatientProfile getProfileEntityByUserId(UUID userId) {
         validateUserId(userId);
         return patientProfileRepository.findByUserId(userId)
