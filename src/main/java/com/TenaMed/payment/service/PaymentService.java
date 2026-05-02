@@ -94,7 +94,7 @@ public class PaymentService {
                 "\"email\":\"" + escapeJson(email) + "\"," +
                 "\"tx_ref\":\"" + txRefValue + "\"," +
                 "\"callback_url\":\"https://nonobediently-nonperishing-hilda.ngrok-free.dev/api/payments/webhook\"," +
-                "\"return_url\":\"http://localhost:5173/Loading\"," +
+                "\"return_url\":\"http://localhost:5173/payment/callback\"," +
                 "\"customization[title]\":\"TenaMed Payment\"," +
                 "\"customization[description]\":\"Prescription Payment\"" +
                 "}";

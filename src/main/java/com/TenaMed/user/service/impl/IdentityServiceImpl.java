@@ -12,6 +12,8 @@ import com.TenaMed.user.entity.User;
 import com.TenaMed.user.entity.UserRole;
 import com.TenaMed.user.dto.UserDetailsResponseDto;
 import com.TenaMed.user.dto.UserRolesResponseDto;
+import com.TenaMed.user.dto.AccountInfoResponseDto;
+import com.TenaMed.user.dto.UpdateAccountRequestDto;
 import com.TenaMed.user.exception.AccountNotActiveException;
 import com.TenaMed.user.exception.EmailAlreadyRegisteredException;
 import com.TenaMed.user.exception.InvalidCredentialsException;
@@ -176,6 +178,38 @@ public class IdentityServiceImpl implements IdentityService {
     public UserDetailsResponseDto getUserDetails(UUID userId) {
         User user = fetchUser(userId);
         return identityMapper.toUserDetailsResponse(user);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public AccountInfoResponseDto getAccountInfo(UUID userId) {
+        User user = fetchUser(userId);
+        Account account = user.getAccount();
+        return AccountInfoResponseDto.builder()
+                .fullName(user.getFirstName() + " " + user.getLastName())
+                .email(account.getEmail())
+                .phone(user.getPhone())
+                .address(user.getAddress())
+                .build();
+    }
+
+    @Override
+    public AccountInfoResponseDto updateAccountInfo(UUID userId, UpdateAccountRequestDto requestDto) {
+        User user = fetchUser(userId);
+        user.setPhone(normalizeNullable(requestDto.getPhone()));
+        user.setAddress(copyAddress(requestDto.getAddress()));
+        User saved = userRepository.save(user);
+
+        domainEventService.publish(
+            "USER_ACCOUNT_UPDATED",
+            "USER",
+            userId,
+            "PLATFORM",
+            null,
+            Map.of("phoneUpdated", user.getPhone() != null)
+        );
+
+        return getAccountInfo(userId);
     }
 
     @Override
