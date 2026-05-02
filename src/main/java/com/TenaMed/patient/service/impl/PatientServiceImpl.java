@@ -30,6 +30,7 @@ import com.TenaMed.events.DomainEventService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -80,6 +81,21 @@ public class PatientServiceImpl implements PatientService {
             dto.getIsPregnant(), dto.getBloodType(), dto.getUniqueCode());
 
         PatientProfile saved = patientProfileRepository.save(profile);
+
+        List<CustomerAllergy> savedAllergies = new ArrayList<>();
+        if (dto.getAllergens() != null && !dto.getAllergens().isEmpty()) {
+            for (String allergenName : dto.getAllergens()) {
+                if (allergenName != null && !allergenName.trim().isEmpty()) {
+                    Allergen allergen = resolveOrCreateAllergen(allergenName);
+                    CustomerAllergy allergy = new CustomerAllergy();
+                    allergy.setProfile(saved);
+                    allergy.setAllergen(allergen);
+                    allergy.setSeverity("UNKNOWN"); // Default severity for initial profile setup
+                    savedAllergies.add(customerAllergyRepository.save(allergy));
+                }
+            }
+        }
+
         domainEventService.publish(
             "PATIENT_PROFILE_CREATED",
             "PATIENT_PROFILE",
@@ -88,9 +104,9 @@ public class PatientServiceImpl implements PatientService {
             userId,
             "PLATFORM",
             null,
-            Map.of()
+            Map.of("allergenCount", String.valueOf(savedAllergies.size()))
         );
-        return patientMapper.toProfileResponse(saved, List.of());
+        return patientMapper.toProfileResponse(saved, savedAllergies);
     }
 
     @Override
@@ -388,5 +404,17 @@ public class PatientServiceImpl implements PatientService {
             throw new PatientException(fieldName + " is required");
         }
         return value.trim();
+    }
+
+    private Allergen resolveOrCreateAllergen(String name) {
+        String normalized = name.trim();
+        return allergenRepository.findByNameIgnoreCase(normalized)
+                .orElseGet(() -> {
+                    Allergen newAllergen = new Allergen();
+                    newAllergen.setName(normalized);
+                    newAllergen.setCode("ALG-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase());
+                    newAllergen.setAllergenType("OTHER");
+                    return allergenRepository.save(newAllergen);
+                });
     }
 }
