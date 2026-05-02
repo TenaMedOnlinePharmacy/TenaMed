@@ -86,6 +86,12 @@ public class PatientProfileController {
         return ResponseEntity.ok(patientService.updateProfile(userId, dto));
     }
 
+    @GetMapping("/profile/{profileId}/check-safety/{medicineId}")
+    public ResponseEntity<?> checkMedicineSafety(@PathVariable UUID profileId,
+                                                  @PathVariable UUID medicineId) {
+        return ResponseEntity.ok(patientService.checkMedicineSafety(profileId, medicineId));
+    }
+
     @PostMapping("/convert/{patientId}")
     public ResponseEntity<?> convertTemporaryPatient(@PathVariable UUID patientId,
                                                      Principal principal) {

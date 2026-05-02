@@ -12,6 +12,10 @@ import com.TenaMed.medicine.repository.AllergenRepository;
 import com.TenaMed.patient.entity.CustomerAllergy;
 import com.TenaMed.patient.entity.Patient;
 import com.TenaMed.patient.entity.PatientProfile;
+import com.TenaMed.medicine.entity.MedicineAllergen;
+import com.TenaMed.medicine.repository.MedicineAllergenRepository;
+import com.TenaMed.medicine.repository.MedicineRepository;
+import com.TenaMed.patient.dto.MedicineAllergyMatchResponse;
 import com.TenaMed.patient.exception.AllergenNotFoundException;
 import com.TenaMed.patient.exception.CustomerAllergyNotFoundException;
 import com.TenaMed.patient.exception.DuplicateAllergyException;
@@ -33,7 +37,9 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Service
 public class PatientServiceImpl implements PatientService {
@@ -43,6 +49,8 @@ public class PatientServiceImpl implements PatientService {
     private final AllergenRepository allergenRepository;
     private final CustomerAllergyRepository customerAllergyRepository;
     private final PrescriptionRepository prescriptionRepository;
+    private final MedicineRepository medicineRepository;
+    private final MedicineAllergenRepository medicineAllergenRepository;
     private final PatientMapper patientMapper;
     private final DomainEventService domainEventService;
 
@@ -51,6 +59,8 @@ public class PatientServiceImpl implements PatientService {
                               AllergenRepository allergenRepository,
                               CustomerAllergyRepository customerAllergyRepository,
                               PrescriptionRepository prescriptionRepository,
+                              MedicineRepository medicineRepository,
+                              MedicineAllergenRepository medicineAllergenRepository,
                               PatientMapper patientMapper,
                               DomainEventService domainEventService) {
         this.patientProfileRepository = patientProfileRepository;
@@ -58,6 +68,8 @@ public class PatientServiceImpl implements PatientService {
         this.allergenRepository = allergenRepository;
         this.customerAllergyRepository = customerAllergyRepository;
         this.prescriptionRepository = prescriptionRepository;
+        this.medicineRepository = medicineRepository;
+        this.medicineAllergenRepository = medicineAllergenRepository;
         this.patientMapper = patientMapper;
         this.domainEventService = domainEventService;
     }
@@ -352,6 +364,49 @@ public class PatientServiceImpl implements PatientService {
                     return patientMapper.toProfileResponse(profile, allergies);
                 })
                 .collect(java.util.stream.Collectors.toList());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<MedicineAllergyMatchResponse> checkMedicineSafety(UUID profileId, UUID medicineId) {
+        if (profileId == null || medicineId == null) {
+            throw new PatientException("profileId and medicineId are required");
+        }
+
+        // Fetch patient allergies
+        List<CustomerAllergy> patientAllergies = customerAllergyRepository.findByProfile_Id(profileId);
+        if (patientAllergies.isEmpty()) {
+            return List.of();
+        }
+
+        // Fetch medicine allergens
+        List<MedicineAllergen> medicineAllergens = medicineAllergenRepository.findByMedicine_Id(medicineId);
+        if (medicineAllergens.isEmpty()) {
+            return List.of();
+        }
+
+        // Check for overlaps
+        Set<UUID> patientAllergenIds = patientAllergies.stream()
+                .map(a -> a.getAllergen().getId())
+                .collect(Collectors.toSet());
+
+        return medicineAllergens.stream()
+                .filter(ma -> patientAllergenIds.contains(ma.getAllergen().getId()))
+                .map(ma -> {
+                    // Find the corresponding patient allergy to get severity
+                    CustomerAllergy patientAllergy = patientAllergies.stream()
+                            .filter(pa -> pa.getAllergen().getId().equals(ma.getAllergen().getId()))
+                            .findFirst()
+                            .orElse(null);
+
+                    return MedicineAllergyMatchResponse.builder()
+                            .allergenId(ma.getAllergen().getId())
+                            .allergenName(ma.getAllergen().getName())
+                            .allergenDescription(ma.getAllergen().getDescription())
+                            .severity(patientAllergy != null ? patientAllergy.getSeverity() : "UNKNOWN")
+                            .build();
+                })
+                .collect(Collectors.toList());
     }
 
     private PatientProfile getProfileEntityByUserId(UUID userId) {

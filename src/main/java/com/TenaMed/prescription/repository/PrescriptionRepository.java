@@ -150,7 +150,7 @@ public interface PrescriptionRepository extends JpaRepository<Prescription, UUID
 
     long countByOcrSuccess(Boolean ocrSuccess);
 
-    @Query("SELECT AVG(p.confidenceScore) FROM Prescription p WHERE p.confidenceScore IS NOT NULL")
+    @Query("SELECT AVG(p.confidenceScore) FROM Prescription p WHERE p.confidenceScore IS NOT NULL AND p.ocrSuccess IS true ")
     Double getAverageOcrConfidence();
 
     @Query("SELECT p FROM Prescription p WHERE " +

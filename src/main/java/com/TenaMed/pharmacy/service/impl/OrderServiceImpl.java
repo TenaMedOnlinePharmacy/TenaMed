@@ -6,6 +6,7 @@ import com.TenaMed.inventory.entity.Batch;
 import com.TenaMed.inventory.enums.BatchStatus;
 import com.TenaMed.inventory.repository.BatchRepository;
 import com.TenaMed.inventory.repository.InventoryRepository;
+import com.TenaMed.medicine.entity.Product;
 import com.TenaMed.pharmacy.dto.request.CreateOrderFromCartRequest;
 import com.TenaMed.pharmacy.dto.request.CreateOrderRequest;
 import com.TenaMed.pharmacy.dto.response.OrderResponse;
@@ -279,7 +280,7 @@ public class OrderServiceImpl implements OrderService {
             orderItem.setInventoryId(inventoryId);
             orderItem.setProductId(productId);
             
-            com.TenaMed.medicine.entity.Product product = productRepository.findById(productId)
+            Product product = productRepository.findById(productId)
                     .orElseThrow(() -> new PharmacyValidationException("Product not found: " + productId));
             orderItem.setMedicineId(product.getMedicine().getId());
 

@@ -7,6 +7,7 @@ import com.TenaMed.patient.dto.PatientDto;
 import com.TenaMed.patient.dto.PatientProfileResponse;
 import com.TenaMed.patient.dto.UpdateAllergyDto;
 import com.TenaMed.patient.dto.UpdateProfileDto;
+import com.TenaMed.patient.dto.MedicineAllergyMatchResponse;
 
 import java.util.List;
 import java.util.UUID;
@@ -34,4 +35,6 @@ public interface PatientService {
     List<PatientProfileResponse.AllergyItem> getAllergies(UUID userId);
 
     List<PatientProfileResponse> getProfilesByUserId(UUID userId);
+
+    List<MedicineAllergyMatchResponse> checkMedicineSafety(UUID profileId, UUID medicineId);
 }
