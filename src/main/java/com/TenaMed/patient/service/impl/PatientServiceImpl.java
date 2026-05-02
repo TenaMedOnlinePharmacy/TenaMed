@@ -89,7 +89,7 @@ public class PatientServiceImpl implements PatientService {
 
         PatientProfile profile = new PatientProfile();
         profile.setUserId(userId);
-        applyProfileFields(profile, dto.getDateOfBirth(), dto.getGender(), dto.getWeight(), dto.getHeight(),
+        applyProfileFields(profile, dto.getName(), dto.getDateOfBirth(), dto.getGender(), dto.getWeight(), dto.getHeight(),
             dto.getIsPregnant(), dto.getBloodType(), dto.getUniqueCode());
 
         PatientProfile saved = patientProfileRepository.save(profile);
@@ -139,7 +139,7 @@ public class PatientServiceImpl implements PatientService {
 
         PatientProfile profile = getProfileEntityByUserId(userId);
 
-        applyProfileFields(profile, dto.getDateOfBirth(), dto.getGender(), dto.getWeight(), dto.getHeight(),
+        applyProfileFields(profile, dto.getName(), dto.getDateOfBirth(), dto.getGender(), dto.getWeight(), dto.getHeight(),
             dto.getIsPregnant(), dto.getBloodType(), dto.getUniqueCode());
 
         PatientProfile saved = patientProfileRepository.save(profile);
@@ -276,6 +276,8 @@ public class PatientServiceImpl implements PatientService {
 
         PatientProfile profile = new PatientProfile();
         profile.setUserId(userId);
+        profile.setName(temporaryPatient.getFullName());
+        profile.setUniqueCode(temporaryPatient.getUniqueCode());
         PatientProfile savedProfile = patientProfileRepository.save(profile);
 
         prescriptionRepository.migratePatientToProfile(temporaryPatient.getId(), savedProfile.getId());
@@ -422,6 +424,7 @@ public class PatientServiceImpl implements PatientService {
     }
 
     private void applyProfileFields(PatientProfile profile,
+                                    String name,
                                     java.time.LocalDate dateOfBirth,
                                     String gender,
                                     Float weight,
@@ -429,6 +432,7 @@ public class PatientServiceImpl implements PatientService {
                                     Boolean isPregnant,
                                     String bloodType,
                                     String uniqueCode) {
+        profile.setName(name);
         profile.setDateOfBirth(dateOfBirth);
         profile.setGender(gender);
         profile.setWeight(weight);

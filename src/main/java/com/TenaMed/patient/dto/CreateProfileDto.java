@@ -7,6 +7,7 @@ import java.util.List;
 
 @Data
 public class CreateProfileDto {
+    private String name;
     private LocalDate dateOfBirth;
     private String gender;
     private Float weight;

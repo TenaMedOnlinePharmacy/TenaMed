@@ -34,6 +34,9 @@ public class PatientProfile {
     @Column(name = "user_id", nullable = false)
     private UUID userId;
 
+    @Column(name = "name")
+    private String name;
+
     @Column(name = "date_of_birth")
     private LocalDate dateOfBirth;
 

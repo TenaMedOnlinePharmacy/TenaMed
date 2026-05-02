@@ -14,6 +14,7 @@ public class PatientProfileResponse {
 
     private UUID id;
     private UUID userId;
+    private String name;
     private LocalDate dateOfBirth;
     private String gender;
     private Float weight;

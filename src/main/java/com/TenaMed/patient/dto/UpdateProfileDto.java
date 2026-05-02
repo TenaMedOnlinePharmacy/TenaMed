@@ -6,6 +6,7 @@ import java.time.LocalDate;
 
 @Data
 public class UpdateProfileDto {
+    private String name;
     private LocalDate dateOfBirth;
     private String gender;
     private Float weight;

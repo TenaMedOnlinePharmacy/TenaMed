@@ -19,6 +19,7 @@ public class PatientMapper {
         return PatientProfileResponse.builder()
                 .id(profile.getId())
                 .userId(profile.getUserId())
+                .name(profile.getName())
                 .dateOfBirth(profile.getDateOfBirth())
                 .gender(profile.getGender())
                 .weight(profile.getWeight())
