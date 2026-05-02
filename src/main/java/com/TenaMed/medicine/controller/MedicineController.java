@@ -36,30 +36,7 @@ public class MedicineController {
     private final ProductRepository productRepository;
 
 
-    @PostMapping(consumes = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<?> createMedicine(@Valid @RequestBody MedicineRequestDto requestDto) {
-        try {
-            MedicineResponseDto response = medicineService.createMedicine(requestDto);
-            return ResponseEntity.status(HttpStatus.CREATED).body(response);
-        } catch (MedicineAlreadyExistsException e) {
-            return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of("error", e.getMessage()));
-        } catch (MedicineValidationException e) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("error", e.getMessage()));
-        }
-    }
 
-    @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public ResponseEntity<?> createMedicineWithImage(@Valid @RequestPart("medicine") MedicineRequestDto requestDto,
-                                                     @RequestPart(value = "image", required = false) MultipartFile image) {
-        try {
-            MedicineResponseDto response = medicineService.createMedicine(requestDto, image);
-            return ResponseEntity.status(HttpStatus.CREATED).body(response);
-        } catch (MedicineAlreadyExistsException e) {
-            return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of("error", e.getMessage()));
-        } catch (MedicineValidationException | IllegalArgumentException e) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("error", e.getMessage()));
-        }
-    }
 
     @GetMapping("/{id}")
     public ResponseEntity<?> getMedicineById(@PathVariable UUID id) {
@@ -112,18 +89,7 @@ public class MedicineController {
         return ResponseEntity.ok(medicineService.searchMedicineNamesByKeyword(keyword));
     }
 
-    @PutMapping("/{id}")
-    public ResponseEntity<?> updateMedicine(@PathVariable UUID id,
-                                            @Valid @RequestBody MedicineRequestDto requestDto) {
-        try {
-            MedicineResponseDto response = medicineService.updateMedicine(id, requestDto);
-            return ResponseEntity.ok(response);
-        } catch (MedicineNotFoundException e) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", e.getMessage()));
-        } catch (MedicineValidationException e) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("error", e.getMessage()));
-        }
-    }
+
 
     @PostMapping("/{medicineId}/allergens/{allergenId}")
     public ResponseEntity<?> addAllergenToMedicine(@PathVariable UUID medicineId,
@@ -171,13 +137,5 @@ public class MedicineController {
         }
     }
 
-    @DeleteMapping("/{id}")
-    public ResponseEntity<?> deleteMedicine(@PathVariable UUID id) {
-        try {
-            medicineService.deleteMedicine(id);
-            return ResponseEntity.noContent().build();
-        } catch (MedicineNotFoundException e) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", e.getMessage()));
-        }
-    }
+
 }

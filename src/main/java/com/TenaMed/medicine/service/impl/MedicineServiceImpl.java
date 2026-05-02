@@ -122,6 +122,20 @@ public class MedicineServiceImpl implements MedicineService {
         medicine.setCategory(resolveOrCreateCategory(requestDto.getCategory()));
         medicine.setDosageForm(resolveOrCreateDosageForm(requestDto.getDosageForm()));
         Medicine saved = medicineRepository.save(medicine);
+
+        if (requestDto.getAllergens() != null && !requestDto.getAllergens().isEmpty()) {
+            for (String allergenName : requestDto.getAllergens()) {
+                if (allergenName != null && !allergenName.trim().isEmpty()) {
+                    Allergen allergen = resolveOrCreateAllergen(allergenName);
+                    MedicineAllergen link = new MedicineAllergen();
+                    link.setMedicine(saved);
+                    link.setAllergen(allergen);
+                    medicineAllergenRepository.save(link);
+                    saved.getMedicineAllergens().add(link);
+                }
+            }
+        }
+
         domainEventService.publish(
             "MEDICINE_CREATED",
             "MEDICINE",
@@ -309,6 +323,23 @@ public class MedicineServiceImpl implements MedicineService {
         medicineMapper.updateEntityFromDto(requestDto, medicine);
         medicine.setCategory(resolveOrCreateCategory(requestDto.getCategory()));
         medicine.setDosageForm(resolveOrCreateDosageForm(requestDto.getDosageForm()));
+        
+        medicineAllergenRepository.deleteAll(medicine.getMedicineAllergens());
+        medicine.getMedicineAllergens().clear();
+        
+        if (requestDto.getAllergens() != null && !requestDto.getAllergens().isEmpty()) {
+            for (String allergenName : requestDto.getAllergens()) {
+                if (allergenName != null && !allergenName.trim().isEmpty()) {
+                    Allergen allergen = resolveOrCreateAllergen(allergenName);
+                    MedicineAllergen link = new MedicineAllergen();
+                    link.setMedicine(medicine);
+                    link.setAllergen(allergen);
+                    medicineAllergenRepository.save(link);
+                    medicine.getMedicineAllergens().add(link);
+                }
+            }
+        }
+
         Medicine updated = medicineRepository.save(medicine);
         domainEventService.publish(
             "MEDICINE_UPDATED",
@@ -448,6 +479,16 @@ public class MedicineServiceImpl implements MedicineService {
                     Category category = new Category();
                     category.setName(normalized);
                     return categoryRepository.save(category);
+                });
+    }
+
+    private Allergen resolveOrCreateAllergen(String allergenName) {
+        String normalized = allergenName.trim();
+        return allergenRepository.findByNameIgnoreCase(normalized)
+                .orElseGet(() -> {
+                    Allergen allergen = new Allergen();
+                    allergen.setName(normalized);
+                    return allergenRepository.save(allergen);
                 });
     }
 

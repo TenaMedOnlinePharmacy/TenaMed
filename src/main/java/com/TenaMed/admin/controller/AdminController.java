@@ -23,6 +23,20 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.TenaMed.hospital.dto.HospitalResponseDto;
 import com.TenaMed.pharmacy.dto.response.PharmacyResponse;
+import com.TenaMed.medicine.service.MedicineService;
+import com.TenaMed.medicine.dto.MedicineRequestDto;
+import com.TenaMed.medicine.dto.MedicineResponseDto;
+import com.TenaMed.medicine.exception.MedicineAlreadyExistsException;
+import com.TenaMed.medicine.exception.MedicineValidationException;
+import com.TenaMed.medicine.exception.MedicineNotFoundException;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestPart;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.multipart.MultipartFile;
+import jakarta.validation.Valid;
 
 import java.util.List;
 import java.util.Map;
@@ -38,6 +52,7 @@ public class AdminController {
     private final PharmacyService pharmacyService;
     private final AdminService adminService;
     private final HospitalService hospitalService;
+    private final MedicineService medicineService;
 
     @GetMapping("/dashboard")
     public ResponseEntity<DashboardResponse> getDashboard() {
@@ -139,5 +154,54 @@ public class AdminController {
     @GetMapping("/pharmacies/stats")
     public ResponseEntity<Map<String, Long>> getPharmacyStats() {
         return ResponseEntity.ok(adminService.getPharmacyStats());
+    }
+
+    @PostMapping(value = "/medicines", consumes = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<?> createMedicine(@Valid @RequestBody MedicineRequestDto requestDto) {
+        try {
+            MedicineResponseDto response = medicineService.createMedicine(requestDto);
+            return ResponseEntity.status(HttpStatus.CREATED).body(response);
+        } catch (MedicineAlreadyExistsException e) {
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of("error", e.getMessage()));
+        } catch (MedicineValidationException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    @Deprecated
+    @PostMapping(value = "/medicines", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<?> createMedicineWithImage(@Valid @RequestPart("medicine") MedicineRequestDto requestDto,
+                                                     @RequestPart(value = "image", required = false) MultipartFile image) {
+        try {
+            MedicineResponseDto response = medicineService.createMedicine(requestDto, image);
+            return ResponseEntity.status(HttpStatus.CREATED).body(response);
+        } catch (MedicineAlreadyExistsException e) {
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of("error", e.getMessage()));
+        } catch (MedicineValidationException | IllegalArgumentException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    @PutMapping("/medicines/{id}")
+    public ResponseEntity<?> updateMedicine(@PathVariable UUID id,
+                                            @Valid @RequestBody MedicineRequestDto requestDto) {
+        try {
+            MedicineResponseDto response = medicineService.updateMedicine(id, requestDto);
+            return ResponseEntity.ok(response);
+        } catch (MedicineNotFoundException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", e.getMessage()));
+        } catch (MedicineValidationException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    @DeleteMapping("/medicines/{id}")
+    public ResponseEntity<?> deleteMedicine(@PathVariable UUID id) {
+        try {
+            medicineService.deleteMedicine(id);
+            return ResponseEntity.noContent().build();
+        } catch (MedicineNotFoundException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", e.getMessage()));
+        }
     }
 }

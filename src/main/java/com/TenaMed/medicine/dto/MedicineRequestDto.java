@@ -4,6 +4,7 @@ import jakarta.validation.constraints.*;
 import lombok.Data;
 
 import java.math.BigDecimal;
+import java.util.List;
 
 @Data
 public class MedicineRequestDto {
@@ -44,4 +45,6 @@ public class MedicineRequestDto {
     private String pregnancyCategory;
 
     private boolean requiresPrescription;
+
+    private List<String> allergens;
 }
