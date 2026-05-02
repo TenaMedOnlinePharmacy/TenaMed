@@ -13,6 +13,17 @@ import com.TenaMed.audit.entity.AuditLog;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import com.TenaMed.prescription.entity.Prescription;
+import com.TenaMed.hospital.mapper.HospitalMapper;
+import com.TenaMed.pharmacy.mapper.PharmacyMapper;
+import com.TenaMed.hospital.dto.HospitalResponseDto;
+import com.TenaMed.pharmacy.dto.response.PharmacyResponse;
+import com.TenaMed.hospital.entity.HospitalStatus;
+import com.TenaMed.pharmacy.enums.PharmacyStatus;
+
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
+
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -27,6 +38,8 @@ public class AdminService {
     private final OrderRepository orderRepository;
     private final PrescriptionRepository prescriptionRepository;
     private final AuditLogRepository auditLogRepository;
+    private final HospitalMapper hospitalMapper;
+    private final PharmacyMapper pharmacyMapper;
 
     public DashboardResponse getDashboard() {
         DashboardResponse response = new DashboardResponse();
@@ -54,5 +67,47 @@ public class AdminService {
 
     public Page<Prescription> getPrescriptions(String status, Boolean highRisk, Pageable pageable) {
         return prescriptionRepository.findByStatusAndHighRisk(status, highRisk, pageable);
+    }
+
+    public List<HospitalResponseDto> getPendingHospitals() {
+        return hospitalRepository.findByStatus(HospitalStatus.PENDING).stream()
+                .map(hospitalMapper::toResponse)
+                .collect(Collectors.toList());
+    }
+
+    public List<HospitalResponseDto> searchHospitalsByName(String name) {
+        return hospitalRepository.findByNameContainingIgnoreCase(name).stream()
+                .map(hospitalMapper::toResponse)
+                .collect(Collectors.toList());
+    }
+
+    public Map<String, Long> getHospitalStats() {
+        return Map.of(
+                "total", hospitalRepository.count(),
+                "verified", hospitalRepository.countByStatus(HospitalStatus.ACTIVE),
+                "rejected", hospitalRepository.countByStatus(HospitalStatus.REJECTED),
+                "suspended", hospitalRepository.countByStatus(HospitalStatus.SUSPENDED)
+        );
+    }
+
+    public List<PharmacyResponse> getPendingPharmacies() {
+        return pharmacyRepository.findByStatus(PharmacyStatus.PENDING).stream()
+                .map(pharmacyMapper::toResponse)
+                .collect(Collectors.toList());
+    }
+
+    public List<PharmacyResponse> searchPharmaciesByName(String name) {
+        return pharmacyRepository.findByNameContainingIgnoreCase(name).stream()
+                .map(pharmacyMapper::toResponse)
+                .collect(Collectors.toList());
+    }
+
+    public Map<String, Long> getPharmacyStats() {
+        return Map.of(
+                "total", pharmacyRepository.count(),
+                "verified", pharmacyRepository.countByStatus(PharmacyStatus.VERIFIED),
+                "rejected", pharmacyRepository.countByStatus(PharmacyStatus.REJECTED),
+                "suspended", pharmacyRepository.countByStatus(PharmacyStatus.SUSPENDED)
+        );
     }
 }

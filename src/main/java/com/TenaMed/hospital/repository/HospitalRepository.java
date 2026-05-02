@@ -13,4 +13,10 @@ public interface HospitalRepository extends JpaRepository<Hospital, UUID> {
     Optional<Hospital> findByOwnerId(UUID ownerId);
 
     boolean existsByLicenseNumberIgnoreCase(String licenseNumber);
+
+    List<Hospital> findByStatus(com.TenaMed.hospital.entity.HospitalStatus status);
+
+    List<Hospital> findByNameContainingIgnoreCase(String name);
+
+    long countByStatus(com.TenaMed.hospital.entity.HospitalStatus status);
 }

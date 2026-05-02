@@ -21,8 +21,13 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.TenaMed.hospital.dto.HospitalResponseDto;
+import com.TenaMed.pharmacy.dto.response.PharmacyResponse;
+
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+
 
 @RestController
 @RequestMapping("/admin")
@@ -106,4 +111,33 @@ public class AdminController {
         return ResponseEntity.ok(Map.of("message", "Hospital unsuspended successfully"));
     }
 
+    @GetMapping("/hospitals/pending")
+    public ResponseEntity<List<HospitalResponseDto>> getPendingHospitals() {
+        return ResponseEntity.ok(adminService.getPendingHospitals());
+    }
+
+    @GetMapping("/hospitals/search")
+    public ResponseEntity<List<HospitalResponseDto>> searchHospitalsByName(@RequestParam String name) {
+        return ResponseEntity.ok(adminService.searchHospitalsByName(name));
+    }
+
+    @GetMapping("/hospitals/stats")
+    public ResponseEntity<Map<String, Long>> getHospitalStats() {
+        return ResponseEntity.ok(adminService.getHospitalStats());
+    }
+
+    @GetMapping("/pharmacies/pending")
+    public ResponseEntity<List<PharmacyResponse>> getPendingPharmacies() {
+        return ResponseEntity.ok(adminService.getPendingPharmacies());
+    }
+
+    @GetMapping("/pharmacies/search")
+    public ResponseEntity<List<PharmacyResponse>> searchPharmaciesByName(@RequestParam String name) {
+        return ResponseEntity.ok(adminService.searchPharmaciesByName(name));
+    }
+
+    @GetMapping("/pharmacies/stats")
+    public ResponseEntity<Map<String, Long>> getPharmacyStats() {
+        return ResponseEntity.ok(adminService.getPharmacyStats());
+    }
 }

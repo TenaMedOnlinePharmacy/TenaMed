@@ -23,4 +23,8 @@ public interface PharmacyRepository extends JpaRepository<Pharmacy, UUID> {
     boolean existsByEmailIgnoreCase(String email);
 
     boolean existsByPhone(String phone);
+
+    List<Pharmacy> findByNameContainingIgnoreCase(String name);
+
+    long countByStatus(PharmacyStatus status);
 }
