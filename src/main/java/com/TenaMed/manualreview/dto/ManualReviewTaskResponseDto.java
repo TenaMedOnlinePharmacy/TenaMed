@@ -19,6 +19,7 @@ public class ManualReviewTaskResponseDto {
     TaskPriority priority;
     UUID assignedTo;
     String notes;
+    String imageUrl;
     LocalDateTime createdAt;
     LocalDateTime updatedAt;
     LocalDateTime completedAt;

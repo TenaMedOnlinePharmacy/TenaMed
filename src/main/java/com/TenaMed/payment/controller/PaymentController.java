@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.io.IOException;
 import java.util.Map;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/payments")
@@ -56,13 +57,22 @@ public class PaymentController {
         return ResponseEntity.ok(paymentService.cancelPayment(txRef));
     }
 
+    @GetMapping("/status/{orderId}")
+    public ResponseEntity<Map<String, Object>> checkStatus(@PathVariable UUID orderId) {
+        try {
+            return ResponseEntity.ok(paymentService.getPaymentStatusByOrderId(orderId));
+        } catch (IllegalArgumentException ex) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(Map.of("error", ex.getMessage()));
+        }
+    }
+
     @RequestMapping(value = "/webhook", method = {RequestMethod.POST, RequestMethod.GET})
         public ResponseEntity<PaymentWebhookResponse> webhook(
             @RequestBody(required = false) String payload,
             @RequestParam(required = false) String tx_ref
     ) {
         try {
-            System.out.println("here");
             String txRef = tx_ref;
 
             if (txRef == null && payload != null) {

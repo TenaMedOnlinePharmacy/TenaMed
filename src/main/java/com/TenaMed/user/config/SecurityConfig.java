@@ -49,6 +49,7 @@ public class SecurityConfig {
                     .requestMatchers(HttpMethod.POST, "/api/auth/register", "/api/auth/register-hospital-owner", "/api/auth/register-pharmacist", "/api/auth/login", "/api/auth/refresh","/api/auth/register-athlete").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/identity/register", "/api/identity/login").permitAll()
                     .requestMatchers("/api/payments/webhook").permitAll()
+                        .requestMatchers("/manual-review/**").hasAnyRole("ADMIN_PHARMACIST", "ADMIN")
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
                         .anyRequest().authenticated()
                 )

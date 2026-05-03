@@ -28,7 +28,6 @@ import com.TenaMed.events.DomainEventService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.ArrayList;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -272,31 +271,32 @@ public class CartServiceImpl implements CartService {
         Map<UUID, List<CartItem>> itemsByPharmacy = cart.getItems().stream()
                 .collect(Collectors.groupingBy(CartItem::getPharmacyId));
 
-        List<UUID> orderIds = new ArrayList<>();
+        if (itemsByPharmacy.size() > 1) {
+            throw new CartValidationException("Checkout supports items from a single pharmacy only");
+        }
 
-        for (Map.Entry<UUID, List<CartItem>> pharmacyGroup : itemsByPharmacy.entrySet()) {
-            UUID pharmacyId = pharmacyGroup.getKey();
-            List<CartItem> items = pharmacyGroup.getValue();
+        Map.Entry<UUID, List<CartItem>> pharmacyGroup = itemsByPharmacy.entrySet().iterator().next();
+        UUID pharmacyId = pharmacyGroup.getKey();
+        List<CartItem> items = pharmacyGroup.getValue();
 
-            for (CartItem item : items) {
-                ensureStockAvailable(pharmacyId, item.getProductId(), item.getQuantity());
-                if (Boolean.TRUE.equals(item.getRequiresPrescription())) {
-                    if (item.getPrescriptionId() == null) {
-                        throw new CartValidationException("Prescription is required for checkout");
-                    }
-                    if (!prescriptionService.isPrescriptionValid(item.getPrescriptionId())) {
-                        throw new CartValidationException("Invalid prescription during checkout");
-                    }
+        for (CartItem item : items) {
+            ensureStockAvailable(pharmacyId, item.getProductId(), item.getQuantity());
+            if (Boolean.TRUE.equals(item.getRequiresPrescription())) {
+                if (item.getPrescriptionId() == null) {
+                    throw new CartValidationException("Prescription is required for checkout");
+                }
+                if (!prescriptionService.isPrescriptionValid(item.getPrescriptionId())) {
+                    throw new CartValidationException("Invalid prescription during checkout");
                 }
             }
-
-            CreateOrderFromCartRequest orderRequest = cartMapper.toOrderRequest(pharmacyId, items);
-            OrderResponse orderResponse = orderService.createOrderFromCart(userId, orderRequest);
-            if (orderResponse == null || orderResponse.getId() == null) {
-                throw new CartValidationException("Failed to create order from cart for pharmacy: " + pharmacyId);
-            }
-            orderIds.add(orderResponse.getId());
         }
+
+        CreateOrderFromCartRequest orderRequest = cartMapper.toOrderRequest(pharmacyId, items);
+        OrderResponse orderResponse = orderService.createOrderFromCart(userId, orderRequest);
+        if (orderResponse == null || orderResponse.getId() == null) {
+            throw new CartValidationException("Failed to create order from cart for pharmacy: " + pharmacyId);
+        }
+        UUID orderId = orderResponse.getId();
 
         cart.setStatus(CartStatus.CHECKED_OUT);
         cart.setExpiresAt(LocalDateTime.now());
@@ -310,11 +310,11 @@ public class CartServiceImpl implements CartService {
             userId,
             "PLATFORM",
             null,
-            Map.of("orderIds", orderIds)
+            Map.of("orderId", orderId)
         );
 
         return CheckoutCartResponse.builder()
-                .orderIds(orderIds)
+                .orderId(orderId)
                 .message("Cart checked out successfully")
                 .status("SUCCESS")
                 .build();

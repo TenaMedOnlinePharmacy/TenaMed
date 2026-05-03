@@ -5,6 +5,8 @@ import com.TenaMed.manualreview.entity.ManualReviewTask;
 import com.TenaMed.manualreview.entity.TaskStatus;
 import com.TenaMed.manualreview.exception.ManualReviewException;
 import com.TenaMed.manualreview.service.ManualReviewService;
+import com.TenaMed.prescription.entity.Prescription;
+import com.TenaMed.prescription.repository.PrescriptionRepository;
 import com.TenaMed.verification.dto.PrescriptionItemRequestDto;
 import com.TenaMed.verification.exception.VerificationException;
 import com.TenaMed.user.security.AuthenticatedUserPrincipal;
@@ -12,6 +14,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -23,16 +26,19 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 
 @RestController
-@RequestMapping("/pharmacist/tasks")
+@RequestMapping("api/manual-review")
 @RequiredArgsConstructor
 public class ManualReviewController {
 
     private final ManualReviewService manualReviewService;
+    private final PrescriptionRepository prescriptionRepository;
 
     @GetMapping
+    @PreAuthorize("hasAnyRole('ADMIN_PHARMACIST', 'ADMIN')")
     public ResponseEntity<?> getTasks(@RequestParam(value = "status", required = false) TaskStatus status) {
         TaskStatus resolvedStatus = status != null ? status : TaskStatus.PENDING;
 
@@ -45,6 +51,7 @@ public class ManualReviewController {
     }
 
     @GetMapping("/my")
+    @PreAuthorize("hasAnyRole('ADMIN_PHARMACIST', 'ADMIN')")
     public ResponseEntity<?> getMyTasks(@AuthenticationPrincipal AuthenticatedUserPrincipal principal) {
         UUID pharmacistId = resolveUserId(principal);
         if (pharmacistId == null) {
@@ -59,6 +66,7 @@ public class ManualReviewController {
     }
 
     @PostMapping("/{id}/claim")
+    @PreAuthorize("hasRole('ADMIN_PHARMACIST')")
     public ResponseEntity<?> claimTask(@PathVariable("id") UUID taskId,
                                        @AuthenticationPrincipal AuthenticatedUserPrincipal principal) {
         UUID pharmacistId = resolveUserId(principal);
@@ -74,6 +82,7 @@ public class ManualReviewController {
     }
 
     @PostMapping("/{id}/complete")
+    @PreAuthorize("hasRole('ADMIN_PHARMACIST')")
     public ResponseEntity<?> completeTask(@PathVariable("id") UUID taskId,
                                           @Valid @RequestBody List<PrescriptionItemRequestDto> items) {
         try {
@@ -90,6 +99,14 @@ public class ManualReviewController {
     }
 
     private ManualReviewTaskResponseDto toDto(ManualReviewTask task) {
+        Optional<Prescription> prescription = prescriptionRepository.findById(task.getPrescriptionId());
+        String imageUrl;
+        if(prescription.isPresent()) {
+             imageUrl = prescription.get().getOriginalImages();
+        }else{
+            imageUrl = "";
+        }
+
         return ManualReviewTaskResponseDto.builder()
                 .id(task.getId())
                 .prescriptionId(task.getPrescriptionId())
@@ -98,6 +115,7 @@ public class ManualReviewController {
                 .priority(task.getPriority())
                 .assignedTo(task.getAssignedTo())
                 .notes(task.getNotes())
+                .imageUrl(imageUrl)
                 .createdAt(task.getCreatedAt())
                 .updatedAt(task.getUpdatedAt())
                 .completedAt(task.getCompletedAt())

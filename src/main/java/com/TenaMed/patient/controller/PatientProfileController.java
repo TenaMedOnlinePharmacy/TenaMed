@@ -27,10 +27,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.security.Principal;
-import java.util.Map;
-import java.util.Optional;
-import java.util.Random;
-import java.util.UUID;
+import java.util.*;
 
 @RestController
 @RequestMapping("/api/patient")
@@ -66,7 +63,7 @@ public class PatientProfileController {
     }
 
     @GetMapping("/profiles")
-    public ResponseEntity<java.util.List<PatientProfileResponse>> listProfiles(Principal principal) {
+    public ResponseEntity<List<PatientProfileResponse>> listProfiles(Principal principal) {
         UUID userId = resolveUserId(principal);
         if (userId == null) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();

@@ -352,6 +352,18 @@ public class PaymentService {
         return new ActorResolution("SYSTEM", null);
     }
 
+    public Map<String, Object> getPaymentStatusByOrderId(UUID orderId) {
+        Payment payment = paymentRepository.findByOrderId(orderId)
+                .orElseThrow(() -> new IllegalArgumentException("Payment not found for orderId: " + orderId));
+
+        boolean isSuccessful = "SUCCESS".equalsIgnoreCase(payment.getStatus());
+        return Map.of(
+                "orderId", orderId,
+                "status", payment.getStatus(),
+                "isSuccessful", isSuccessful
+        );
+    }
+
     private record ActorResolution(String actorType, UUID actorId) {
     }
 }
