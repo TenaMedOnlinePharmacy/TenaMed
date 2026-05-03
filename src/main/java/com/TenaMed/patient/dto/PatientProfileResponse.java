@@ -29,12 +29,7 @@ public class PatientProfileResponse {
     @Data
     @Builder
     public static class AllergyItem {
-        private UUID id;
-        private UUID allergenId;
         private String allergenName;
-        private String allergenCode;
-        private String allergenType;
-        private String severity;
-        private LocalDateTime createdAt;
+
     }
 }

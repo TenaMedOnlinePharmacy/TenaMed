@@ -8,7 +8,7 @@ import java.util.UUID;
 import java.util.List;
 
 public interface PatientProfileRepository extends JpaRepository<PatientProfile, UUID> {
-    Optional<PatientProfile> findByUserId(UUID userId);
+    Optional<PatientProfile> findFirstByUserIdOrderByCreatedAtDesc(UUID userId);
 
     List<PatientProfile> findAllByUserId(UUID userId);
 

@@ -35,13 +35,7 @@ public class PatientMapper {
 
     private PatientProfileResponse.AllergyItem toAllergyItem(CustomerAllergy allergy) {
         return PatientProfileResponse.AllergyItem.builder()
-                .id(allergy.getId())
-                .allergenId(allergy.getAllergen().getId())
                 .allergenName(allergy.getAllergen().getName())
-                .allergenCode(allergy.getAllergen().getCode())
-                .allergenType(allergy.getAllergen().getAllergenType())
-                .severity(allergy.getSeverity())
-                .createdAt(allergy.getCreatedAt())
                 .build();
     }
 }

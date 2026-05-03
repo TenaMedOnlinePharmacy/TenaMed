@@ -21,7 +21,6 @@ import com.TenaMed.patient.exception.CustomerAllergyNotFoundException;
 import com.TenaMed.patient.exception.DuplicateAllergyException;
 import com.TenaMed.patient.exception.DuplicateUniqueCodeException;
 import com.TenaMed.patient.exception.PatientException;
-import com.TenaMed.patient.exception.PatientProfileAlreadyExistsException;
 import com.TenaMed.patient.exception.PatientProfileNotFoundException;
 import com.TenaMed.patient.exception.TemporaryPatientNotFoundException;
 import com.TenaMed.patient.mapper.PatientMapper;
@@ -82,10 +81,6 @@ public class PatientServiceImpl implements PatientService {
             throw new PatientException("Profile creation payload is required");
         }
         validateUniqueCodeForCreate(dto.getUniqueCode());
-
-        if (patientProfileRepository.existsByUserId(userId)) {
-            throw new PatientProfileAlreadyExistsException(userId);
-        }
 
         PatientProfile profile = new PatientProfile();
         profile.setUserId(userId);
@@ -270,10 +265,6 @@ public class PatientServiceImpl implements PatientService {
         Patient temporaryPatient = patientRepository.findById(patientId)
                 .orElseThrow(() -> new TemporaryPatientNotFoundException(patientId));
 
-        if (patientProfileRepository.existsByUserId(userId)) {
-            throw new PatientProfileAlreadyExistsException(userId);
-        }
-
         PatientProfile profile = new PatientProfile();
         profile.setUserId(userId);
         profile.setName(temporaryPatient.getFullName());
@@ -413,7 +404,7 @@ public class PatientServiceImpl implements PatientService {
 
     private PatientProfile getProfileEntityByUserId(UUID userId) {
         validateUserId(userId);
-        return patientProfileRepository.findByUserId(userId)
+        return patientProfileRepository.findFirstByUserIdOrderByCreatedAtDesc(userId)
                 .orElseThrow(() -> new PatientProfileNotFoundException(userId));
     }
 
