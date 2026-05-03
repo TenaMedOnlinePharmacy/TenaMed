@@ -55,7 +55,7 @@ public class IdentityController {
         return ResponseEntity.ok(identityService.getAccountInfo(userId));
     }
 
-    @PutMapping("/me")
+    @PutMapping("/update")
     public ResponseEntity<?> updateAccountInfo(Principal principal,
                                                @Valid @RequestBody UpdateAccountRequestDto requestDto) {
         UUID userId = resolveUserId(principal);

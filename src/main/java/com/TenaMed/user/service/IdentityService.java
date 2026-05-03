@@ -1,5 +1,7 @@
 package com.TenaMed.user.service;
 
+import com.TenaMed.user.dto.AdminPharmacistRequestDto;
+import com.TenaMed.user.dto.AdminPharmacistResponseDto;
 import com.TenaMed.user.dto.LoginRequestDto;
 import com.TenaMed.user.dto.LoginResponseDto;
 import com.TenaMed.user.dto.RegisterRequestDto;
@@ -31,4 +33,6 @@ public interface IdentityService {
     UserRolesResponseDto getUserRoles(UUID userId);
 
     List<String> populateRoles();
+
+    AdminPharmacistResponseDto createAdminPharmacist(AdminPharmacistRequestDto requestDto);
 }

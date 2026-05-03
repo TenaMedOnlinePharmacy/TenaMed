@@ -2,6 +2,9 @@ package com.TenaMed.user.service.impl;
 
 import com.TenaMed.antidoping.entity.AthleteProfile;
 import com.TenaMed.antidoping.repository.AthleteProfileRepository;
+import com.TenaMed.common.exception.BadRequestException;
+import com.TenaMed.user.dto.AdminPharmacistRequestDto;
+import com.TenaMed.user.dto.AdminPharmacistResponseDto;
 import com.TenaMed.user.dto.LoginRequestDto;
 import com.TenaMed.user.dto.LoginResponseDto;
 import com.TenaMed.user.dto.RegisterRequestDto;
@@ -35,6 +38,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.security.SecureRandom;
 import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -54,7 +58,10 @@ import java.util.stream.Collectors;
 public class IdentityServiceImpl implements IdentityService {
 
     private static final String ACCOUNT_STATUS_ACTIVE = "ACTIVE";
-    private static final String DEFAULT_ROLES_FALLBACK = "ADMIN,PATIENT,DOCTOR,PHARMACIST,PHARMACYOWNER,HOSPITAL_OWNER";
+    private static final String ADMIN_PHARMACIST_ROLE = "ADMIN_PHARMACIST";
+    private static final String DEFAULT_ROLES_FALLBACK = "ADMIN,PATIENT,DOCTOR,PHARMACIST,PHARMACYOWNER,HOSPITAL_OWNER,ADMIN_PHARMACIST";
+    private static final String TEMP_PASSWORD_CHARSET = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789";
+    private static final int TEMP_PASSWORD_LENGTH = 12;
 
     private final AccountRepository accountRepository;
     private final UserRepository userRepository;
@@ -64,6 +71,7 @@ public class IdentityServiceImpl implements IdentityService {
     private final IdentityMapper identityMapper;
     private final DomainEventService domainEventService;
     private final AthleteProfileRepository athleteProfileRepository;
+    private final SecureRandom secureRandom = new SecureRandom();
     @Value("${user.default-roles:" + DEFAULT_ROLES_FALLBACK + "}")
     private String defaultRolesCsv;
 
@@ -306,6 +314,66 @@ public class IdentityServiceImpl implements IdentityService {
                 .toList();
     }
 
+    @Override
+    public AdminPharmacistResponseDto createAdminPharmacist(AdminPharmacistRequestDto requestDto) {
+        if (requestDto == null) {
+            throw new BadRequestException("Admin pharmacist payload is required");
+        }
+
+        String normalizedEmail = normalizeEmail(requestDto.getEmail());
+        if (accountRepository.existsByEmailIgnoreCaseAndDeletedAtIsNull(normalizedEmail)) {
+            throw new EmailAlreadyRegisteredException(normalizedEmail);
+        }
+
+        String normalizedPhone = normalizeNullable(requestDto.getPhone());
+        if (normalizedPhone != null && userRepository.existsByPhone(normalizedPhone)) {
+            throw new PhoneAlreadyUsedException(normalizedPhone);
+        }
+
+        populateRoles();
+
+        Role role = findRoleIgnoreCase(normalizeRoleName(ADMIN_PHARMACIST_ROLE))
+                .orElseThrow(() -> new RoleNotFoundException(Set.of(normalizeRoleName(ADMIN_PHARMACIST_ROLE))));
+
+        String temporaryPassword = generateTemporaryPassword();
+
+        Account account = new Account();
+        account.setEmail(normalizedEmail);
+        account.setPasswordHash(passwordEncoder.encode(temporaryPassword));
+        account.setAccountStatus(ACCOUNT_STATUS_ACTIVE);
+        account.setFailedLoginAttempts(0);
+        Account savedAccount = accountRepository.save(account);
+
+        User user = new User();
+        user.setAccount(savedAccount);
+        user.setFirstName(requestDto.getFirstName().trim());
+        user.setLastName(requestDto.getLastName().trim());
+        user.setPhone(normalizedPhone);
+
+        UserRole userRole = new UserRole();
+        userRole.setUser(user);
+        userRole.setRole(role);
+        user.getUserRoles().add(userRole);
+
+        User savedUser = userRepository.save(user);
+
+        domainEventService.publish(
+                "ADMIN_PHARMACIST_CREATED",
+                "USER",
+                savedUser.getId(),
+                "PLATFORM",
+                null,
+                Map.of("roleName", role.getName())
+        );
+
+        return AdminPharmacistResponseDto.builder()
+                .id(savedUser.getId())
+                .email(normalizedEmail)
+                .password(temporaryPassword)
+                .role(role.getName())
+                .build();
+    }
+
     private List<String> configuredDefaultRoles() {
         String source = normalizeNullable(defaultRolesCsv);
         if (source == null) {
@@ -372,5 +440,14 @@ public class IdentityServiceImpl implements IdentityService {
             .or(() -> roleRepository.findAll().stream()
                 .filter(role -> normalizeRoleName(role.getName()).equals(normalizedRoleName))
                 .findFirst());
+    }
+
+    private String generateTemporaryPassword() {
+        StringBuilder builder = new StringBuilder(TEMP_PASSWORD_LENGTH);
+        for (int i = 0; i < TEMP_PASSWORD_LENGTH; i++) {
+            int index = secureRandom.nextInt(TEMP_PASSWORD_CHARSET.length());
+            builder.append(TEMP_PASSWORD_CHARSET.charAt(index));
+        }
+        return builder.toString();
     }
 }
