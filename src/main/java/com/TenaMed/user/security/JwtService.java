@@ -3,6 +3,7 @@ package com.TenaMed.user.security;
 import com.TenaMed.user.model.TokenType;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jws;
+import io.jsonwebtoken.JwtBuilder;
 import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
@@ -13,7 +14,11 @@ import org.springframework.stereotype.Service;
 import javax.crypto.SecretKey;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
+import java.util.Collection;
 import java.util.Date;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @Service
@@ -38,11 +43,19 @@ public class JwtService {
     }
 
     public String generateAccessToken(UUID userId, UUID sessionId) {
-        return generateToken(userId, sessionId, TokenType.ACCESS, accessExpirationMs);
+        return generateAccessToken(userId, sessionId, List.of());
+    }
+
+    public String generateAccessToken(UUID userId, UUID sessionId, Collection<String> roles) {
+        Map<String, Object> extraClaims = new LinkedHashMap<>();
+        if (roles != null && !roles.isEmpty()) {
+            extraClaims.put("roles", List.copyOf(roles));
+        }
+        return generateToken(userId, sessionId, TokenType.ACCESS, accessExpirationMs, extraClaims);
     }
 
     public String generateRefreshToken(UUID userId, UUID sessionId) {
-        return generateToken(userId, sessionId, TokenType.REFRESH, refreshExpirationMs);
+        return generateToken(userId, sessionId, TokenType.REFRESH, refreshExpirationMs, Map.of());
     }
 
     public boolean isValidToken(String token, TokenType expectedType) {
@@ -76,16 +89,25 @@ public class JwtService {
         return parseClaims(token).getExpiration().toInstant();
     }
 
-    private String generateToken(UUID userId, UUID sessionId, TokenType tokenType, long expirationMs) {
+    private String generateToken(UUID userId,
+                                 UUID sessionId,
+                                 TokenType tokenType,
+                                 long expirationMs,
+                                 Map<String, Object> extraClaims) {
         Instant now = Instant.now();
-        return Jwts.builder()
+        JwtBuilder builder = Jwts.builder()
                 .subject(userId.toString())
                 .id(UUID.randomUUID().toString())
                 .claim("sid", sessionId.toString())
                 .claim("type", tokenType.name())
                 .issuedAt(Date.from(now))
-                .expiration(Date.from(now.plusMillis(expirationMs)))
-                .signWith(secretKey)
+                .expiration(Date.from(now.plusMillis(expirationMs)));
+
+        if (extraClaims != null && !extraClaims.isEmpty()) {
+            extraClaims.forEach(builder::claim);
+        }
+
+        return builder.signWith(secretKey)
                 .compact();
     }
 

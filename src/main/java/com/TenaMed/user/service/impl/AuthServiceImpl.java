@@ -22,14 +22,17 @@ import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.GrantedAuthority;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.LinkedHashSet;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Service
 @Transactional
@@ -81,7 +84,8 @@ public class AuthServiceImpl implements AuthService {
             AuthenticatedUserPrincipal principal = (AuthenticatedUserPrincipal) authentication.getPrincipal();
             UUID sessionId = UUID.randomUUID();
 
-            String accessToken = jwtService.generateAccessToken(principal.getUserId(), sessionId);
+                Set<String> roles = extractRoles(principal);
+                String accessToken = jwtService.generateAccessToken(principal.getUserId(), sessionId, roles);
             String refreshToken = jwtService.generateRefreshToken(principal.getUserId(), sessionId);
 
             redisSessionService.createSession(
@@ -161,8 +165,9 @@ public class AuthServiceImpl implements AuthService {
             throw new InvalidSessionException("Refresh token mismatch");
         }
 
-        customUserDetailsService.loadPrincipalByUserId(userId);
-        String newAccessToken = jwtService.generateAccessToken(userId, sessionId);
+        AuthenticatedUserPrincipal principal = customUserDetailsService.loadPrincipalByUserId(userId);
+        Set<String> roles = extractRoles(principal);
+        String newAccessToken = jwtService.generateAccessToken(userId, sessionId, roles);
         String newRefreshToken = jwtService.generateRefreshToken(userId, sessionId);
 
         boolean rotated = redisSessionService.rotateTokensAtomically(
@@ -237,6 +242,21 @@ public class AuthServiceImpl implements AuthService {
                 null,
                 metadata
         );
+    }
+
+    private Set<String> extractRoles(AuthenticatedUserPrincipal principal) {
+        return principal.getAuthorities().stream()
+                .map(GrantedAuthority::getAuthority)
+                .map(this::stripRolePrefix)
+                .filter(role -> !role.isBlank())
+                .collect(Collectors.toCollection(LinkedHashSet::new));
+    }
+
+    private String stripRolePrefix(String authority) {
+        if (authority == null) {
+            return "";
+        }
+        return authority.startsWith("ROLE_") ? authority.substring("ROLE_".length()) : authority;
     }
 
     private UUID parseSessionId(String sessionIdCookie) {

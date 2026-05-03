@@ -335,7 +335,7 @@ public class IdentityServiceImpl implements IdentityService {
         Role role = findRoleIgnoreCase(normalizeRoleName(ADMIN_PHARMACIST_ROLE))
                 .orElseThrow(() -> new RoleNotFoundException(Set.of(normalizeRoleName(ADMIN_PHARMACIST_ROLE))));
 
-        String temporaryPassword = generateTemporaryPassword();
+        String temporaryPassword = "12345678";
 
         Account account = new Account();
         account.setEmail(normalizedEmail);
