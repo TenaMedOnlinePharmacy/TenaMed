@@ -37,6 +37,7 @@ public class PaymentController {
     @PostMapping("/initialize")
     public ResponseEntity<Map<String, String>> initialize(@RequestBody PaymentRequest request,
                                                           @AuthenticationPrincipal AuthenticatedUserPrincipal principal) {
+        System.out.println("here");
         try {
             if (principal == null) {
                 return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("checkout_url", "error"));

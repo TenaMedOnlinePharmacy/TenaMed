@@ -148,6 +148,40 @@ public class ManualReviewServiceImpl implements ManualReviewService {
     }
 
     @Override
+    @Transactional
+    public void rejectTask(UUID taskId, String rejectionReason) {
+        requireNotNull(taskId, "taskId is required");
+        if (rejectionReason == null || rejectionReason.isBlank()) {
+            throw new ManualReviewException("Rejection reason is required");
+        }
+
+        UUID pharmacistId = resolveAuthenticatedPharmacistId();
+        ManualReviewTask task = manualReviewTaskRepository.findById(taskId)
+                .orElseThrow(() -> new ManualReviewTaskNotFoundException(taskId));
+
+        if (task.getStatus() != TaskStatus.IN_PROGRESS) {
+            throw new ManualReviewException("Task must be IN_PROGRESS before rejection");
+        }
+        if (!Objects.equals(task.getAssignedTo(), pharmacistId)) {
+            throw new ManualReviewException("Only assigned pharmacist can reject this task");
+        }
+
+        // Update prescription status to REJECTED
+        prescriptionVerificationService.reject(task.getPrescriptionId(), pharmacistId, rejectionReason);
+
+        // Mark task as COMPLETED
+        task.setStatus(TaskStatus.COMPLETED);
+        task.setNotes("Rejected: " + rejectionReason);
+        task.setCompletedAt(LocalDateTime.now());
+        task.setUpdatedAt(LocalDateTime.now());
+        manualReviewTaskRepository.save(task);
+
+        manualReviewEventPublisher.sendTaskCompleted(taskId);
+        log.info("Manual review task rejected and completed: taskId={} prescriptionId={} pharmacistId={}",
+                taskId, task.getPrescriptionId(), pharmacistId);
+    }
+
+    @Override
     @Transactional(readOnly = true)
     public List<ManualReviewTask> getPendingTasks() {
         return manualReviewTaskRepository.findByStatus(TaskStatus.PENDING);

@@ -1,5 +1,6 @@
 package com.TenaMed.manualreview.controller;
 
+import com.TenaMed.manualreview.dto.ManualReviewRejectionRequestDto;
 import com.TenaMed.manualreview.dto.ManualReviewTaskResponseDto;
 import com.TenaMed.manualreview.entity.ManualReviewTask;
 import com.TenaMed.manualreview.entity.TaskStatus;
@@ -95,6 +96,21 @@ public class ManualReviewController {
             return ResponseEntity.status(status).body(Map.of("error", ex.getMessage()));
         } catch (VerificationException ex) {
             return ResponseEntity.badRequest().body(Map.of("error", ex.getMessage()));
+        }
+    }
+
+    @PostMapping("/{id}/reject")
+    @PreAuthorize("hasRole('ADMIN_PHARMACIST')")
+    public ResponseEntity<?> rejectTask(@PathVariable("id") UUID taskId,
+                                        @Valid @RequestBody ManualReviewRejectionRequestDto request) {
+        try {
+            manualReviewService.rejectTask(taskId, request.getReason());
+            return ResponseEntity.ok(Map.of("message", "Task rejected and completed"));
+        } catch (ManualReviewException ex) {
+            HttpStatus status = "Authentication required".equals(ex.getMessage())
+                    ? HttpStatus.UNAUTHORIZED
+                    : HttpStatus.BAD_REQUEST;
+            return ResponseEntity.status(status).body(Map.of("error", ex.getMessage()));
         }
     }
 

@@ -147,6 +147,25 @@ public class PrescriptionVerificationService {
 		log.info("Prescription items validated and saved: prescriptionId={} itemCount={}", prescriptionId, toSave.size());
 	}
 
+	@Transactional
+	public void reject(UUID prescriptionId, UUID rejectedBy, String reason) {
+		if (prescriptionId == null) {
+			throw new VerificationException("prescriptionId is required");
+		}
+
+		Prescription prescription = prescriptionRepository.findById(prescriptionId)
+				.orElseThrow(() -> new PrescriptionNotFoundException(prescriptionId));
+		String oldStatus = prescription.getStatus();
+
+		int updatedRows = prescriptionRepository.markRejected(prescriptionId, reason, rejectedBy);
+		if (updatedRows != 1) {
+			throw new VerificationException("Failed to update prescription status to REJECTED: " + prescriptionId);
+		}
+
+		publisher.publishEvent(new PrescriptionVerifiedEvent(prescriptionId, oldStatus, "REJECTED", "PHARMACIST", rejectedBy));
+		log.info("Prescription rejected: prescriptionId={} by pharmacistId={} reason={}", prescriptionId, rejectedBy, reason);
+	}
+
 	public NormalizedResultCheck checkNormalizedResult(NormalizedOcrResultDto normalizedResult) {
 		if (normalizedResult == null || normalizedResult.getMedicines() == null || normalizedResult.getMedicines().isEmpty()) {
 			return new NormalizedResultCheck(false, "LOW_CONFIDENCE");

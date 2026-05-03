@@ -16,6 +16,8 @@ public interface ManualReviewService {
 
     void completeTask(UUID taskId, List<PrescriptionItemRequestDto> items);
 
+    void rejectTask(UUID taskId, String rejectionReason);
+
     List<ManualReviewTask> getPendingTasks();
 
     List<ManualReviewTask> getMyTasks(UUID pharmacistId);
