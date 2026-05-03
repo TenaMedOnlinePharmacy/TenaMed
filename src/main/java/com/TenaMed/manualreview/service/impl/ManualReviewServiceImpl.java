@@ -10,7 +10,16 @@ import com.TenaMed.manualreview.exception.ManualReviewTaskNotFoundException;
 import com.TenaMed.manualreview.repository.ManualReviewTaskRepository;
 import com.TenaMed.manualreview.service.ManualReviewService;
 import com.TenaMed.manualreview.websocket.ManualReviewEventPublisher;
+import com.TenaMed.email.dto.EmailRequest;
+import com.TenaMed.email.service.EmailService;
+import com.TenaMed.email.service.EmailTemplateBuilder;
+import com.TenaMed.patient.entity.PatientProfile;
+import com.TenaMed.patient.repository.PatientProfileRepository;
+import com.TenaMed.prescription.entity.Prescription;
+import com.TenaMed.prescription.repository.PrescriptionRepository;
 import com.TenaMed.user.security.AuthenticatedUserPrincipal;
+import com.TenaMed.user.entity.User;
+import com.TenaMed.user.repository.UserRepository;
 import com.TenaMed.verification.dto.PrescriptionItemRequestDto;
 import com.TenaMed.verification.service.PrescriptionVerificationService;
 import lombok.RequiredArgsConstructor;
@@ -35,11 +44,19 @@ public class ManualReviewServiceImpl implements ManualReviewService {
     private static final String MANUAL_REVIEW_TASK_CREATED = "MANUAL_REVIEW_TASK_CREATED";
     private static final String MANUAL_REVIEW_TASK_CLAIMED = "MANUAL_REVIEW_TASK_CLAIMED";
     private static final String PRESCRIPTION_READY_FOR_MATCHING = "PRESCRIPTION_READY_FOR_MATCHING";
+    private static final String PRESCRIPTION_REVIEWED_SUBJECT = "Your prescription has been reviewed";
+    private static final String PRESCRIPTION_REJECTED_SUBJECT = "Your prescription could not be approved";
+    private static final String PRESCRIPTION_DETAILS_BASE_URL = "https://localhost:5173/prescriptions/";
 
     private final ManualReviewTaskRepository manualReviewTaskRepository;
     private final PrescriptionVerificationService prescriptionVerificationService;
     private final ManualReviewEventPublisher manualReviewEventPublisher;
     private final DomainEventPublisher domainEventPublisher;
+    private final PrescriptionRepository prescriptionRepository;
+    private final PatientProfileRepository patientProfileRepository;
+    private final UserRepository userRepository;
+    private final EmailService emailService;
+    private final EmailTemplateBuilder emailTemplateBuilder;
 
     @Override
     @Transactional
@@ -143,6 +160,8 @@ public class ManualReviewServiceImpl implements ManualReviewService {
         domainEventPublisher.publish(PRESCRIPTION_READY_FOR_MATCHING, payload);
         manualReviewEventPublisher.sendTaskCompleted(saved.getId());
 
+        sendManualReviewEmail(saved.getPrescriptionId());
+
         log.info("Manual review task completed: taskId={} prescriptionId={} pharmacistId={}",
                 saved.getId(), saved.getPrescriptionId(), pharmacistId);
     }
@@ -177,6 +196,7 @@ public class ManualReviewServiceImpl implements ManualReviewService {
         manualReviewTaskRepository.save(task);
 
         manualReviewEventPublisher.sendTaskCompleted(taskId);
+        sendManualReviewEmail(task.getPrescriptionId());
         log.info("Manual review task rejected and completed: taskId={} prescriptionId={} pharmacistId={}",
                 taskId, task.getPrescriptionId(), pharmacistId);
     }
@@ -231,5 +251,53 @@ public class ManualReviewServiceImpl implements ManualReviewService {
         payload.put("metadata", metadata == null ? Map.of() : metadata);
 
         domainEventPublisher.publish(eventType, payload);
+    }
+
+    private void sendManualReviewEmail(UUID prescriptionId) {
+        if (prescriptionId == null) {
+            return;
+        }
+
+        Prescription prescription = prescriptionRepository.findById(prescriptionId).orElse(null);
+        if (prescription == null) {
+            log.warn("Manual review email skipped: prescription not found. prescriptionId={}", prescriptionId);
+            return;
+        }
+
+        UUID profileId = prescription.getProfileId();
+        if (profileId == null) {
+            log.info("Manual review email skipped: prescription has no profileId. prescriptionId={}", prescriptionId);
+            return;
+        }
+
+        PatientProfile profile = patientProfileRepository.findById(profileId).orElse(null);
+        if (profile == null || profile.getUserId() == null) {
+            log.info("Manual review email skipped: patient profile missing userId. profileId={}", profileId);
+            return;
+        }
+
+        User user = userRepository.findWithAuthGraphById(profile.getUserId()).orElse(null);
+        String email = user == null || user.getAccount() == null ? null : user.getAccount().getEmail();
+        if (email == null || email.isBlank()) {
+            log.info("Manual review email skipped: user email missing. userId={}", profile.getUserId());
+            return;
+        }
+
+        String status = prescription.getStatus();
+        String link = PRESCRIPTION_DETAILS_BASE_URL + prescriptionId;
+
+        try {
+            if ("REJECTED".equalsIgnoreCase(status)) {
+                String body = emailTemplateBuilder.buildPrescriptionRejectedEmail(link, prescription.getRejectionReason());
+                emailService.sendEmail(new EmailRequest(email, PRESCRIPTION_REJECTED_SUBJECT, body, true));
+            } else if ("VERIFIED".equalsIgnoreCase(status)) {
+                String body = emailTemplateBuilder.buildPrescriptionReviewedEmail(link);
+                emailService.sendEmail(new EmailRequest(email, PRESCRIPTION_REVIEWED_SUBJECT, body, true));
+            } else {
+                log.info("Manual review email skipped: unsupported status. prescriptionId={} status={}", prescriptionId, status);
+            }
+        } catch (Exception ex) {
+            log.error("Failed to send manual review email. prescriptionId={} status={}", prescriptionId, status, ex);
+        }
     }
 }
