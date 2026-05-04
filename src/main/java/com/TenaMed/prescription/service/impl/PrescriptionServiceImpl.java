@@ -52,8 +52,12 @@ public class PrescriptionServiceImpl implements PrescriptionService {
     }
 
     @Override
-    public Prescription createUploadedPrescription() {
+    public Prescription createUploadedPrescription(UUID userId) {
+        if (userId == null) {
+            throw new BadRequestException("userId is required");
+        }
         Prescription prescription = new Prescription();
+        prescription.setUserId(userId);
         prescription.setType(PrescriptionType.UPLOADED);
         prescription.setStatus("UPLOADED");
         prescription.setIsVerified(false);

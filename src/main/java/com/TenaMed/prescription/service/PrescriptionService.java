@@ -8,7 +8,7 @@ import java.util.UUID;
 
 public interface PrescriptionService {
 
-    Prescription createUploadedPrescription();
+    Prescription createUploadedPrescription(UUID userId);
 
     Prescription attachOcrDates(UUID id, String createdDate, String expirationDate);
 

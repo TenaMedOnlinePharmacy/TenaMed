@@ -134,12 +134,14 @@ public interface PrescriptionRepository extends JpaRepository<Prescription, UUID
     @Query("""
             UPDATE Prescription p
             SET p.profileId = :profileId,
+                p.userId = :userId,
                 p.patientId = NULL
             WHERE p.patientId = :patientId
             """)
     void migratePatientToProfile(
             @Param("patientId") UUID patientId,
-            @Param("profileId") UUID profileId
+            @Param("profileId") UUID profileId,
+            @Param("userId") UUID userId
     );
 
     Long countByHospitalId(UUID hospitalId);

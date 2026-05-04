@@ -33,7 +33,10 @@ public class Prescription extends BaseEntity {
     @Column(name = "profile_id")
     private UUID profileId;
 
-    @Column(name = "patient_id", nullable = true)
+    @Column(name = "user_id")
+    private UUID userId;
+
+    @Column(name = "patient_id")
     private UUID patientId;
 
     @Column(name = "issue_date")

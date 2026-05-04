@@ -271,7 +271,7 @@ public class PatientServiceImpl implements PatientService {
         profile.setUniqueCode(temporaryPatient.getUniqueCode());
         PatientProfile savedProfile = patientProfileRepository.save(profile);
 
-        prescriptionRepository.migratePatientToProfile(temporaryPatient.getId(), savedProfile.getId());
+        prescriptionRepository.migratePatientToProfile(temporaryPatient.getId(), savedProfile.getId(), userId);
         domainEventService.publish(
             "TEMPORARY_PATIENT_CONVERTED",
             "PATIENT",

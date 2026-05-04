@@ -13,8 +13,6 @@ import com.TenaMed.manualreview.websocket.ManualReviewEventPublisher;
 import com.TenaMed.email.dto.EmailRequest;
 import com.TenaMed.email.service.EmailService;
 import com.TenaMed.email.service.EmailTemplateBuilder;
-import com.TenaMed.patient.entity.PatientProfile;
-import com.TenaMed.patient.repository.PatientProfileRepository;
 import com.TenaMed.prescription.entity.Prescription;
 import com.TenaMed.prescription.repository.PrescriptionRepository;
 import com.TenaMed.user.security.AuthenticatedUserPrincipal;
@@ -53,7 +51,6 @@ public class ManualReviewServiceImpl implements ManualReviewService {
     private final ManualReviewEventPublisher manualReviewEventPublisher;
     private final DomainEventPublisher domainEventPublisher;
     private final PrescriptionRepository prescriptionRepository;
-    private final PatientProfileRepository patientProfileRepository;
     private final UserRepository userRepository;
     private final EmailService emailService;
     private final EmailTemplateBuilder emailTemplateBuilder;
@@ -264,22 +261,16 @@ public class ManualReviewServiceImpl implements ManualReviewService {
             return;
         }
 
-        UUID profileId = prescription.getProfileId();
-        if (profileId == null) {
-            log.info("Manual review email skipped: prescription has no profileId. prescriptionId={}", prescriptionId);
+        UUID userId = prescription.getUserId();
+        if (userId == null) {
+            log.info("Manual review email skipped: prescription has no userId. prescriptionId={}", prescriptionId);
             return;
         }
 
-        PatientProfile profile = patientProfileRepository.findById(profileId).orElse(null);
-        if (profile == null || profile.getUserId() == null) {
-            log.info("Manual review email skipped: patient profile missing userId. profileId={}", profileId);
-            return;
-        }
-
-        User user = userRepository.findWithAuthGraphById(profile.getUserId()).orElse(null);
+        User user = userRepository.findWithAuthGraphById(userId).orElse(null);
         String email = user == null || user.getAccount() == null ? null : user.getAccount().getEmail();
         if (email == null || email.isBlank()) {
-            log.info("Manual review email skipped: user email missing. userId={}", profile.getUserId());
+            log.info("Manual review email skipped: user email missing. userId={}", userId);
             return;
         }
 
