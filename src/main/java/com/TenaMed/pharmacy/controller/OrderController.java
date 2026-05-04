@@ -115,6 +115,19 @@ public class OrderController {
         }
     }
 
+    @GetMapping("/my")
+    public ResponseEntity<?> getMyOrders(Principal principal) {
+        UUID customerId = resolveCustomerId(principal);
+        if (customerId == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("error", "Authentication required"));
+        }
+        try {
+            return ResponseEntity.ok(orderService.getCustomerOrders(customerId));
+        } catch (PharmacyException ex) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("error", ex.getMessage()));
+        }
+    }
+
     private UUID resolveCustomerId(Principal principal) {
         AuthenticatedUserPrincipal authenticatedUserPrincipal = resolveAuthenticatedPrincipal(principal);
         if (authenticatedUserPrincipal != null) {

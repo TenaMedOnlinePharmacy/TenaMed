@@ -4,6 +4,7 @@ import com.TenaMed.pharmacy.dto.request.CreateOrderRequest;
 import com.TenaMed.pharmacy.dto.request.CreateOrderFromCartRequest;
 import com.TenaMed.pharmacy.dto.response.OrderResponse;
 import com.TenaMed.pharmacy.dto.response.PharmacyOrderResponse;
+import com.TenaMed.pharmacy.dto.response.UserOrderSummaryResponse;
 import com.TenaMed.pharmacy.enums.PaymentStatus;
 import com.TenaMed.pharmacy.enums.StaffRole;
 
@@ -23,4 +24,6 @@ public interface OrderService {
     OrderResponse createOrderFromCart(UUID customerId, CreateOrderFromCartRequest request);
 
 List<PharmacyOrderResponse> getPharmacyOrders(UUID ownerId);
+
+    List<UserOrderSummaryResponse> getCustomerOrders(UUID customerId);
 }

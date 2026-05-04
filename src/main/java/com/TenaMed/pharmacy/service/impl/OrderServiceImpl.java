@@ -10,6 +10,7 @@ import com.TenaMed.medicine.entity.Product;
 import com.TenaMed.pharmacy.dto.request.CreateOrderFromCartRequest;
 import com.TenaMed.pharmacy.dto.request.CreateOrderRequest;
 import com.TenaMed.pharmacy.dto.response.OrderResponse;
+import com.TenaMed.pharmacy.dto.response.UserOrderSummaryResponse;
 import com.TenaMed.pharmacy.entity.Order;
 import com.TenaMed.pharmacy.entity.OrderItem;
 import com.TenaMed.pharmacy.entity.Pharmacy;
@@ -61,6 +62,7 @@ public class OrderServiceImpl implements OrderService {
     private final DomainEventService domainEventService;
     private final UserPharmacyRepository userPharmacyRepository;
     private final com.TenaMed.medicine.repository.ProductRepository productRepository;
+    private final MedicineRepository medicineRepository;
 
     public OrderServiceImpl(OrderRepository orderRepository,
                             OrderItemRepository orderItemRepository,
@@ -73,7 +75,8 @@ public class OrderServiceImpl implements OrderService {
                             BatchRepository batchRepository,
                             DomainEventService domainEventService,
                             UserPharmacyRepository userPharmacyRepository,
-                            com.TenaMed.medicine.repository.ProductRepository productRepository) {
+                            com.TenaMed.medicine.repository.ProductRepository productRepository,
+                            MedicineRepository medicineRepository) {
         this.orderRepository = orderRepository;
         this.orderItemRepository = orderItemRepository;
         this.pharmacyRepository = pharmacyRepository;
@@ -86,6 +89,7 @@ public class OrderServiceImpl implements OrderService {
         this.domainEventService = domainEventService;
         this.userPharmacyRepository = userPharmacyRepository;
         this.productRepository = productRepository;
+        this.medicineRepository = medicineRepository;
     }
 
     @Override
@@ -320,9 +324,86 @@ public class OrderServiceImpl implements OrderService {
         return orderMapper.toResponse(savedOrder);
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public List<UserOrderSummaryResponse> getCustomerOrders(UUID customerId) {
+        if (customerId == null) {
+            throw new PharmacyValidationException("customerId is required");
+        }
+
+        List<Order> orders = orderRepository.findWithItemsByCustomerId(customerId);
+        if (orders.isEmpty()) {
+            return List.of();
+        }
+
+        Set<UUID> productIds = new LinkedHashSet<>();
+        Set<UUID> medicineIds = new LinkedHashSet<>();
+        for (Order order : orders) {
+            for (OrderItem item : order.getItems()) {
+                if (item.getProductId() != null) {
+                    productIds.add(item.getProductId());
+                }
+                if (item.getMedicineId() != null) {
+                    medicineIds.add(item.getMedicineId());
+                }
+            }
+        }
+
+        Map<UUID, Product> productById = productRepository.findAllById(productIds)
+            .stream()
+            .collect(Collectors.toMap(Product::getId, Function.identity()));
+        Map<UUID, Medicine> medicineById = medicineRepository.findAllById(medicineIds)
+            .stream()
+            .collect(Collectors.toMap(Medicine::getId, Function.identity()));
+
+        return orders.stream()
+            .map(order -> toUserOrderSummary(order, productById, medicineById))
+            .toList();
+    }
+
     private Order fetchOrder(UUID orderId) {
         return orderRepository.findById(orderId)
             .orElseThrow(() -> new OrderNotFoundException(orderId));
+    }
+
+    private UserOrderSummaryResponse toUserOrderSummary(Order order,
+                                                        Map<UUID, Product> productById,
+                                                        Map<UUID, Medicine> medicineById) {
+        LinkedHashSet<String> productNames = new LinkedHashSet<>();
+        for (OrderItem item : order.getItems()) {
+            String name = resolveProductName(item, productById, medicineById);
+            if (name != null) {
+                productNames.add(name);
+            }
+        }
+
+        return UserOrderSummaryResponse.builder()
+            .orderId(order.getId())
+            .productNames(productNames.stream().toList())
+            .totalPrice(order.getTotalAmount())
+            .status(order.getStatus())
+            .date(order.getCreatedAt())
+            .build();
+    }
+
+    private String resolveProductName(OrderItem item,
+                                      Map<UUID, Product> productById,
+                                      Map<UUID, Medicine> medicineById) {
+        Product product = productById.get(item.getProductId());
+        String brandName = normalizeName(product == null ? null : product.getBrandName());
+        if (brandName != null) {
+            return brandName;
+        }
+        Medicine medicine = medicineById.get(item.getMedicineId());
+        return normalizeName(medicine == null ? null : medicine.getName());
+    }
+
+    private String normalizeName(String value) {
+        if (value == null) {
+            return null;
+        }
+        String trimmed = value.trim();
+        return trimmed.isEmpty() ? null : trimmed;
     }
 
     private void validateItemAvailability(UUID pharmacyId, List<OrderItem> items) {
