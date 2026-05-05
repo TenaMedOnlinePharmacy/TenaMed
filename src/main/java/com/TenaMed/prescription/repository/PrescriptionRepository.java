@@ -61,7 +61,7 @@ public interface PrescriptionRepository extends JpaRepository<Prescription, UUID
             @Param("errorMessage") String errorMessage
     );
 
-    @Modifying
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Transactional
     @Query("""
             UPDATE Prescription p
@@ -79,7 +79,7 @@ public interface PrescriptionRepository extends JpaRepository<Prescription, UUID
             @Param("verifiedAt") LocalDateTime verifiedAt
     );
 
-    @Modifying
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Transactional
     @Query("""
             UPDATE Prescription p
@@ -112,7 +112,7 @@ public interface PrescriptionRepository extends JpaRepository<Prescription, UUID
             @Param("reviewReason") String reviewReason
     );
 
-    @Modifying
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Transactional
     @Query("""
             UPDATE Prescription p

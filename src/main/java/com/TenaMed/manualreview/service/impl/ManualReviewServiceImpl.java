@@ -13,6 +13,7 @@ import com.TenaMed.manualreview.websocket.ManualReviewEventPublisher;
 import com.TenaMed.email.dto.EmailRequest;
 import com.TenaMed.email.service.EmailService;
 import com.TenaMed.email.service.EmailTemplateBuilder;
+import com.TenaMed.medicine.repository.ProductRepository;
 import com.TenaMed.prescription.entity.Prescription;
 import com.TenaMed.prescription.repository.PrescriptionRepository;
 import com.TenaMed.user.security.AuthenticatedUserPrincipal;
@@ -54,6 +55,7 @@ public class ManualReviewServiceImpl implements ManualReviewService {
     private final UserRepository userRepository;
     private final EmailService emailService;
     private final EmailTemplateBuilder emailTemplateBuilder;
+    private final ProductRepository productRepository;
 
     @Override
     @Transactional
@@ -156,7 +158,6 @@ public class ManualReviewServiceImpl implements ManualReviewService {
 
         domainEventPublisher.publish(PRESCRIPTION_READY_FOR_MATCHING, payload);
         manualReviewEventPublisher.sendTaskCompleted(saved.getId());
-
         sendManualReviewEmail(saved.getPrescriptionId());
 
         log.info("Manual review task completed: taskId={} prescriptionId={} pharmacistId={}",
