@@ -2,6 +2,7 @@ package com.TenaMed.delivery.repository;
 
 import com.TenaMed.delivery.entity.Delivery;
 import com.TenaMed.delivery.enums.DeliveryStatus;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;
@@ -11,6 +12,9 @@ import java.util.UUID;
 public interface DeliveryRepository extends JpaRepository<Delivery, UUID> {
 
     List<Delivery> findByStatus(DeliveryStatus status);
+
+    @EntityGraph(attributePaths = {"order"})
+    List<Delivery> findWithOrderByStatus(DeliveryStatus status);
 
     Optional<Delivery> findByOrderId(UUID orderId);
 }

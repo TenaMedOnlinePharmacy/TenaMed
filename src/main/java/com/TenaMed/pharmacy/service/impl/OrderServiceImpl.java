@@ -28,6 +28,7 @@ import com.TenaMed.pharmacy.repository.OrderItemRepository;
 import com.TenaMed.pharmacy.repository.OrderRepository;
 import com.TenaMed.pharmacy.repository.PharmacyRepository;
 import com.TenaMed.pharmacy.service.OrderService;
+import com.TenaMed.delivery.service.DeliveryService;
 import com.TenaMed.inventory.service.InventoryService;
 import com.TenaMed.medicine.repository.MedicineRepository;
 import com.TenaMed.pharmacy.dto.response.PharmacyOrderResponse;
@@ -63,6 +64,7 @@ public class OrderServiceImpl implements OrderService {
     private final UserPharmacyRepository userPharmacyRepository;
     private final com.TenaMed.medicine.repository.ProductRepository productRepository;
     private final MedicineRepository medicineRepository;
+    private final DeliveryService deliveryService;
 
     public OrderServiceImpl(OrderRepository orderRepository,
                             OrderItemRepository orderItemRepository,
@@ -76,7 +78,8 @@ public class OrderServiceImpl implements OrderService {
                             DomainEventService domainEventService,
                             UserPharmacyRepository userPharmacyRepository,
                             com.TenaMed.medicine.repository.ProductRepository productRepository,
-                            MedicineRepository medicineRepository) {
+                            MedicineRepository medicineRepository,
+                            DeliveryService deliveryService) {
         this.orderRepository = orderRepository;
         this.orderItemRepository = orderItemRepository;
         this.pharmacyRepository = pharmacyRepository;
@@ -90,6 +93,7 @@ public class OrderServiceImpl implements OrderService {
         this.userPharmacyRepository = userPharmacyRepository;
         this.productRepository = productRepository;
         this.medicineRepository = medicineRepository;
+        this.deliveryService = deliveryService;
     }
 
     @Override
@@ -213,16 +217,23 @@ public class OrderServiceImpl implements OrderService {
     @Override
     public OrderResponse updatePaymentStatus(UUID orderId, PaymentStatus paymentStatus) {
         Order order = fetchOrder(orderId);
-        String oldStatus = String.valueOf(order.getStatus());
+        OrderStatus previousStatus = order.getStatus();
+        String oldStatus = String.valueOf(previousStatus);
         String oldPaymentStatus = String.valueOf(order.getPaymentStatus());
         order.setPaymentStatus(paymentStatus);
-        if (paymentStatus == PaymentStatus.SUCCESS) {
+        if (paymentStatus == PaymentStatus.SUCCESS || paymentStatus == PaymentStatus.CONFIRMED) {
             order.setPaymentStatus(PaymentStatus.CONFIRMED);
+            if (order.getStatus() != OrderStatus.CONFIRMED) {
+                order.setStatus(OrderStatus.CONFIRMED);
+            }
         }
         if (paymentStatus == PaymentStatus.FAILED) {
             order.setStatus(OrderStatus.CANCELLED);
         }
         Order saved = orderRepository.save(order);
+        if (previousStatus != OrderStatus.CONFIRMED && saved.getStatus() == OrderStatus.CONFIRMED) {
+            deliveryService.createDelivery(saved);
+        }
         domainEventService.publish(
             "ORDER_PAYMENT_UPDATED",
             "ORDER",

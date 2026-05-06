@@ -9,6 +9,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.UUID;
 
 @Service
@@ -23,11 +24,14 @@ public class DeliveryServiceImpl implements DeliveryService {
 
     @Override
     public Delivery createDelivery(Order order) {
-        Delivery delivery = new Delivery();
-        delivery.setOrder(order);
-        delivery.setStatus(DeliveryStatus.READY_FOR_DELIVERY);
-        delivery.setDeliveryAddress(order.getDeliveryAddress());
-        return deliveryRepository.save(delivery);
+        return deliveryRepository.findByOrderId(order.getId())
+            .orElseGet(() -> {
+                Delivery delivery = new Delivery();
+                delivery.setOrder(order);
+                delivery.setStatus(DeliveryStatus.READY_FOR_DELIVERY);
+                delivery.setDeliveryAddress(order.getDeliveryAddress());
+                return deliveryRepository.save(delivery);
+            });
     }
 
     @Override
@@ -52,6 +56,12 @@ public class DeliveryServiceImpl implements DeliveryService {
         delivery.setStatus(DeliveryStatus.FAILED);
         delivery.setFailureReason(reason);
         return deliveryRepository.save(delivery);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<Delivery> getDeliveriesByStatus(DeliveryStatus status) {
+        return deliveryRepository.findWithOrderByStatus(status);
     }
 
     private Delivery fetchDelivery(UUID deliveryId) {
