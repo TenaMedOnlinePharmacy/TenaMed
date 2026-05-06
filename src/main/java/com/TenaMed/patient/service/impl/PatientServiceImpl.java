@@ -1,5 +1,6 @@
 package com.TenaMed.patient.service.impl;
 
+import com.TenaMed.medicine.repository.ProductRepository;
 import com.TenaMed.patient.dto.AddAllergyDto;
 import com.TenaMed.patient.dto.CreatePatientDto;
 import com.TenaMed.patient.dto.CreateProfileDto;
@@ -52,6 +53,7 @@ public class PatientServiceImpl implements PatientService {
     private final MedicineAllergenRepository medicineAllergenRepository;
     private final PatientMapper patientMapper;
     private final DomainEventService domainEventService;
+    private final ProductRepository productRepository;
 
     public PatientServiceImpl(PatientProfileRepository patientProfileRepository,
                               PatientRepository patientRepository,
@@ -61,7 +63,7 @@ public class PatientServiceImpl implements PatientService {
                               MedicineRepository medicineRepository,
                               MedicineAllergenRepository medicineAllergenRepository,
                               PatientMapper patientMapper,
-                              DomainEventService domainEventService) {
+                              DomainEventService domainEventService, ProductRepository productRepository) {
         this.patientProfileRepository = patientProfileRepository;
         this.patientRepository = patientRepository;
         this.allergenRepository = allergenRepository;
@@ -71,6 +73,7 @@ public class PatientServiceImpl implements PatientService {
         this.medicineAllergenRepository = medicineAllergenRepository;
         this.patientMapper = patientMapper;
         this.domainEventService = domainEventService;
+        this.productRepository = productRepository;
     }
 
     @Override
@@ -373,6 +376,7 @@ public class PatientServiceImpl implements PatientService {
         }
 
         // Fetch medicine allergens
+        medicineId = productRepository.findById(medicineId).get().getMedicine().getId();
         List<MedicineAllergen> medicineAllergens = medicineAllergenRepository.findByMedicine_Id(medicineId);
         if (medicineAllergens.isEmpty()) {
             return List.of();
