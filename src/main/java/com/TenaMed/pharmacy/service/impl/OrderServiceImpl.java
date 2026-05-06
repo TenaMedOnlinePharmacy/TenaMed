@@ -243,6 +243,14 @@ public class OrderServiceImpl implements OrderService {
     }
 
     @Override
+    public OrderResponse updateDeliveryAddress(UUID orderId, String deliveryAddress) {
+        Order order = fetchOrder(orderId);
+        order.setDeliveryAddress(deliveryAddress);
+        Order saved = orderRepository.save(order);
+        return orderMapper.toResponse(saved);
+    }
+
+    @Override
     public OrderResponse createOrderFromCart(UUID customerId, CreateOrderFromCartRequest request) {
         if (customerId == null) {
             throw new PharmacyValidationException("customerId is required");
@@ -252,6 +260,9 @@ public class OrderServiceImpl implements OrderService {
         }
         if (request.getPharmacyId() == null) {
             throw new PharmacyValidationException("pharmacyId is required");
+        }
+        if (request.getDeliveryAddress() == null || request.getDeliveryAddress().isBlank()) {
+            throw new PharmacyValidationException("deliveryAddress is required");
         }
 
         UUID selectedPharmacyId = request.getPharmacyId();
@@ -263,6 +274,7 @@ public class OrderServiceImpl implements OrderService {
         order.setPharmacy(pharmacy);
         order.setStatus(OrderStatus.ACCEPTED);
         order.setPaymentStatus(PaymentStatus.PENDING_PAYMENT);
+        order.setDeliveryAddress(request.getDeliveryAddress());
 
         BigDecimal total = BigDecimal.ZERO;
         Set<OrderItem> orderItems = new LinkedHashSet<>();

@@ -22,6 +22,7 @@ public class OrderMapper {
         order.setCustomerId(customerId);
         order.setPharmacy(pharmacy);
         order.setPrescriptionId(request.getPrescriptionId());
+        order.setDeliveryAddress(request.getDeliveryAddress());
         order.setStatus(OrderStatus.PENDING);
         order.setPaymentStatus(PaymentStatus.PENDING);
         order.setTotalAmount(BigDecimal.ZERO);
@@ -55,6 +56,7 @@ public class OrderMapper {
             .totalAmount(order.getTotalAmount())
             .rejectionReason(order.getRejectionReason())
             .acceptedBy(order.getAcceptedBy())
+            .deliveryAddress(order.getDeliveryAddress())
             .items(items)
             .createdAt(order.getCreatedAt())
             .updatedAt(order.getUpdatedAt())

@@ -21,6 +21,8 @@ public interface OrderService {
 
     OrderResponse updatePaymentStatus(UUID orderId, PaymentStatus paymentStatus);
 
+    OrderResponse updateDeliveryAddress(UUID orderId, String deliveryAddress);
+
     OrderResponse createOrderFromCart(UUID customerId, CreateOrderFromCartRequest request);
 
 List<PharmacyOrderResponse> getPharmacyOrders(UUID ownerId);

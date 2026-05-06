@@ -23,6 +23,7 @@ public class OrderResponse {
     private BigDecimal totalAmount;
     private String rejectionReason;
     private UUID acceptedBy;
+    private String deliveryAddress;
     private List<OrderItemResponse> items;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;

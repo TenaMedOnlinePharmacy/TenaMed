@@ -62,6 +62,9 @@ public class Order extends BaseEntity {
     @Column(name = "accepted_by")
     private UUID acceptedBy;
 
+    @Column(name = "delivery_address", nullable = false)
+    private String deliveryAddress;
+
     @OneToMany(mappedBy = "order", fetch = FetchType.LAZY)
     private Set<OrderItem> items = new LinkedHashSet<>();
 }
