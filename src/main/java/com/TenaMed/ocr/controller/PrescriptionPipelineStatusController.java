@@ -80,4 +80,12 @@ public class PrescriptionPipelineStatusController {
             null
         ));
     }
+
+    @GetMapping("/{prescriptionId}/matches")
+    public ResponseEntity<List<MedicinePharmacySearchResponseDto>> getPharmacyMatches(
+            @PathVariable UUID prescriptionId) {
+        List<MedicinePharmacySearchResponseDto> matches =
+                prescriptionInventoryMatchService.findInventoryMatchesByPrescription(prescriptionId);
+        return ResponseEntity.ok(matches);
+    }
 }
