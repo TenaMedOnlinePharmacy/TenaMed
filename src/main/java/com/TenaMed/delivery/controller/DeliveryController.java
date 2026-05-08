@@ -1,5 +1,6 @@
 package com.TenaMed.delivery.controller;
 
+import com.TenaMed.delivery.dto.request.CreateDeliveryRequest;
 import com.TenaMed.delivery.dto.request.DeliveryFailRequest;
 import com.TenaMed.delivery.dto.response.DeliveryResponse;
 import com.TenaMed.delivery.entity.Delivery;
@@ -81,6 +82,17 @@ public class DeliveryController {
                 .body(Map.of("error", "Only pharmacist can mark deliveries as failed"));
         }
         return ResponseEntity.ok(deliveryService.markFailed(deliveryId, request.getReason()));
+    }
+
+    @PostMapping
+    public ResponseEntity<?> createDelivery(@Valid @RequestBody CreateDeliveryRequest request,
+                                            Principal principal) {
+        if (!isPharmacist(principal)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                .body(Map.of("error", "Only pharmacist can create deliveries"));
+        }
+        return ResponseEntity.status(HttpStatus.CREATED)
+            .body(deliveryService.createDelivery(request.getOrderId(), request.getDeliveryAddress()));
     }
 
     private List<DeliveryResponse> toResponses(List<Delivery> deliveries) {

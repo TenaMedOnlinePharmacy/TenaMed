@@ -3,7 +3,6 @@ package com.TenaMed.pharmacy.controller;
 import com.TenaMed.pharmacy.dto.request.AcceptOrderRequest;
 import com.TenaMed.pharmacy.dto.request.CreateOrderRequest;
 import com.TenaMed.pharmacy.dto.request.RejectOrderRequest;
-import com.TenaMed.pharmacy.dto.request.UpdateOrderAddressRequest;
 import com.TenaMed.pharmacy.dto.request.UpdatePaymentStatusRequest;
 import com.TenaMed.pharmacy.dto.response.OrderResponse;
 import com.TenaMed.pharmacy.enums.StaffRole;
@@ -97,15 +96,6 @@ public class OrderController {
                                                  @Valid @RequestBody UpdatePaymentStatusRequest request) {
         try {
             return ResponseEntity.ok(orderService.updatePaymentStatus(id, request.getPaymentStatus()));
-        } catch (PharmacyException ex) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("error", ex.getMessage()));
-        }
-    }
-
-    @PostMapping("/delivery-address")
-    public ResponseEntity<?> updateDeliveryAddress(@Valid @RequestBody UpdateOrderAddressRequest request) {
-        try {
-            return ResponseEntity.ok(orderService.updateDeliveryAddress(request.getOrderId(), request.getDeliveryAddress()));
         } catch (PharmacyException ex) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("error", ex.getMessage()));
         }

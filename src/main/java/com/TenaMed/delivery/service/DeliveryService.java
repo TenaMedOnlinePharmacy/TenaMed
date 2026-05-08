@@ -2,14 +2,13 @@ package com.TenaMed.delivery.service;
 
 import com.TenaMed.delivery.entity.Delivery;
 import com.TenaMed.delivery.enums.DeliveryStatus;
-import com.TenaMed.pharmacy.entity.Order;
 
 import java.util.List;
 import java.util.UUID;
 
 public interface DeliveryService {
 
-    Delivery createDelivery(Order order);
+    Delivery createDelivery(UUID orderId, String deliveryAddress);
 
     Delivery dispatchDelivery(UUID deliveryId);
 

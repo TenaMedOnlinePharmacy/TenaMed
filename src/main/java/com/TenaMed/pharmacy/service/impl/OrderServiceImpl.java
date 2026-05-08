@@ -28,7 +28,6 @@ import com.TenaMed.pharmacy.repository.OrderItemRepository;
 import com.TenaMed.pharmacy.repository.OrderRepository;
 import com.TenaMed.pharmacy.repository.PharmacyRepository;
 import com.TenaMed.pharmacy.service.OrderService;
-import com.TenaMed.delivery.service.DeliveryService;
 import com.TenaMed.inventory.service.InventoryService;
 import com.TenaMed.medicine.repository.MedicineRepository;
 import com.TenaMed.pharmacy.dto.response.PharmacyOrderResponse;
@@ -64,7 +63,6 @@ public class OrderServiceImpl implements OrderService {
     private final UserPharmacyRepository userPharmacyRepository;
     private final com.TenaMed.medicine.repository.ProductRepository productRepository;
     private final MedicineRepository medicineRepository;
-    private final DeliveryService deliveryService;
 
     public OrderServiceImpl(OrderRepository orderRepository,
                             OrderItemRepository orderItemRepository,
@@ -78,8 +76,7 @@ public class OrderServiceImpl implements OrderService {
                             DomainEventService domainEventService,
                             UserPharmacyRepository userPharmacyRepository,
                             com.TenaMed.medicine.repository.ProductRepository productRepository,
-                            MedicineRepository medicineRepository,
-                            DeliveryService deliveryService) {
+                            MedicineRepository medicineRepository) {
         this.orderRepository = orderRepository;
         this.orderItemRepository = orderItemRepository;
         this.pharmacyRepository = pharmacyRepository;
@@ -93,7 +90,6 @@ public class OrderServiceImpl implements OrderService {
         this.userPharmacyRepository = userPharmacyRepository;
         this.productRepository = productRepository;
         this.medicineRepository = medicineRepository;
-        this.deliveryService = deliveryService;
     }
 
     @Override
@@ -231,9 +227,6 @@ public class OrderServiceImpl implements OrderService {
             order.setStatus(OrderStatus.CANCELLED);
         }
         Order saved = orderRepository.save(order);
-        if (previousStatus != OrderStatus.CONFIRMED && saved.getStatus() == OrderStatus.CONFIRMED) {
-            deliveryService.createDelivery(saved);
-        }
         domainEventService.publish(
             "ORDER_PAYMENT_UPDATED",
             "ORDER",
@@ -254,13 +247,6 @@ public class OrderServiceImpl implements OrderService {
     }
 
     @Override
-    public OrderResponse updateDeliveryAddress(UUID orderId, String deliveryAddress) {
-        Order order = fetchOrder(orderId);
-        order.setDeliveryAddress(deliveryAddress);
-        Order saved = orderRepository.save(order);
-        return orderMapper.toResponse(saved);
-    }
-
     @Override
     public OrderResponse createOrderFromCart(UUID customerId, CreateOrderFromCartRequest request) {
         if (customerId == null) {
@@ -272,9 +258,6 @@ public class OrderServiceImpl implements OrderService {
         if (request.getPharmacyId() == null) {
             throw new PharmacyValidationException("pharmacyId is required");
         }
-        if (request.getDeliveryAddress() == null || request.getDeliveryAddress().isBlank()) {
-            throw new PharmacyValidationException("deliveryAddress is required");
-        }
 
         UUID selectedPharmacyId = request.getPharmacyId();
         Pharmacy pharmacy = pharmacyRepository.findByIdAndStatus(request.getPharmacyId(), PharmacyStatus.VERIFIED)
@@ -285,8 +268,6 @@ public class OrderServiceImpl implements OrderService {
         order.setPharmacy(pharmacy);
         order.setStatus(OrderStatus.ACCEPTED);
         order.setPaymentStatus(PaymentStatus.PENDING_PAYMENT);
-        order.setDeliveryAddress(request.getDeliveryAddress());
-
         BigDecimal total = BigDecimal.ZERO;
         Set<OrderItem> orderItems = new LinkedHashSet<>();
 

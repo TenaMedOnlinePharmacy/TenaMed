@@ -1,4 +1,4 @@
-package com.TenaMed.pharmacy.dto.request;
+package com.TenaMed.delivery.dto.request;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -9,7 +9,7 @@ import java.util.UUID;
 
 @Getter
 @Setter
-public class UpdateOrderAddressRequest {
+public class CreateDeliveryRequest {
 
     @NotNull
     private UUID orderId;

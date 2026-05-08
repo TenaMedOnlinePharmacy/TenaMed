@@ -5,6 +5,7 @@ import com.TenaMed.delivery.enums.DeliveryStatus;
 import com.TenaMed.delivery.repository.DeliveryRepository;
 import com.TenaMed.delivery.service.DeliveryService;
 import com.TenaMed.pharmacy.entity.Order;
+import com.TenaMed.pharmacy.repository.OrderRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -17,21 +18,31 @@ import java.util.UUID;
 public class DeliveryServiceImpl implements DeliveryService {
 
     private final DeliveryRepository deliveryRepository;
+    private final OrderRepository orderRepository;
 
-    public DeliveryServiceImpl(DeliveryRepository deliveryRepository) {
+    public DeliveryServiceImpl(DeliveryRepository deliveryRepository, OrderRepository orderRepository) {
         this.deliveryRepository = deliveryRepository;
+        this.orderRepository = orderRepository;
     }
 
     @Override
-    public Delivery createDelivery(Order order) {
-        return deliveryRepository.findByOrderId(order.getId())
+    public Delivery createDelivery(UUID orderId, String deliveryAddress) {
+        Order order = orderRepository.findById(orderId)
+            .orElseThrow(() -> new IllegalArgumentException("Order not found with id: " + orderId));
+
+        Delivery delivery = deliveryRepository.findByOrderId(orderId)
             .orElseGet(() -> {
-                Delivery delivery = new Delivery();
-                delivery.setOrder(order);
-                delivery.setStatus(DeliveryStatus.READY_FOR_DELIVERY);
-                delivery.setDeliveryAddress(order.getDeliveryAddress());
-                return deliveryRepository.save(delivery);
+                Delivery created = new Delivery();
+                created.setOrder(order);
+                created.setStatus(DeliveryStatus.READY_FOR_DELIVERY);
+                return created;
             });
+
+        delivery.setDeliveryAddress(deliveryAddress);
+        Delivery saved = deliveryRepository.save(delivery);
+        order.setDeliveryId(saved.getId());
+        orderRepository.save(order);
+        return saved;
     }
 
     @Override
