@@ -247,7 +247,6 @@ public class OrderServiceImpl implements OrderService {
     }
 
     @Override
-    @Override
     public OrderResponse createOrderFromCart(UUID customerId, CreateOrderFromCartRequest request) {
         if (customerId == null) {
             throw new PharmacyValidationException("customerId is required");

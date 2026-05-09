@@ -87,12 +87,21 @@ public class DeliveryController {
     @PostMapping
     public ResponseEntity<?> createDelivery(@Valid @RequestBody CreateDeliveryRequest request,
                                             Principal principal) {
-        if (!isPharmacist(principal)) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                .body(Map.of("error", "Only pharmacist can create deliveries"));
+        UUID customerId = resolveCustomerId(principal);
+        if (customerId == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                .body(Map.of("error", "Authentication required"));
         }
         return ResponseEntity.status(HttpStatus.CREATED)
             .body(deliveryService.createDelivery(request.getOrderId(), request.getDeliveryAddress()));
+    }
+
+    private UUID resolveCustomerId(Principal principal) {
+        AuthenticatedUserPrincipal authenticatedUserPrincipal = resolveAuthenticatedPrincipal(principal);
+        if (authenticatedUserPrincipal != null) {
+            return authenticatedUserPrincipal.getUserId();
+        }
+        return null;
     }
 
     private List<DeliveryResponse> toResponses(List<Delivery> deliveries) {
