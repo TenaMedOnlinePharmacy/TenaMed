@@ -68,6 +68,10 @@ public class PaymentService {
         Order order = orderRepository.findById(orderId)
                 .orElseThrow(() -> new IllegalArgumentException("Order not found"));
 
+        if (order.getDeliveryId() == null) {
+            throw new IllegalArgumentException("Order does not have delivery");
+        }
+
         if (!userId.equals(order.getCustomerId())) {
             throw new IllegalArgumentException("Order does not belong to user");
         }
