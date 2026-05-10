@@ -46,6 +46,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/pharmacists/create/**").permitAll()
                         .requestMatchers("/api/pharmacists/create/**").permitAll()
                         .requestMatchers("/api/auth/otp/**").permitAll()
+                        .requestMatchers("/api/auth/password/**").permitAll()
                     .requestMatchers(HttpMethod.POST, "/api/auth/register", "/api/auth/register-hospital-owner", "/api/auth/register-pharmacist", "/api/auth/login", "/api/auth/refresh","/api/auth/register-athlete").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/identity/register", "/api/identity/login").permitAll()
                     .requestMatchers("/api/payments/webhook").permitAll()

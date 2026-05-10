@@ -5,6 +5,21 @@ import org.springframework.stereotype.Component;
 @Component
 public class EmailTemplateBuilder {
 
+    public String buildOtpEmail(String otp) {
+        String safeOtp = escapeHtml(otp);
+        return String.format("""
+                <html>
+                  <body style=\"font-family: Arial, sans-serif; line-height: 1.5; color: #1f2937;\">
+                    <h2 style=\"margin-bottom: 8px;\">Your verification code</h2>
+                    <p>Use the code below to continue your request:</p>
+                    <p style=\"font-size: 20px; font-weight: bold; letter-spacing: 2px;\">%s</p>
+                    <p>This code expires in 5 minutes.</p>
+                    <p>If you did not request this, you can ignore this email.</p>
+                  </body>
+                </html>
+                """, safeOtp);
+    }
+
     public String buildPrescriptionReviewedEmail(String link) {
         return String.format("""
                 <html>

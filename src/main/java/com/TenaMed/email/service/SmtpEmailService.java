@@ -15,9 +15,11 @@ import java.nio.charset.StandardCharsets;
 public class SmtpEmailService implements EmailService {
 
     private final JavaMailSender javaMailSender;
+    private final EmailTemplateBuilder emailTemplateBuilder;
 
-    public SmtpEmailService(JavaMailSender javaMailSender) {
+    public SmtpEmailService(JavaMailSender javaMailSender, EmailTemplateBuilder emailTemplateBuilder) {
         this.javaMailSender = javaMailSender;
+        this.emailTemplateBuilder = emailTemplateBuilder;
     }
 
     @Override
@@ -57,10 +59,12 @@ public class SmtpEmailService implements EmailService {
 
     @Override
     public void sendOtpEmail(String to, String otp) {
-        SimpleMailMessage message = new SimpleMailMessage();
-        message.setTo(to);
-        message.setSubject("Tena-Med Verification Code");
-        message.setText("Your verification code is: " + otp + ". It will expire in 5 minutes.");
-        javaMailSender.send(message);
+        EmailRequest request = new EmailRequest(
+                to,
+                "Tena-Med Verification Code",
+                emailTemplateBuilder.buildOtpEmail(otp),
+                true
+        );
+        sendEmail(request);
     }
 }
