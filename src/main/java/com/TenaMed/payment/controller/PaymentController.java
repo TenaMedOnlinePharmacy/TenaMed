@@ -7,6 +7,8 @@ import com.TenaMed.payment.service.PaymentService;
 import com.TenaMed.user.security.AuthenticatedUserPrincipal;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -20,6 +22,7 @@ import java.util.UUID;
 @RequestMapping("/api/payments")
 public class PaymentController {
 
+    private static final Logger logger = LoggerFactory.getLogger(PaymentController.class);
     private final PaymentService paymentService;
     private final ObjectMapper objectMapper;
 
@@ -37,17 +40,24 @@ public class PaymentController {
     @PostMapping("/initialize")
     public ResponseEntity<Map<String, String>> initialize(@RequestBody PaymentRequest request,
                                                           @AuthenticationPrincipal AuthenticatedUserPrincipal principal) {
-        System.out.println("here");
         try {
             if (principal == null) {
+                logger.warn("Payment initialize blocked: missing principal");
                 return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("checkout_url", "error"));
             }
 
             String checkoutUrl = paymentService.initializePayment(request.getOrderId(), principal.getUserId());
-            return ResponseEntity.ok(Map.of("checkout_url", checkoutUrl == null ? "erro2" : checkoutUrl));
+            if (checkoutUrl == null || checkoutUrl.isBlank()) {
+                logger.warn("Payment initialize failed: empty checkout_url (orderId={})", request.getOrderId());
+                return ResponseEntity.status(HttpStatus.BAD_GATEWAY)
+                        .body(Map.of("checkout_url", "error"));
+            }
+            return ResponseEntity.ok(Map.of("checkout_url", checkoutUrl));
         } catch (IllegalArgumentException ex) {
+            logger.warn("Payment initialize validation error: {}", ex.getMessage());
             return ResponseEntity.badRequest().body(Map.of("checkout_url", "error"));
         } catch (IOException ex) {
+            logger.error("Payment initialize IO error", ex);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(Map.of("checkout_url", "error"));
         }

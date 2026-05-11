@@ -2,6 +2,7 @@ package com.TenaMed.prescription.service;
 
 import com.TenaMed.prescription.entity.Prescription;
 import com.TenaMed.doctor.dto.DoctorPrescriptionItemRequestDto;
+import com.TenaMed.prescription.dto.PrescriptionItemResponseDto;
 
 import java.util.List;
 import java.util.UUID;
@@ -29,4 +30,6 @@ public interface PrescriptionService {
                                           List<DoctorPrescriptionItemRequestDto> items);
 
     com.TenaMed.prescription.dto.PrescriptionResponseDto getPrescriptionDetails(String uniqueCode, String phone);
+
+    List<PrescriptionItemResponseDto> getPrescriptionItems(UUID prescriptionId);
 }

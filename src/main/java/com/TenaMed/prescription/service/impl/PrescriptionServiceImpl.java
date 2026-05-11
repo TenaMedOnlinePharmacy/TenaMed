@@ -242,6 +242,31 @@ public class PrescriptionServiceImpl implements PrescriptionService {
                 .build();
     }
 
+            @Override
+            @Transactional(readOnly = true)
+            public List<PrescriptionItemResponseDto> getPrescriptionItems(UUID prescriptionId) {
+            if (prescriptionId == null) {
+                throw new BadRequestException("prescriptionId is required");
+            }
+
+            prescriptionRepository.findById(prescriptionId)
+                .orElseThrow(() -> new ResourceNotFoundException("Prescription not found: " + prescriptionId));
+
+            List<PrescriptionItem> items = prescriptionItemRepository.findByPrescriptionId(prescriptionId);
+
+            return items.stream()
+                .map(item -> PrescriptionItemResponseDto.builder()
+                    .prescriptionItemId(item.getId())
+                    .medicineId(item.getMedicine().getId())
+                    .name(item.getMedicine().getName())
+                    .quantity(item.getQuantity())
+                    .from(item.getForm())
+                    .instruction(item.getInstructions())
+                    .strength(item.getStrength())
+                    .build())
+                .toList();
+            }
+
     private LocalDate parseToLocalDate(String value) {
         if (value == null || value.isBlank()) {
             return null;

@@ -16,7 +16,7 @@ public class PrescriptionItemResponseDto {
     private UUID medicineId;
     private String name;
     private Integer quantity;
-    private String from; // Mapping to 'form' field in entity
+    private String from; 
     private String instruction;
     private String strength;
 }

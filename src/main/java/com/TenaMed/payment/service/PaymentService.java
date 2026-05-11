@@ -17,6 +17,8 @@ import com.TenaMed.user.security.AuthenticatedUserPrincipal;
 import com.TenaMed.events.DomainEventService;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -31,6 +33,7 @@ import java.util.UUID;
 @Service
 public class PaymentService {
 
+    private static final Logger logger = LoggerFactory.getLogger(PaymentService.class);
     private final ChapaHttpClient chapaHttpClient;
     private final PaymentRepository paymentRepository;
     private final OrderRepository orderRepository;
@@ -92,19 +95,22 @@ public class PaymentService {
         UUID txRef = UUID.randomUUID();
         String txRefValue = txRef.toString();
 
-        String jsonBody = "{" +
-                "\"amount\":\"" + escapeJson(amount) + "\"," +
-                "\"currency\":\"ETB\"," +
-                "\"email\":\"" + escapeJson(email) + "\"," +
-                "\"tx_ref\":\"" + txRefValue + "\"," +
-                "\"callback_url\":\"https://nonobediently-nonperishing-hilda.ngrok-free.dev/api/payments/webhook\"," +
-                "\"return_url\":\"http://localhost:5173/payment/callback\"," +
-                "\"customization[title]\":\"TenaMed Payment\"," +
-                "\"customization[description]\":\"Prescription Payment\"" +
-                "}";
+        String jsonBody = objectMapper.writeValueAsString(Map.of(
+            "amount", amount,
+            "currency", "ETB",
+            "email", email,
+            "tx_ref", txRefValue,
+            "callback_url", "https://nonobediently-nonperishing-hilda.ngrok-free.dev/api/payments/webhook",
+            "return_url", "http://localhost:5173/payment/callback",
+            "customization", Map.of(
+                "title", "TenaMed Payment",
+                "description", "Prescription Payment"
+            )
+        ));
 
+        logger.info("Initializing payment via Chapa (orderId={}, txRef={})", orderId, txRefValue);
         String rawResponse = chapaHttpClient.initializeTransaction(jsonBody);
-        System.out.println(rawResponse);
+        logger.info("Chapa initialize response (orderId={}, txRef={}): {}", orderId, txRefValue, rawResponse);
         String checkoutUrl = extractCheckoutUrl(rawResponse);
 
         if (checkoutUrl != null && !checkoutUrl.isBlank()) {
@@ -331,15 +337,6 @@ public class PaymentService {
         } catch (IllegalArgumentException ex) {
             return null;
         }
-    }
-
-    private String escapeJson(String value) {
-        if (value == null) {
-            return "";
-        }
-        return value
-                .replace("\\", "\\\\")
-                .replace("\"", "\\\"");
     }
 
     private ActorResolution resolveActor() {

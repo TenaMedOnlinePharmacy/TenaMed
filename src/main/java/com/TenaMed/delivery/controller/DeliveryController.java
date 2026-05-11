@@ -57,7 +57,7 @@ public class DeliveryController {
 
     @PostMapping("/{id}/dispatch")
     public ResponseEntity<?> dispatchDelivery(@PathVariable("id") UUID deliveryId, Principal principal) {
-        if (!isPharmacist(principal)) {
+        if (!isPharmacistOrOwner(principal)) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN)
                 .body(Map.of("error", "Only pharmacist can dispatch deliveries"));
         }
@@ -66,7 +66,7 @@ public class DeliveryController {
 
     @PostMapping("/{id}/deliver")
     public ResponseEntity<?> markDelivered(@PathVariable("id") UUID deliveryId, Principal principal) {
-        if (!isPharmacist(principal)) {
+        if (!isPharmacistOrOwner(principal)) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN)
                 .body(Map.of("error", "Only pharmacist can mark deliveries as delivered"));
         }
@@ -77,7 +77,7 @@ public class DeliveryController {
     public ResponseEntity<?> markFailed(@PathVariable("id") UUID deliveryId,
                                         @Valid @RequestBody DeliveryFailRequest request,
                                         Principal principal) {
-        if (!isPharmacist(principal)) {
+        if (!isPharmacistOrOwner(principal)) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN)
                 .body(Map.of("error", "Only pharmacist can mark deliveries as failed"));
         }
@@ -134,7 +134,7 @@ public class DeliveryController {
             .build();
     }
 
-    private boolean isPharmacist(Principal principal) {
+    private boolean isPharmacistOrOwner(Principal principal) {
         Collection<? extends GrantedAuthority> authorities = null;
         AuthenticatedUserPrincipal authenticatedUserPrincipal = resolveAuthenticatedPrincipal(principal);
         if (authenticatedUserPrincipal != null) {
@@ -157,7 +157,7 @@ public class DeliveryController {
                 continue;
             }
             String normalized = authority.getAuthority().trim().toUpperCase(Locale.ROOT);
-            if ("ROLE_PHARMACIST".equals(normalized)) {
+            if ("ROLE_PHARMACIST".equals(normalized) || "ROLE_PHARMACYOWNER".equals(normalized)) {
                 return true;
             }
         }

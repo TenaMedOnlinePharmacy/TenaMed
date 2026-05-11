@@ -45,32 +45,13 @@ public class DrugNormalizationService {
 
     @PostConstruct
     public void initialize() {
-        log.info("Automatic drug normalization initialization is currently disabled.");
-/*
-        log.info("Initializing drug normalization lookup maps...");
-        try {
-            Map<String, String> standardLookup = buildStandardLookup(drugLookupService.getStandardDrugNames());
-            this.standardByNormalized = Map.copyOf(standardLookup);
-
-            Map<String, String> synonymLookup = buildNormalizedSynonymLookup(
-                drugLookupService.getSynonymMappings(),
-                standardLookup
-            );
-            this.synonymsByNormalized = Map.copyOf(synonymLookup);
-
-            Map<String, String> fuzzyLookup = new LinkedHashMap<>(standardLookup);
-            synonymLookup.forEach(fuzzyLookup::putIfAbsent);
-            this.fuzzyCandidatesByNormalized = Map.copyOf(fuzzyLookup);
-            log.info("Drug normalization lookup maps initialized successfully.");
-        } catch (Exception e) {
-            log.error("Failed to initialize drug normalization lookup maps: {}", e.getMessage(), e);
-            // We don't rethrow to allow the application to start, 
-            // but normalization will return UNKNOWN until initialized.
-        }
-*/
+        initializeLookupMaps();
     }
 
     public NormalizedMedicine normalize(InputMedicine input) {
+        if (standardByNormalized.isEmpty() && synonymsByNormalized.isEmpty() && fuzzyCandidatesByNormalized.isEmpty()) {
+            initializeLookupMaps();
+        }
         String originalName = input == null ? null : input.getName();
         String normalizedInput = normalizeText(originalName);
 
@@ -128,6 +109,31 @@ public class DrugNormalizationService {
             result.add(normalize(input));
         }
         return result;
+    }
+
+    private synchronized void initializeLookupMaps() {
+        if (!standardByNormalized.isEmpty() || !synonymsByNormalized.isEmpty() || !fuzzyCandidatesByNormalized.isEmpty()) {
+            return;
+        }
+
+        log.info("Initializing drug normalization lookup maps...");
+        try {
+            Map<String, String> standardLookup = buildStandardLookup(drugLookupService.getStandardDrugNames());
+            this.standardByNormalized = Map.copyOf(standardLookup);
+
+            Map<String, String> synonymLookup = buildNormalizedSynonymLookup(
+                drugLookupService.getSynonymMappings(),
+                standardLookup
+            );
+            this.synonymsByNormalized = Map.copyOf(synonymLookup);
+
+            Map<String, String> fuzzyLookup = new LinkedHashMap<>(standardLookup);
+            synonymLookup.forEach(fuzzyLookup::putIfAbsent);
+            this.fuzzyCandidatesByNormalized = Map.copyOf(fuzzyLookup);
+            log.info("Drug normalization lookup maps initialized successfully.");
+        } catch (Exception e) {
+            log.error("Failed to initialize drug normalization lookup maps: {}", e.getMessage(), e);
+        }
     }
 
     private NormalizedMedicine unknown(String originalName) {

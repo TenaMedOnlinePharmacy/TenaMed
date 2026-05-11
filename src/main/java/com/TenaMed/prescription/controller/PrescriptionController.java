@@ -1,5 +1,6 @@
 package com.TenaMed.prescription.controller;
 
+import com.TenaMed.prescription.dto.PrescriptionItemResponseDto;
 import com.TenaMed.prescription.dto.PrescriptionResponseDto;
 import com.TenaMed.prescription.service.PrescriptionService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -10,6 +11,10 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.PathVariable;
+
+import java.util.List;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/prescriptions")
@@ -23,5 +28,11 @@ public class PrescriptionController {
             @RequestParam String uniqueCode,
             @RequestParam String phone) {
         return ResponseEntity.ok(prescriptionService.getPrescriptionDetails(uniqueCode, phone));
+    }
+
+    @GetMapping("/{prescriptionId}/items")
+    public ResponseEntity<List<PrescriptionItemResponseDto>> getPrescriptionItems(
+            @PathVariable UUID prescriptionId) {
+        return ResponseEntity.ok(prescriptionService.getPrescriptionItems(prescriptionId));
     }
 }
