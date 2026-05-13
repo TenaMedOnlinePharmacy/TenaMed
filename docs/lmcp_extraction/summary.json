@@ -1,0 +1,7 @@
+{
+  "medicines_extracted": 1472,
+  "categories_extracted": 130,
+  "dosage_forms_extracted": 17,
+  "allergens_inferred": 3,
+  "manual_review_rows": 621
+}

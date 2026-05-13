@@ -1,0 +1,17 @@
+INSERT INTO dosage_forms (id, name) VALUES ('08ac51f9-1ff9-5ebe-9d99-f2a2be2f3ba0', 'Solution');
+INSERT INTO dosage_forms (id, name) VALUES ('117e56c5-37e1-56b1-938e-79edb1170c64', 'Gel');
+INSERT INTO dosage_forms (id, name) VALUES ('6e890b3b-4147-5584-9021-fda6f1e1d68c', 'Tablet');
+INSERT INTO dosage_forms (id, name) VALUES ('54d4ad98-c885-5a8e-89d7-1ee7584cc912', 'Suspension');
+INSERT INTO dosage_forms (id, name) VALUES ('ae40a8de-96c9-50fa-9a9c-2974eda5af55', 'Capsule');
+INSERT INTO dosage_forms (id, name) VALUES ('b3d802a4-88fe-593d-983f-ad4ac1b4ff0d', 'Powder For Injection');
+INSERT INTO dosage_forms (id, name) VALUES ('c6edb19f-0bfb-57d0-9587-7d0347d861f2', 'Injection');
+INSERT INTO dosage_forms (id, name) VALUES ('9f3ba478-613f-512f-a580-cf3351f7bba3', 'Drops');
+INSERT INTO dosage_forms (id, name) VALUES ('475194b8-6439-5c44-b517-e12f0b1b3e86', 'Patch');
+INSERT INTO dosage_forms (id, name) VALUES ('8970b42c-1664-5fd1-a07f-3dd85e8e8ed6', 'Suppository');
+INSERT INTO dosage_forms (id, name) VALUES ('527e880e-459c-5ee4-acbe-e1314cdf07e2', 'Oral Solution');
+INSERT INTO dosage_forms (id, name) VALUES ('4d5458ba-1f98-5996-8ad0-e81dd44e178b', 'Ointment');
+INSERT INTO dosage_forms (id, name) VALUES ('59bfcc71-92ee-59e0-8944-206915dd0de7', 'Cream');
+INSERT INTO dosage_forms (id, name) VALUES ('d6fe5a8c-14bc-5c30-9f13-2576c8283445', 'Spray');
+INSERT INTO dosage_forms (id, name) VALUES ('f8ffd189-cd8c-57dd-a994-cc5ed44e4c1a', 'Syrup');
+INSERT INTO dosage_forms (id, name) VALUES ('090a1d6c-533a-5636-9048-47f4456f678b', 'Inhaler');
+INSERT INTO dosage_forms (id, name) VALUES ('a949b5d1-7693-5a87-852e-ad319c5edbcf', 'Lotion');
