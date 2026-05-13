@@ -242,30 +242,57 @@ public class PrescriptionServiceImpl implements PrescriptionService {
                 .build();
     }
 
-            @Override
-            @Transactional(readOnly = true)
-            public List<PrescriptionItemResponseDto> getPrescriptionItems(UUID prescriptionId) {
-            if (prescriptionId == null) {
-                throw new BadRequestException("prescriptionId is required");
-            }
+    @Override
+    @Transactional(readOnly = true)
+    public List<PrescriptionItemResponseDto> getPrescriptionItems(UUID prescriptionId) {
+        if (prescriptionId == null) {
+            throw new BadRequestException("prescriptionId is required");
+        }
 
-            prescriptionRepository.findById(prescriptionId)
-                .orElseThrow(() -> new ResourceNotFoundException("Prescription not found: " + prescriptionId));
+        prescriptionRepository.findById(prescriptionId)
+            .orElseThrow(() -> new ResourceNotFoundException("Prescription not found: " + prescriptionId));
 
-            List<PrescriptionItem> items = prescriptionItemRepository.findByPrescriptionId(prescriptionId);
+        List<PrescriptionItem> items = prescriptionItemRepository.findByPrescriptionId(prescriptionId);
 
-            return items.stream()
-                .map(item -> PrescriptionItemResponseDto.builder()
-                    .prescriptionItemId(item.getId())
-                    .medicineId(item.getMedicine().getId())
-                    .name(item.getMedicine().getName())
-                    .quantity(item.getQuantity())
-                    .from(item.getForm())
-                    .instruction(item.getInstructions())
-                    .strength(item.getStrength())
-                    .build())
-                .toList();
-            }
+        return items.stream()
+            .map(item -> PrescriptionItemResponseDto.builder()
+                .prescriptionItemId(item.getId())
+                .medicineId(item.getMedicine().getId())
+                .name(item.getMedicine().getName())
+                .quantity(item.getQuantity())
+                .from(item.getForm())
+                .instruction(item.getInstructions())
+                .strength(item.getStrength())
+                .build())
+            .toList();
+    }
+
+    @Override
+    public Prescription attachOriginalImages(UUID id, String originalImages) {
+        if (id == null) {
+            throw new BadRequestException("prescriptionId is required");
+        }
+        String normalized = normalizeNullable(originalImages);
+        if (normalized == null) {
+            throw new BadRequestException("originalImages is required");
+        }
+
+        Prescription prescription = prescriptionRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Prescription not found: " + id));
+        prescription.setOriginalImages(normalized);
+        Prescription saved = prescriptionRepository.save(prescription);
+        domainEventService.publish(
+            "PRESCRIPTION_IMAGES_ATTACHED",
+            "PRESCRIPTION",
+            saved.getId(),
+            "SYSTEM",
+            null,
+            "PLATFORM",
+            null,
+            Map.of("hasImages", true)
+        );
+        return saved;
+    }
 
     private LocalDate parseToLocalDate(String value) {
         if (value == null || value.isBlank()) {

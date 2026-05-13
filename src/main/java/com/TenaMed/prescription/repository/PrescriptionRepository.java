@@ -116,6 +116,18 @@ public interface PrescriptionRepository extends JpaRepository<Prescription, UUID
     @Transactional
     @Query("""
             UPDATE Prescription p
+            SET p.originalImages = :originalImages
+            WHERE p.id = :id
+            """)
+    int updateOriginalImages(
+            @Param("id") UUID id,
+            @Param("originalImages") String originalImages
+    );
+
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Transactional
+    @Query("""
+            UPDATE Prescription p
             SET p.status = 'REJECTED',
             p.rejectionReason = :rejectionReason,
             p.isVerified = false,

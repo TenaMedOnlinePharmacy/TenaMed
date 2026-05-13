@@ -11,6 +11,8 @@ public interface PrescriptionService {
 
     Prescription createUploadedPrescription(UUID userId);
 
+    Prescription attachOriginalImages(UUID id, String originalImages);
+
     Prescription attachOcrDates(UUID id, String createdDate, String expirationDate);
 
     Prescription createFromOcrDates(String createdDate, String expirationDate);

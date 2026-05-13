@@ -32,6 +32,7 @@ public class OcrTestController {
         String imageUrl = supabaseStorageService.uploadAndGetSignedUrl(file);
         UUID userId = currentUserProvider.getCurrentUserId();
         Prescription prescription = prescriptionService.createUploadedPrescription(userId);
+        prescriptionService.attachOriginalImages(prescription.getId(), imageUrl);
         prescriptionPipelineService.startPipeline(imageUrl, prescription.getId());
         return ResponseEntity.accepted().body(new OcrUploadResponseDto(
                 "SUCCESS",
