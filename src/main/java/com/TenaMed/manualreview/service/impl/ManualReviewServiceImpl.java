@@ -45,7 +45,7 @@ public class ManualReviewServiceImpl implements ManualReviewService {
     private static final String PRESCRIPTION_READY_FOR_MATCHING = "PRESCRIPTION_READY_FOR_MATCHING";
     private static final String PRESCRIPTION_REVIEWED_SUBJECT = "Your prescription has been reviewed";
     private static final String PRESCRIPTION_REJECTED_SUBJECT = "Your prescription could not be approved";
-    private static final String PRESCRIPTION_DETAILS_BASE_URL = "https://localhost:5173/prescriptions/";
+    private static final String PRESCRIPTION_DETAILS_BASE_URL = "http://localhost:5173/products/manualreview/";
 
     private final ManualReviewTaskRepository manualReviewTaskRepository;
     private final PrescriptionVerificationService prescriptionVerificationService;
