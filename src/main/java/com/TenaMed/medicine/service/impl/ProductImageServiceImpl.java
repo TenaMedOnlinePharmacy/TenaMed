@@ -160,9 +160,9 @@ public class ProductImageServiceImpl implements ProductImageService {
             throw new IllegalArgumentException("Image file is required");
         }
 
-        String objectPath = supabaseStorageService.uploadAndGetObjectPath(image, PRODUCT_IMAGE_FOLDER);
-        savePharmacyImage(productId, pharmacyId, objectPath);
-        return objectPath;
+        String publicUrl = supabaseStorageService.uploadAndGetPublicUrl(image, PRODUCT_IMAGE_FOLDER);
+        savePharmacyImage(productId, pharmacyId, publicUrl);
+        return publicUrl;
     }
 
     @Override
@@ -171,8 +171,8 @@ public class ProductImageServiceImpl implements ProductImageService {
             throw new IllegalArgumentException("Image file is required");
         }
 
-        String objectPath = supabaseStorageService.uploadAndGetObjectPath(image, PRODUCT_IMAGE_FOLDER);
-        saveDefaultImage(productId, objectPath);
-        return objectPath;
+        String publicUrl = supabaseStorageService.uploadAndGetPublicUrl(image, PRODUCT_IMAGE_FOLDER);
+        saveDefaultImage(productId, publicUrl);
+        return publicUrl;
     }
 }

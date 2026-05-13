@@ -12,6 +12,7 @@ import com.TenaMed.user.security.AuthenticatedUserPrincipal;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -117,6 +118,20 @@ public class OrderController {
 
     @GetMapping("/my")
     public ResponseEntity<?> getMyOrders(Principal principal) {
+        UUID customerId = resolveCustomerId(principal);
+        if (customerId == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("error", "Authentication required"));
+        }
+        try {
+            return ResponseEntity.ok(orderService.getCustomerOrders(customerId));
+        } catch (PharmacyException ex) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("error", ex.getMessage()));
+        }
+    }
+
+    @GetMapping("/orders")
+    @PreAuthorize("hasRole('PATIENT')")
+    public ResponseEntity<?> getMyCustomerOrders(Principal principal) {
         UUID customerId = resolveCustomerId(principal);
         if (customerId == null) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("error", "Authentication required"));

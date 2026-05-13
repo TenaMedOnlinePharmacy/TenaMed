@@ -128,8 +128,8 @@ public class InventoryServiceImpl implements InventoryService {
         Product product = resolveOrCreateProduct(request);
 
         if (image != null && !image.isEmpty()) {
-            String objectPath = supabaseStorageService.uploadAndGetSignedUrl(image, PRODUCT_IMAGE_FOLDER);
-            productImageService.savePharmacyImage(product.getId(), pharmacy.getId(), objectPath);
+            String publicUrl = supabaseStorageService.uploadAndGetPublicUrl(image, PRODUCT_IMAGE_FOLDER);
+            productImageService.savePharmacyImage(product.getId(), pharmacy.getId(), publicUrl);
         }
 
         if (product.getMedicine() == null || product.getMedicine().getId() == null) {
