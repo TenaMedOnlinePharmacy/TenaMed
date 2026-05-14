@@ -104,13 +104,17 @@ public class OrderController {
 
     @GetMapping("/pharmacyOrders")
     public ResponseEntity<?> getPharmacyOrders(Principal principal) {
-        UUID ownerId = resolveCustomerId(principal);
-        if (ownerId == null) {
+        UUID actorUserId = resolveCustomerId(principal);
+        StaffRole actorRole = resolveStaffRole(principal);
+        if (actorUserId == null) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("error", "Authentication required"));
         }
+        if (actorRole != StaffRole.OWNER && actorRole != StaffRole.PHARMACIST) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                .body(Map.of("error", "Only pharmacy owner or pharmacist can access pharmacy orders"));
+        }
         try {
-
-            return ResponseEntity.ok(orderService.getPharmacyOrders(ownerId));
+            return ResponseEntity.ok(orderService.getPharmacyOrders(actorUserId, actorRole));
         } catch (PharmacyException ex) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("error", ex.getMessage()));
         }

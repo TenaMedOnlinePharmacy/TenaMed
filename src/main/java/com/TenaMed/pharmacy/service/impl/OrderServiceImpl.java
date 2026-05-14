@@ -423,16 +423,34 @@ public class OrderServiceImpl implements OrderService {
     }
 
     @Override
-    public java.util.List<PharmacyOrderResponse> getPharmacyOrders(UUID ownerId) {
-        Optional<Pharmacy> pharmacy = pharmacyRepository.findByOwnerId(ownerId);
-        if (pharmacy.isEmpty()) {
-            throw new PharmacyNotFoundException("No pharmacy found for the given owner");
+    public java.util.List<PharmacyOrderResponse> getPharmacyOrders(UUID actorUserId, StaffRole staffRole) {
+        if (actorUserId == null) {
+            throw new PharmacyValidationException("actorUserId is required");
+        }
+        if (staffRole == null) {
+            throw new PharmacyValidationException("staffRole is required");
         }
 
+        List<UUID> pharmacyIds = new ArrayList<>();
+        if (staffRole == StaffRole.OWNER) {
+            Pharmacy pharmacy = pharmacyRepository.findByOwnerId(actorUserId)
+                .orElseThrow(() -> new PharmacyNotFoundException("No pharmacy found for the given owner"));
+            pharmacyIds.add(pharmacy.getId());
+        } else if (staffRole == StaffRole.PHARMACIST) {
+            List<UserPharmacy> userPharmacies = userPharmacyRepository.findByUserId(actorUserId);
+            pharmacyIds = userPharmacies.stream()
+                .filter(userPharmacy -> userPharmacy.getStaffRole() == StaffRole.PHARMACIST)
+                .map(userPharmacy -> userPharmacy.getPharmacy().getId())
+                .distinct()
+                .toList();
+            if (pharmacyIds.isEmpty()) {
+                throw new PharmacyNotFoundException("No pharmacy found for the given pharmacist");
+            }
+        } else {
+            throw new PharmacyValidationException("Only pharmacy owner or pharmacist can access pharmacy orders");
+        }
 
-        java.util.List<Order> orders = orderRepository.findByPharmacyId(pharmacy.get().getId());
-
-
+        List<Order> orders = orderRepository.findByPharmacyIdIn(pharmacyIds);
         return orders.stream().map(this::mapToPharmacyOrderResponse).toList();
     }
 

@@ -13,6 +13,7 @@ import java.math.BigDecimal;
 @Builder
 public class MedicinePharmacySearchResponseDto {
 
+    private java.util.UUID inventoryId;
     private java.util.UUID productId;
     private String brandName;
     private String medicineName;

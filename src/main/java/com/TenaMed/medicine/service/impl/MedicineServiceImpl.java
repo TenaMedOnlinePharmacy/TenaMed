@@ -281,6 +281,7 @@ public class MedicineServiceImpl implements MedicineService {
         }
 
         return MedicinePharmacySearchResponseDto.builder()
+            .inventoryId(inventory.getId())
             .productId(product.getId())
             .brandName(product.getBrandName())
             .medicineName(medicine.getName())

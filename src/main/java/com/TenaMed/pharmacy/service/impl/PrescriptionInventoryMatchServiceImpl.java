@@ -155,6 +155,7 @@ public class PrescriptionInventoryMatchServiceImpl implements PrescriptionInvent
         }
 
         return MedicinePharmacySearchResponseDto.builder()
+            .inventoryId(inventory.getId())
             .productId(product.getId())
             .brandName(product.getBrandName())
             .medicineName(medicine.getName())

@@ -23,7 +23,7 @@ public interface OrderService {
 
     OrderResponse createOrderFromCart(UUID customerId, CreateOrderFromCartRequest request);
 
-List<PharmacyOrderResponse> getPharmacyOrders(UUID ownerId);
+    List<PharmacyOrderResponse> getPharmacyOrders(UUID actorUserId, StaffRole staffRole);
 
     List<UserOrderSummaryResponse> getCustomerOrders(UUID customerId);
 }
