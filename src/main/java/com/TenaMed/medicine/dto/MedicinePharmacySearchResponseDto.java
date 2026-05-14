@@ -24,4 +24,6 @@ public class MedicinePharmacySearchResponseDto {
     private String indications;
     private String contraindications;
     private String sideEffects;
+    private Double averageRating;
+    private Integer ratingCount;
 }

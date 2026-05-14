@@ -166,6 +166,8 @@ public class PrescriptionInventoryMatchServiceImpl implements PrescriptionInvent
             .indications(medicine.getIndications())
             .contraindications(medicine.getContraindications())
             .sideEffects(medicine.getSideEffects())
+            .averageRating(inventory.getAverageRating() == null ? 0.0 : inventory.getAverageRating())
+            .ratingCount(inventory.getRatingCount() == null ? 0 : inventory.getRatingCount())
             .build();
     }
 

@@ -32,6 +32,8 @@ public class InventoryMapper {
             .totalQuantity(inventory.getTotalQuantity())
             .reservedQuantity(inventory.getReservedQuantity())
             .reorderLevel(inventory.getReorderLevel())
+            .averageRating(inventory.getAverageRating() == null ? 0.0 : inventory.getAverageRating())
+            .ratingCount(inventory.getRatingCount() == null ? 0 : inventory.getRatingCount())
             .availableQuantity(available)
             .batches(batches)
             .createdAt(inventory.getCreatedAt())

@@ -20,6 +20,8 @@ public class InventoryListItemResponse {
     private String brand;
     private String manufacturer;
     private Integer remainingQuantity;
+    private Double averageRating;
+    private Integer ratingCount;
 
     @Getter
     @Builder

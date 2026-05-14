@@ -45,6 +45,12 @@ public class Inventory extends BaseEntity {
     @Column(name = "reorder_level")
     private Integer reorderLevel;
 
+    @Column(name = "average_rating", nullable = false)
+    private Double averageRating = 0.0;
+
+    @Column(name = "rating_count", nullable = false)
+    private Integer ratingCount = 0;
+
     @OneToMany(mappedBy = "inventory", fetch = FetchType.LAZY)
     private Set<Batch> batches = new LinkedHashSet<>();
 }

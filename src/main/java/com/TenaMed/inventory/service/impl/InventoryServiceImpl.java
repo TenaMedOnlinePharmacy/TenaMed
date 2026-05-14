@@ -415,6 +415,8 @@ public class InventoryServiceImpl implements InventoryService {
                 .brand(product != null ? product.getBrandName() : null)
                 .manufacturer(product != null ? product.getManufacturer() : null)
                 .remainingQuantity(totalQuantity - reservedQuantity)
+                .averageRating(inventory.getAverageRating() == null ? 0.0 : inventory.getAverageRating())
+                .ratingCount(inventory.getRatingCount() == null ? 0 : inventory.getRatingCount())
                 .build();
         }).toList();
     }

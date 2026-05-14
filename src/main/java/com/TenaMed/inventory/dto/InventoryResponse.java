@@ -18,6 +18,8 @@ public class InventoryResponse {
     private Integer totalQuantity;
     private Integer reservedQuantity;
     private Integer reorderLevel;
+    private Double averageRating;
+    private Integer ratingCount;
     private Integer availableQuantity;
     private List<BatchResponse> batches;
     private LocalDateTime createdAt;
