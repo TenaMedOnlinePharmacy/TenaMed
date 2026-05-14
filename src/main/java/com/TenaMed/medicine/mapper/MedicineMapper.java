@@ -7,6 +7,7 @@ import com.TenaMed.medicine.entity.Product;
 import com.TenaMed.medicine.entity.ProductImage;
 import com.TenaMed.medicine.repository.ProductImageRepository;
 import com.TenaMed.medicine.repository.ProductRepository;
+import com.TenaMed.ocr.service.SupabaseStorageService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
@@ -21,6 +22,7 @@ public class MedicineMapper {
 
     private final ProductRepository productRepository;
     private final ProductImageRepository productImageRepository;
+    private final SupabaseStorageService supabaseStorageService;
 
 
     public Medicine toEntity(MedicineRequestDto dto) {
@@ -40,6 +42,7 @@ public class MedicineMapper {
                         .or(() -> productImageRepository.findFirstByProductIdAndIsPrimaryFalse(product.getId())
                                 .map(ProductImage::getImageUrl)))
                 .orElse(null);
+        imageUrl = supabaseStorageService.resolveSignedUrl(imageUrl);
 
         return MedicineResponseDto.builder()
                 .id(medicine.getId())

@@ -178,7 +178,7 @@ public class OrderController {
                 continue;
             }
             String normalized = authority.getAuthority().trim().toUpperCase(Locale.ROOT);
-            if ("ROLE_OWNER".equals(normalized)) {
+            if ("ROLE_OWNER".equals(normalized) || "ROLE_PHARMACYOWNER".equals(normalized)) {
                 return StaffRole.OWNER;
             }
             if ("ROLE_PHARMACIST".equals(normalized)) {

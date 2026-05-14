@@ -48,15 +48,16 @@ public class ProductImageServiceImpl implements ProductImageService {
                 .map(ProductImage::getImageUrl)
                 .orElse(null);
             if (pharmacyImage != null) {
-                return pharmacyImage;
+                return supabaseStorageService.resolveSignedUrl(pharmacyImage);
             }
         }
 
         // Step 2: Default/global image (pharmacy_id IS NULL)
-        return productImageRepository
+        String imageUrl = productImageRepository
             .findDefaultByProductId(productId)
             .map(ProductImage::getImageUrl)
             .orElse(null);
+        return supabaseStorageService.resolveSignedUrl(imageUrl);
     }
 
     @Override
@@ -97,7 +98,7 @@ public class ProductImageServiceImpl implements ProductImageService {
                 image = defaultImages.get(productId);
             }
             if (image != null) {
-                result.put(productId, image);
+                result.put(productId, supabaseStorageService.resolveSignedUrl(image));
             }
         }
 
@@ -160,9 +161,9 @@ public class ProductImageServiceImpl implements ProductImageService {
             throw new IllegalArgumentException("Image file is required");
         }
 
-        String publicUrl = supabaseStorageService.uploadAndGetPublicUrl(image, PRODUCT_IMAGE_FOLDER);
-        savePharmacyImage(productId, pharmacyId, publicUrl);
-        return publicUrl;
+        String objectPath = supabaseStorageService.uploadAndGetObjectPath(image, PRODUCT_IMAGE_FOLDER);
+        savePharmacyImage(productId, pharmacyId, objectPath);
+        return supabaseStorageService.resolveSignedUrl(objectPath);
     }
 
     @Override
@@ -171,8 +172,8 @@ public class ProductImageServiceImpl implements ProductImageService {
             throw new IllegalArgumentException("Image file is required");
         }
 
-        String publicUrl = supabaseStorageService.uploadAndGetPublicUrl(image, PRODUCT_IMAGE_FOLDER);
-        saveDefaultImage(productId, publicUrl);
-        return publicUrl;
+        String objectPath = supabaseStorageService.uploadAndGetObjectPath(image, PRODUCT_IMAGE_FOLDER);
+        saveDefaultImage(productId, objectPath);
+        return supabaseStorageService.resolveSignedUrl(objectPath);
     }
 }

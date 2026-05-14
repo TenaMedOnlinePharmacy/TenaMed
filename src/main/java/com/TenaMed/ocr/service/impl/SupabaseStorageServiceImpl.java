@@ -85,10 +85,6 @@ public class SupabaseStorageServiceImpl implements SupabaseStorageService {
         }
 
         String normalized = storedReference.trim();
-        if (isPublicUrl(normalized)) {
-            return normalized;
-        }
-
         String objectPath = extractObjectPath(normalized);
         if (objectPath == null || objectPath.isBlank()) {
             return normalized;
@@ -189,18 +185,20 @@ public class SupabaseStorageServiceImpl implements SupabaseStorageService {
         return Math.min(configuredValue, MAX_SIGNED_URL_EXPIRY_SECONDS);
     }
 
-    private boolean isPublicUrl(String reference) {
-        String absolutePrefix = supabaseUrl + "/storage/v1/object/public/" + bucket + "/";
-        String relativePrefix = "/storage/v1/object/public/" + bucket + "/";
-        return reference.startsWith(absolutePrefix) || reference.startsWith(relativePrefix);
-    }
-
     private String extractObjectPath(String reference) {
+        String absolutePublicPrefix = supabaseUrl + "/storage/v1/object/public/" + bucket + "/";
+        String relativePublicPrefix = "/storage/v1/object/public/" + bucket + "/";
         String absoluteSignedPrefix = supabaseUrl + "/storage/v1/object/sign/" + bucket + "/";
         String relativeSignedPrefix = "/storage/v1/object/sign/" + bucket + "/";
         String absoluteObjectPrefix = supabaseUrl + "/storage/v1/object/" + bucket + "/";
         String relativeObjectPrefix = "/storage/v1/object/" + bucket + "/";
 
+        if (reference.startsWith(absolutePublicPrefix)) {
+            return removeQueryString(reference.substring(absolutePublicPrefix.length()));
+        }
+        if (reference.startsWith(relativePublicPrefix)) {
+            return removeQueryString(reference.substring(relativePublicPrefix.length()));
+        }
         if (reference.startsWith(absoluteSignedPrefix)) {
             return removeQueryString(reference.substring(absoluteSignedPrefix.length()));
         }
