@@ -1,7 +1,13 @@
 {
-  "medicines_extracted": 1472,
-  "categories_extracted": 130,
-  "dosage_forms_extracted": 17,
-  "allergens_inferred": 3,
-  "manual_review_rows": 621
+  "total_medicines_processed": 1472,
+  "number_of_names_cleaned": 1253,
+  "number_of_generic_names_corrected": 1253,
+  "number_of_fields_filled_from_internet": 86,
+  "number_of_prescription_changes": 10,
+  "number_of_remaining_null_fields": 8747,
+  "number_of_categories_created": 0,
+  "number_of_forms_created": 0,
+  "number_of_allergies_created": 0,
+  "data_quality_score": 1,
+  "categories_cleaned": 120
 }
